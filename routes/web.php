@@ -10,6 +10,7 @@ use App\Http\Controllers\BanpersController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SertifikatController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
@@ -54,8 +55,10 @@ Route::middleware('auth')->group(function () {
     });
     
     // Data Anggota Routes
-    Route::get('/data-anggota', [DataAnggotaController::class, 'index'])->name('data-anggota.index');
-    Route::get('/data-anggota/export', [DataAnggotaController::class, 'export'])->name('data-anggota.export');
+    Route::middleware(['check.admin'])->group(function () {
+        Route::get('/data-anggota', [DataAnggotaController::class, 'index'])->name('data-anggota.index');
+        Route::get('/data-anggota/export', [DataAnggotaController::class, 'export'])->name('data-anggota.export');
+    });
     
     // Advokasi & Aspirasi Routes (Enhanced with Escalation)
     Route::prefix('advokasi-aspirasi')->name('konsultasi.')->group(function () {
@@ -76,8 +79,10 @@ Route::middleware('auth')->group(function () {
     });
     
     // Banpers Routes
-    Route::get('/banpers', [BanpersController::class, 'index'])->name('banpers.index');
-    Route::get('/banpers/export', [BanpersController::class, 'export'])->name('banpers.export');
+    Route::middleware(['check.admin'])->group(function () {
+        Route::get('/banpers', [BanpersController::class, 'index'])->name('banpers.index');
+        Route::get('/banpers/export', [BanpersController::class, 'export'])->name('banpers.export');
+    });
     
     // Sertifikat Routes (accessible by all authenticated users)
     Route::get('/sertifikat', [SertifikatController::class, 'show'])->name('sertifikat.show');
@@ -90,17 +95,25 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Additional API-style routes for AJAX calls (if needed in the future)
-Route::middleware(['auth', 'check.admin'])->prefix('api')->name('api.')->group(function () {
-    // Get escalation options for a specific konsultasi
-    Route::get('/konsultasi/{id}/escalation-options', [KonsultasiController::class, 'getEscalationOptions'])->name('konsultasi.escalation-options');
-    
-    // Get konsultasi statistics for dashboard
-    Route::get('/konsultasi/stats', [KonsultasiController::class, 'getStats'])->name('konsultasi.stats');
-    
-    // Bulk actions for konsultasi (future enhancement)
-    Route::post('/konsultasi/bulk-action', [KonsultasiController::class, 'bulkAction'])->name('konsultasi.bulk-action');
-});
+    // Additional API-style routes for AJAX calls (if needed in the future)
+    Route::middleware(['auth', 'check.admin'])->prefix('api')->name('api.')->group(function () {
+        // Get escalation options for a specific konsultasi
+        Route::get('/konsultasi/{id}/escalation-options', [KonsultasiController::class, 'getEscalationOptions'])->name('konsultasi.escalation-options');
+        
+        // Get konsultasi statistics for dashboard
+        Route::get('/konsultasi/stats', [KonsultasiController::class, 'getStats'])->name('konsultasi.stats');
+        
+        // Bulk actions for konsultasi (future enhancement)
+        Route::post('/konsultasi/bulk-action', [KonsultasiController::class, 'bulkAction'])->name('konsultasi.bulk-action');
+    });
+
+    // Notification routes
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+    });
 
 // Fallback route for 404 handling
 Route::fallback(function () {
