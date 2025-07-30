@@ -322,18 +322,11 @@
                                 <span class="text-xs text-gray-500">● Ditutup</span>
                             @endif
                             
-                            <!-- Priority indicator for admin -->
-                            @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
-                                @if($item->JENIS === 'ADVOKASI' && $item->STATUS !== 'CLOSED')
-                                    <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">
-                                        ⚠️ Prioritas Tinggi
-                                    </span>
-                                @endif
+                            <!-- Time Indicator -->
                                 @if($item->CREATED_AT->diffInDays(now()) > 7 && $item->STATUS !== 'CLOSED')
                                     <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full font-medium">
                                         📅 {{ $item->CREATED_AT->diffInDays(now()) }} hari
                                     </span>
-                                @endif
                             @endif
                         </div>
                     </div>
