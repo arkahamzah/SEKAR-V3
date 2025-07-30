@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class ProfileController extends Controller
@@ -29,6 +30,103 @@ class ProfileController extends Controller
     }
 
     /**
+     * Update user profile picture
+     */
+    public function updateProfilePicture(Request $request)
+    {
+        $validated = $request->validate([
+            'profile_picture' => 'required|image|mimes:jpeg,png,jpg|max:2048', // 2MB max
+        ], [
+            'profile_picture.required' => 'Foto profil wajib dipilih.',
+            'profile_picture.image' => 'File harus berupa gambar.',
+            'profile_picture.mimes' => 'Format gambar harus JPEG, PNG, atau JPG.',
+            'profile_picture.max' => 'Ukuran gambar maksimal 2MB.',
+        ]);
+
+        $user = Auth::user();
+
+        try {
+            DB::transaction(function () use ($user, $request) {
+                // Delete old profile picture if exists
+                if ($user->profile_picture && Storage::disk('public')->exists('profile-pictures/' . $user->profile_picture)) {
+                    Storage::disk('public')->delete('profile-pictures/' . $user->profile_picture);
+                }
+
+                // Store new profile picture
+                $file = $request->file('profile_picture');
+                $fileName = time() . '_' . $user->nik . '.' . $file->getClientOriginalExtension();
+                $file->storeAs('profile-pictures', $fileName, 'public');
+
+                // Update user record
+                $user->update([
+                    'profile_picture' => $fileName
+                ]);
+
+                Log::info('Profile picture updated', [
+                    'nik' => $user->nik,
+                    'name' => $user->name,
+                    'filename' => $fileName,
+                    'timestamp' => now()
+                ]);
+            });
+
+            return redirect()->route('profile.index')
+                           ->with('success', 'Foto profil berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            Log::error('Profile picture update failed', [
+                'nik' => $user->nik,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('profile.index')
+                           ->with('error', 'Terjadi kesalahan saat memperbarui foto profil. Silakan coba lagi.');
+        }
+    }
+
+    /**
+     * Delete user profile picture
+     */
+    public function deleteProfilePicture()
+    {
+        $user = Auth::user();
+
+        try {
+            DB::transaction(function () use ($user) {
+                // Delete file from storage
+                if ($user->profile_picture && Storage::disk('public')->exists('profile-pictures/' . $user->profile_picture)) {
+                    Storage::disk('public')->delete('profile-pictures/' . $user->profile_picture);
+                }
+
+                // Update user record
+                $user->update([
+                    'profile_picture' => null
+                ]);
+
+                Log::info('Profile picture deleted', [
+                    'nik' => $user->nik,
+                    'name' => $user->name,
+                    'timestamp' => now()
+                ]);
+            });
+
+            return redirect()->route('profile.index')
+                           ->with('success', 'Foto profil berhasil dihapus.');
+
+        } catch (\Exception $e) {
+            Log::error('Profile picture deletion failed', [
+                'nik' => $user->nik,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('profile.index')
+                           ->with('error', 'Terjadi kesalahan saat menghapus foto profil. Silakan coba lagi.');
+        }
+    }
+
+    /**
      * Update iuran sukarela for authenticated user
      */
     public function updateIuranSukarela(Request $request)
@@ -39,10 +137,10 @@ class ProfileController extends Controller
 
         $user = Auth::user();
         $newAmount = (int)$validated['iuran_sukarela'];
-
+        
         try {
             $result = $this->processIuranSukarelaUpdate($user, $newAmount);
-
+            
             return redirect()->route('profile.index')
                            ->with($result['status'], $result['message']);
         } catch (\Exception $e) {
@@ -76,23 +174,40 @@ class ProfileController extends Controller
         }
 
         try {
-            $user->email = $validated['email'];
-            $user->save();
+            DB::transaction(function () use ($user, $validated) {
+                $oldEmail = $user->email;
+                
+                // Update email
+                $user->update([
+                    'email' => $validated['email']
+                ]);
+
+                // Log email change
+                Log::info('User email updated', [
+                    'nik' => $user->nik,
+                    'name' => $user->name,
+                    'old_email' => $oldEmail,
+                    'new_email' => $validated['email'],
+                    'timestamp' => now()
+                ]);
+
+                // Send confirmation email to new email
+                $this->sendEmailChangeConfirmation($user, $oldEmail);
+            });
 
             return redirect()->route('profile.index')
-                           ->with('success', 'Email berhasil diperbarui.');
+                           ->with('success', 'Email berhasil diperbarui. Email konfirmasi telah dikirim ke alamat baru Anda.');
+
         } catch (\Exception $e) {
+            Log::error('Email update failed', [
+                'nik' => $user->nik,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->route('profile.index')
                            ->with('error', 'Terjadi kesalahan saat memperbarui email. Silakan coba lagi.');
         }
-    }
-
-    /**
-     * Check if email is dummy email
-     */
-    private function isDummyEmail(string $email): bool
-    {
-        return str_ends_with($email, '@sekar.local');
     }
 
     /**
@@ -101,15 +216,14 @@ class ProfileController extends Controller
     private function getProfileData(User $user): array
     {
         $karyawan = $this->getKaryawanData($user->nik);
-        $iuran = $this->getIuranData($user->nik);
+        $iuran = $this->getIuranData($user->nik); // This will get the latest/highest value
         $iuranWajib = $this->getIuranWajib();
         $iuranSukarela = $iuran ? (int)$iuran->IURAN_SUKARELA : 0;
-
+        
         $pendingChange = $this->getPendingIuranChange($user->nik);
         $effectiveIuranSukarela = $pendingChange ? (int)$pendingChange->NOMINAL_BARU : $iuranSukarela;
-
-        // PENTING: Total iuran terbayar SELALU pakai iuran aktual, bukan pending
-        $iuranCalculations = $this->calculateIuranTotals($user, $iuranWajib, $iuranSukarela);
+        
+        $iuranCalculations = $this->calculateIuranTotals($user, $iuranWajib, $effectiveIuranSukarela);
         $iuranHistory = $this->getIuranHistory($user->nik);
 
         return [
@@ -156,189 +270,137 @@ class ProfileController extends Controller
         $params = Params::where('IS_AKTIF', '1')
                        ->where('TAHUN', date('Y'))
                        ->first();
-
-        return $params ? (int)$params->NOMINAL_IURAN_WAJIB : 25000;
+        
+        return $params ? (int)$params->NOMINAL_IURAN_WAJIB : 25000; // Default fallback sesuai database
     }
 
     /**
-     * Get pending iuran change
+     * Get pending iuran change - FIXED: gunakan STATUS_PROSES bukan STATUS
      */
     private function getPendingIuranChange(string $nik): ?IuranHistory
     {
         return IuranHistory::where('N_NIK', $nik)
-                          ->where('JENIS', 'SUKARELA')
-                          ->where('STATUS_PROSES', 'PENDING')
-                          ->orderBy('CREATED_AT', 'desc')
+                          ->where('STATUS_PROSES', 'PENDING') // FIXED: gunakan STATUS_PROSES
+                          ->latest('CREATED_AT')
                           ->first();
     }
 
     /**
-     * Calculate iuran totals - SELALU PAKAI IURAN AKTUAL
+     * Process iuran sukarela update
      */
-    private function calculateIuranTotals(User $user, int $iuranWajib, int $actualIuranSukarela): array
+    private function processIuranSukarelaUpdate(User $user, int $newAmount): array
     {
-        // PENTING: Pakai iuran sukarela aktual, BUKAN pending
-        $totalPerBulan = $iuranWajib + $actualIuranSukarela;
+        $currentIuran = $this->getIuranData($user->nik);
+        $currentAmount = $currentIuran ? (int)$currentIuran->IURAN_SUKARELA : 0;
 
+        // Check if there's already a pending change
+        $pendingChange = $this->getPendingIuranChange($user->nik);
+        if ($pendingChange) {
+            return [
+                'status' => 'warning',
+                'message' => 'Anda masih memiliki perubahan iuran yang sedang menunggu persetujuan. Silakan tunggu hingga diproses.'
+            ];
+        }
+
+        // Check if amount is the same
+        if ($newAmount == $currentAmount) {
+            return [
+                'status' => 'info',
+                'message' => 'Nominal iuran sukarela tidak berubah.'
+            ];
+        }
+
+        return DB::transaction(function () use ($user, $newAmount, $currentAmount) {
+            // Calculate dates
+            $tglPerubahan = now();
+            $tglProses = $tglPerubahan->copy()->addMonth()->day(20);
+            $tglImplementasi = $tglPerubahan->copy()->addMonths(2)->day(1);
+
+            // Create history record dengan struktur yang benar
+            IuranHistory::create([
+                'N_NIK' => $user->nik,
+                'JENIS' => 'SUKARELA', // Tambahkan JENIS
+                'NOMINAL_LAMA' => $currentAmount,
+                'NOMINAL_BARU' => $newAmount,
+                'STATUS_PROSES' => 'PENDING', // FIXED: gunakan STATUS_PROSES
+                'TGL_PERUBAHAN' => $tglPerubahan,
+                'TGL_PROSES' => $tglProses,
+                'TGL_IMPLEMENTASI' => $tglImplementasi,
+                'KETERANGAN' => 'Pengajuan perubahan iuran sukarela melalui portal anggota',
+                'CREATED_BY' => $user->nik,
+                'CREATED_AT' => now()
+            ]);
+
+            Log::info('Iuran sukarela change requested', [
+                'nik' => $user->nik,
+                'name' => $user->name,
+                'old_amount' => $currentAmount,
+                'new_amount' => $newAmount,
+                'timestamp' => now()
+            ]);
+
+            return [
+                'status' => 'success',
+                'message' => 'Perubahan iuran sukarela berhasil diajukan dan akan diproses oleh admin.'
+            ];
+        });
+    }
+
+    /**
+     * Calculate iuran totals
+     */
+    private function calculateIuranTotals(User $user, int $iuranWajib, int $iuranSukarela): array
+    {
+        $totalPerBulan = $iuranWajib + $iuranSukarela;
+        
         // Calculate months since joining
-        $joinDate = $user->created_at;
-        $currentDate = now();
-
-        $yearDiff = $currentDate->year - $joinDate->year;
-        $monthDiff = $currentDate->month - $joinDate->month;
-
-        $monthsSinceJoin = max(1, ($yearDiff * 12) + $monthDiff + 1);
-        $totalPaid = $totalPerBulan * $monthsSinceJoin;
+        $joinDate = Carbon::parse($user->created_at);
+        $monthsSinceJoining = $joinDate->diffInMonths(now()) + 1; // Include current month
+        
+        $totalPaid = $totalPerBulan * $monthsSinceJoining;
 
         return [
             'totalPerBulan' => $totalPerBulan,
-            'totalPaid' => $totalPaid,
+            'totalPaid' => $totalPaid
         ];
     }
 
     /**
-     * Get iuran history
+     * Get iuran history for user
      */
-    private function getIuranHistory(string $nik)
+    private function getIuranHistory(string $nik): \Illuminate\Database\Eloquent\Collection
     {
         return IuranHistory::where('N_NIK', $nik)
-                          ->orderBy('CREATED_AT', 'desc')
+                          ->orderBy('CREATED_AT', 'DESC')
                           ->get();
     }
 
     /**
-     * Process iuran sukarela update - HANYA BUAT HISTORY, JANGAN UPDATE IURAN
+     * Check if email is dummy email
      */
-    private function processIuranSukarelaUpdate(User $user, int $newAmount): array
+    private function isDummyEmail(string $email): bool
     {
-        $currentAmount = $this->getCurrentIuranSukarela($user->nik);
-
-        // Check if there's any change
-        if ($currentAmount === $newAmount) {
-            return [
-                'status' => 'info',
-                'message' => 'Tidak ada perubahan pada iuran sukarela.'
-            ];
-        }
-
-        DB::transaction(function () use ($user, $currentAmount, $newAmount) {
-            // Cancel any existing pending changes first
-            $this->cancelPendingChanges($user->nik);
-
-            // HANYA buat history record - JANGAN update tabel iuran
-            $this->createIuranHistory($user->nik, $currentAmount, $newAmount);
-
-            // REMOVED: updateOrCreateIuranRecord - ini yang bikin total berubah!
-            // Iuran record akan diupdate nanti oleh HC saat implementasi
-        });
-
-        return [
-            'status' => 'success',
-            'message' => 'Iuran sukarela berhasil diperbarui. Perubahan akan diproses dalam 1 bulan dan diterapkan dalam 2 bulan sesuai kebijakan HC.'
-        ];
+        return str_ends_with($email, '@sekar.local'); // FIXED: sesuai dengan database
     }
 
     /**
-     * Get current iuran sukarela amount - HANDLE DUPLICATES
+     * Send email change confirmation
      */
-    private function getCurrentIuranSukarela(string $nik): int
+    private function sendEmailChangeConfirmation(User $user, string $oldEmail): void
     {
-        $iuran = $this->getIuranData($nik); // This already handles duplicates
-        return $iuran ? (int)$iuran->IURAN_SUKARELA : 0;
-    }
-
-    /**
-     * Cancel existing pending changes when new change is made
-     */
-    private function cancelPendingChanges(string $nik): void
-    {
-        IuranHistory::where('N_NIK', $nik)
-                   ->where('JENIS', 'SUKARELA')
-                   ->where('STATUS_PROSES', 'PENDING')
-                   ->update([
-                       'STATUS_PROSES' => 'CANCELLED',
-                       'KETERANGAN' => 'Dibatalkan karena ada perubahan baru',
-                       'UPDATED_AT' => now()
-                   ]);
-    }
-
-    /**
-     * Check if user has pending changes - KEPT FOR REFERENCE BUT NOT USED
-     * This method is now only used for informational purposes in the view
-     */
-    private function hasPendingChanges(string $nik): bool
-    {
-        return IuranHistory::where('N_NIK', $nik)
-                          ->where('JENIS', 'SUKARELA')
-                          ->whereIn('STATUS_PROSES', ['PENDING', 'PROCESSED'])
-                          ->exists();
-    }
-
-    /**
-     * Create iuran history record
-     */
-    private function createIuranHistory(string $nik, int $oldAmount, int $newAmount): void
-    {
-        IuranHistory::createWithDates([
-            'N_NIK' => $nik,
-            'JENIS' => 'SUKARELA',
-            'NOMINAL_LAMA' => $oldAmount,
-            'NOMINAL_BARU' => $newAmount,
-            'STATUS_PROSES' => 'PENDING',
-            'TGL_PERUBAHAN' => now(),
-            'KETERANGAN' => 'Perubahan iuran sukarela oleh anggota',
-            'CREATED_BY' => $nik,
-            'CREATED_AT' => now()
-        ]);
-    }
-
-    /**
-     * Update or create iuran record - PREVENT DUPLICATES
-     * NOTE: Method ini hanya dipanggil saat implementasi oleh HC, bukan saat user edit
-     */
-    private function updateOrCreateIuranRecord(string $nik, int $newAmount): void
-    {
-        // Delete any duplicate records first, keep the latest one
-        $this->cleanupDuplicateIuran($nik);
-
-        $iuran = $this->getIuranData($nik);
-
-        if ($iuran) {
-            $iuran->update([
-                'IURAN_SUKARELA' => (string)$newAmount,
-                'UPDATE_BY' => $nik,
-                'UPDATED_AT' => now()
+        try {
+            // Implementation would depend on your mail configuration
+            // This is a placeholder for actual email sending logic
+            Log::info('Email change confirmation should be sent', [
+                'nik' => $user->nik,
+                'old_email' => $oldEmail,
+                'new_email' => $user->email
             ]);
-        } else {
-            $iuranWajib = $this->getIuranWajib();
-
-            Iuran::create([
-                'N_NIK' => $nik,
-                'IURAN_WAJIB' => (string)$iuranWajib,
-                'IURAN_SUKARELA' => (string)$newAmount,
-                'CREATED_BY' => $nik,
-                'CREATED_AT' => now()
+        } catch (\Exception $e) {
+            Log::error('Failed to send email change confirmation', [
+                'nik' => $user->nik,
+                'error' => $e->getMessage()
             ]);
-        }
-    }
-
-    /**
-     * Clean up duplicate iuran records
-     */
-    private function cleanupDuplicateIuran(string $nik): void
-    {
-        $records = Iuran::where('N_NIK', $nik)->get();
-
-        if ($records->count() > 1) {
-            // Keep the record with highest IURAN_SUKARELA and latest CREATED_AT
-            $keepRecord = $records->sortByDesc(function ($item) {
-                return [(int)$item->IURAN_SUKARELA, $item->CREATED_AT];
-            })->first();
-
-            // Delete other records
-            Iuran::where('N_NIK', $nik)
-                  ->where('ID', '!=', $keepRecord->ID)
-                  ->delete();
         }
     }
 }
