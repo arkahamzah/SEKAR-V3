@@ -109,10 +109,10 @@
                                 <div class="ml-4 space-y-2">
                                     @if($konsultasi->STATUS !== 'CLOSED')
                                         <!-- Close Button -->
-                                        <form method="POST" action="{{ route('konsultasi.close', $konsultasi->ID) }}" class="inline">
+                                        <form id="closeForm" method="POST" action="{{ route('konsultasi.close', $konsultasi->ID) }}" class="inline">
                                             @csrf
-                                            <button type="submit" 
-                                                    onclick="return confirm('Apakah Anda yakin ingin menutup {{ strtolower($konsultasi->JENIS) }} ini?')"
+                                            <button type="button" 
+                                                    onclick="showCloseConfirmation('{{ strtolower($konsultasi->JENIS) }}')"
                                                     class="inline-flex items-center px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -321,76 +321,122 @@
     </div>
 </div>
 
-<!-- Escalation Modal -->
-@if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
-<div id="escalateModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Eskalasi {{ ucfirst(strtolower($konsultasi->JENIS)) }}</h3>
-        
-        @if($canEscalate)
-            <form method="POST" action="{{ route('konsultasi.escalate', $konsultasi->ID) }}">
-                @csrf
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Eskalasi ke Level</label>
-                    <select name="escalate_to" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                        <option value="">Pilih Level</option>
-                        @foreach($escalationOptions as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Level saat ini: <strong>{{ $konsultasi->TUJUAN }}</strong>
-                    </p>
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Eskalasi <span class="text-red-500">*</span></label>
-                    <textarea name="escalation_note" rows="3" 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Jelaskan alasan eskalasi..." required></textarea>
-                </div>
-                
-                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
-                    <div class="flex items-start">
-                        <svg class="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<!-- Close Confirmation Modal -->
+<div id="closeConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <!-- Header dengan Icon -->
+            <div class="flex items-start space-x-4">
+                <!-- Icon Circle -->
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center bg-red-100">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
-                        <div>
-                            <p class="text-sm text-yellow-800">
-                                <strong>Perhatian:</strong> Eskalasi akan mengirimkan {{ strtolower($konsultasi->JENIS) }} ini ke admin level yang lebih tinggi untuk penanganan lebih lanjut.
-                            </p>
-                        </div>
                     </div>
                 </div>
                 
-                <div class="flex justify-end space-x-3">
-                    <button type="button" 
-                            onclick="closeEscalateModal()"
-                            class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-                        Eskalasi
-                    </button>
+                <!-- Content -->
+                <div class="flex-1">
+                    <!-- Title -->
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                        Konfirmasi Penutupan
+                    </h3>
+                    
+                    <!-- Message -->
+                    <div class="text-gray-600 text-sm">
+                        <p id="closeMessage">Apakah Anda yakin ingin menutup kasus ini?</p>
+                        <p class="mt-2 text-xs text-gray-500">Setelah ditutup, kasus tidak dapat dibuka kembali dan tidak dapat menambahkan komentar baru.</p>
+                    </div>
                 </div>
-            </form>
-        @else
-            <div class="text-center py-6">
-                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <h4 class="text-lg font-medium text-gray-900 mb-2">Tidak Dapat Dieskalasi</h4>
-                <p class="text-sm text-gray-600 mb-6">
-                    Konsultasi ini sudah berada di level tertinggi (<strong>{{ $konsultasi->TUJUAN }}</strong>) dan tidak dapat dieskalasi lebih lanjut.
-                </p>
-                <button type="button" 
-                        onclick="closeEscalateModal()"
-                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-                    Tutup
+            </div>
+            
+            <!-- Buttons -->
+            <div class="mt-6 flex justify-end space-x-3">
+                <button onclick="closeCloseConfirmModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Batal
+                </button>
+                <button onclick="confirmClose()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    Ya, Tutup Kasus
                 </button>
             </div>
-        @endif
+        </div>
+    </div>
+</div>
+
+<!-- Escalation Modal -->
+@if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
+<div id="escalateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Eskalasi {{ ucfirst(strtolower($konsultasi->JENIS)) }}</h3>
+            
+            @if($canEscalate)
+                <form id="escalateForm" method="POST" action="{{ route('konsultasi.escalate', $konsultasi->ID) }}">
+                    @csrf
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Eskalasi ke Level</label>
+                        <select name="escalate_to" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Pilih Level</option>
+                            @foreach($escalationOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Level saat ini: <strong>{{ $konsultasi->TUJUAN }}</strong>
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Eskalasi <span class="text-red-500">*</span></label>
+                        <textarea name="escalation_note" rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Jelaskan alasan eskalasi..." required></textarea>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <div>
+                                <p class="text-sm text-yellow-800">
+                                    <strong>Perhatian:</strong> Eskalasi akan mengirimkan {{ strtolower($konsultasi->JENIS) }} ini ke admin level yang lebih tinggi untuk penanganan lebih lanjut.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" 
+                                onclick="closeEscalateModal()"
+                                class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            Batal
+                        </button>
+                        <button type="button" 
+                                onclick="confirmEscalate()"
+                                class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                            Eskalasi
+                        </button>
+                    </div>
+                </form>
+            @else
+                <div class="text-center py-6">
+                    <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">Tidak Dapat Dieskalasi</h4>
+                    <p class="text-sm text-gray-600 mb-6">
+                        Konsultasi ini sudah berada di level tertinggi (<strong>{{ $konsultasi->TUJUAN }}</strong>) dan tidak dapat dieskalasi lebih lanjut.
+                    </p>
+                    <button type="button" 
+                            onclick="closeEscalateModal()"
+                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                        Tutup
+                    </button>
+                </div>
+            @endif
+        </div>
     </div>
 </div>
 @endif
@@ -398,94 +444,104 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const escalateModal = document.getElementById('escalateModal');
-    const escalateForm = escalateModal?.querySelector('form');
+    const escalateForm = document.getElementById('escalateForm');
     const escalateSelect = escalateModal?.querySelector('select[name="escalate_to"]');
     const escalateTextarea = escalateModal?.querySelector('textarea[name="escalation_note"]');
-    const escalateButton = escalateModal?.querySelector('button[type="submit"]');
+    const closeConfirmModal = document.getElementById('closeConfirmModal');
 
-    // Function to open modal
+    // Function to show close confirmation
+    window.showCloseConfirmation = function(jenisKonsultasi) {
+        const message = document.getElementById('closeMessage');
+        message.textContent = `Apakah Anda yakin ingin menutup ${jenisKonsultasi} ini?`;
+        closeConfirmModal.classList.remove('hidden');
+    };
+
+    // Function to close close confirmation modal
+    window.closeCloseConfirmModal = function() {
+        closeConfirmModal.classList.add('hidden');
+    };
+
+    // Function to confirm close
+    window.confirmClose = function() {
+        document.getElementById('closeForm').submit();
+    };
+
+    // Function to open escalate modal
     window.openEscalateModal = function() {
         if (escalateModal) {
             escalateModal.classList.remove('hidden');
-            // Focus pada select
             if (escalateSelect) {
                 setTimeout(() => escalateSelect.focus(), 100);
             }
         }
     };
 
-    // Function to close modal
+    // Function to close escalate modal
     window.closeEscalateModal = function() {
         if (escalateModal) {
             escalateModal.classList.add('hidden');
-            // Reset form
             if (escalateForm) {
                 escalateForm.reset();
             }
         }
     };
 
-    // Close modal when clicking outside
-    if (escalateModal) {
-        escalateModal.addEventListener('click', function(e) {
-            if (e.target === escalateModal) {
-                closeEscalateModal();
-            }
-        });
-    }
+    // Function to confirm escalation
+    window.confirmEscalate = function() {
+        const selectedLevel = escalateSelect?.value;
+        const note = escalateTextarea?.value?.trim();
 
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && escalateModal && !escalateModal.classList.contains('hidden')) {
-            closeEscalateModal();
+        if (!selectedLevel) {
+            alert('Harap pilih level tujuan eskalasi.');
+            escalateSelect?.focus();
+            return;
+        }
+
+        if (!note || note.length < 10) {
+            alert('Harap isi catatan eskalasi minimal 10 karakter.');
+            escalateTextarea?.focus();
+            return;
+        }
+
+        const levelName = escalateSelect.options[escalateSelect.selectedIndex].text;
+        const confirmMessage = `Apakah Anda yakin ingin mengekskalasi konsultasi ini ke ${levelName}?\n\nCatatan: ${note}`;
+        
+        if (confirm(confirmMessage)) {
+            escalateForm.submit();
+        }
+    };
+
+    // Close modals when clicking outside
+    [closeConfirmModal, escalateModal].forEach(modal => {
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    if (modal === closeConfirmModal) {
+                        closeCloseConfirmModal();
+                    } else {
+                        closeEscalateModal();
+                    }
+                }
+            });
         }
     });
 
-    // Validate form before submit
-    if (escalateForm) {
-        escalateForm.addEventListener('submit', function(e) {
-            const selectedLevel = escalateSelect?.value;
-            const note = escalateTextarea?.value?.trim();
-
-            if (!selectedLevel) {
-                e.preventDefault();
-                alert('Harap pilih level tujuan eskalasi.');
-                escalateSelect?.focus();
-                return false;
+    // Close modals with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (closeConfirmModal && !closeConfirmModal.classList.contains('hidden')) {
+                closeCloseConfirmModal();
             }
-
-            if (!note || note.length < 10) {
-                e.preventDefault();
-                alert('Harap isi catatan eskalasi minimal 10 karakter.');
-                escalateTextarea?.focus();
-                return false;
+            if (escalateModal && !escalateModal.classList.contains('hidden')) {
+                closeEscalateModal();
             }
-
-            // Konfirmasi sebelum submit
-            const confirmMessage = `Apakah Anda yakin ingin mengekskalasi konsultasi ini ke ${selectedLevel}?\n\nCatatan: ${note}`;
-            if (!confirm(confirmMessage)) {
-                e.preventDefault();
-                return false;
-            }
-
-            // Disable button to prevent double submit
-            if (escalateButton) {
-                escalateButton.disabled = true;
-                escalateButton.innerHTML = `
-                    <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    Mengekskalasi...
-                `;
-            }
-        });
-    }
+        }
+    });
 
     // Character counter for textarea
     if (escalateTextarea) {
         const maxLength = 500;
         
-        // Create counter element
         const counter = document.createElement('div');
         counter.className = 'text-xs text-gray-500 text-right mt-1';
         counter.innerHTML = `0/${maxLength}`;
@@ -514,42 +570,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+</script>
 
 <style>
-/* CSS untuk animasi modal */
-#escalateModal {
-    animation: fadeIn 0.2s ease-out;
-}
-
-#escalateModal.hidden {
-    animation: fadeOut 0.2s ease-in;
-}
-
-#escalateModal > div {
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-
-@keyframes slideIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(-20px) scale(0.95); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0) scale(1); 
-    }
-}
-
 /* Styling untuk dropdown yang lebih baik */
 select[name="escalate_to"] {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
