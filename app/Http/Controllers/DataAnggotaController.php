@@ -79,7 +79,7 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('u.created_at', 'desc')->paginate(20);
+        return $query->orderBy('u.created_at', 'desc')->paginate(10);
     }
 
     /**
@@ -109,7 +109,7 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc')->paginate(20);
+        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc')->paginate(10);
     }
 
     /**
@@ -149,7 +149,7 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('sp.CREATED_AT', 'desc')->paginate(20);
+        return $query->orderBy('sp.CREATED_AT', 'desc')->paginate(10);
     }
 
     /**
