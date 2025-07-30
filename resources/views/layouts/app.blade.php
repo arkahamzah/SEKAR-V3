@@ -153,9 +153,15 @@
                     <!-- User Dropdown -->
                     <div class="relative">
                         <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 py-1">
-                            <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
-                                <span class="text-white text-xs font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
-                            </div>
+                            @if(Auth::user()->profile_picture)
+                                <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}" 
+                                     alt="Profile Picture" 
+                                     class="w-7 h-7 rounded-full object-cover border border-gray-200">
+                            @else
+                                <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
+                                </div>
+                            @endif
                             <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
                             <svg class="w-4 h-4 transition-transform duration-200" id="userMenuChevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -167,9 +173,15 @@
                             <!-- User Info Header -->
                             <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-sm font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
-                                    </div>
+                                    @if(Auth::user()->profile_picture)
+                                        <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}" 
+                                             alt="Profile Picture" 
+                                             class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                    @else
+                                        <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <span class="text-white text-sm font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
+                                        </div>
+                                    @endif
                                     <div class="flex-1 min-w-0">
                                         <p class="text-sm font-medium text-gray-900 truncate">{{ Auth::user()->name }}</p>
                                         <p class="text-xs text-gray-500">NIK: {{ Auth::user()->nik }}</p>
