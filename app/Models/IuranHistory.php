@@ -22,14 +22,16 @@ class IuranHistory extends Model
         'TGL_IMPLEMENTASI',
         'KETERANGAN',
         'CREATED_BY',
-        'CREATED_AT'
+        'CREATED_AT',
+        'UPDATED_AT'
     ];
 
     protected $casts = [
         'TGL_PERUBAHAN' => 'datetime',
         'TGL_PROSES' => 'datetime',
         'TGL_IMPLEMENTASI' => 'datetime',
-        'CREATED_AT' => 'datetime'
+        'CREATED_AT' => 'datetime',
+        'UPDATED_AT' => 'datetime'
     ];
 
     public function karyawan()
@@ -43,6 +45,7 @@ class IuranHistory extends Model
             'PENDING' => 'Menunggu Proses',
             'PROCESSED' => 'Sedang Diproses HC',
             'IMPLEMENTED' => 'Sudah Diterapkan',
+            'CANCELLED' => 'Dibatalkan',
             default => 'Unknown'
         };
     }
@@ -53,6 +56,7 @@ class IuranHistory extends Model
             'PENDING' => 'yellow',
             'PROCESSED' => 'blue',
             'IMPLEMENTED' => 'green',
+            'CANCELLED' => 'red',
             default => 'gray'
         };
     }
@@ -61,16 +65,16 @@ class IuranHistory extends Model
     public static function createWithDates($data)
     {
         $tglPerubahan = Carbon::parse($data['TGL_PERUBAHAN']);
-        
+
         // Calculate process date (n+1 month, on 20th)
         $tglProses = $tglPerubahan->copy()->addMonth()->day(20);
-        
+
         // Calculate implementation date (n+2 months, on 1st)
         $tglImplementasi = $tglPerubahan->copy()->addMonths(2)->day(1);
-        
+
         $data['TGL_PROSES'] = $tglProses;
         $data['TGL_IMPLEMENTASI'] = $tglImplementasi;
-        
+
         return self::create($data);
     }
 }
