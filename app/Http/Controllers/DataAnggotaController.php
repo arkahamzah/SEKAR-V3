@@ -75,6 +75,22 @@ class DataAnggotaController extends Controller
             'iuran_sukarela' => 'nullable|numeric|min:0',
         ]);
 
+        // Check if NIK exists in ex-anggota (allow reactivation)
+        $exAnggota = ExAnggota::where('N_NIK', $request->nik)->first();
+        if ($exAnggota) {
+            // Remove unique validation for NIK if it's a reactivation
+            $validator = Validator::make($request->all(), [
+                'nik' => 'required|string|max:30',
+                'nama' => 'required|string|max:150',
+                'email' => 'required|email|unique:users,email',
+                'no_telp' => 'nullable|string|max:20',
+                'dpw' => 'nullable|string|max:100',
+                'dpd' => 'nullable|string|max:100',
+                'iuran_wajib' => 'nullable|numeric|min:0',
+                'iuran_sukarela' => 'nullable|numeric|min:0',
+            ]);
+        }
+
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
@@ -83,6 +99,9 @@ class DataAnggotaController extends Controller
 
         try {
             DB::beginTransaction();
+
+            // Check if this NIK exists in ex-anggota, if yes delete it (reactivation)
+            ExAnggota::where('N_NIK', $request->nik)->delete();
 
             // Create user account
             $user = User::create([
@@ -133,7 +152,7 @@ class DataAnggotaController extends Controller
             DB::commit();
 
             return redirect()->route('data-anggota.index')
-                ->with('success', 'Anggota berhasil ditambahkan');
+                ->with('success', $exAnggota ? 'Anggota berhasil diaktifkan kembali' : 'Anggota berhasil ditambahkan');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -193,7 +212,6 @@ class DataAnggotaController extends Controller
             'no_telp' => 'nullable|string|max:20',
             'dpw' => 'nullable|string|max:100',
             'dpd' => 'nullable|string|max:100',
-            'iuran_wajib' => 'nullable|numeric|min:0',
             'iuran_sukarela' => 'nullable|numeric|min:0',
         ]);
 
@@ -230,11 +248,12 @@ class DataAnggotaController extends Controller
                 ]
             );
 
-            // Update or create iuran record
+            // Update or create iuran record (only iuran sukarela)
+            $existingIuran = DB::table('t_iuran')->where('N_NIK', $nik)->first();
             DB::table('t_iuran')->updateOrInsert(
                 ['N_NIK' => $nik],
                 [
-                    'IURAN_WAJIB' => $request->iuran_wajib ?: 0,
+                    'IURAN_WAJIB' => $existingIuran->IURAN_WAJIB ?? 0, // Keep existing iuran wajib
                     'IURAN_SUKARELA' => $request->iuran_sukarela ?: 0,
                 ]
             );

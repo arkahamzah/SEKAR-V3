@@ -136,17 +136,15 @@
                     @enderror
                 </div>
 
-                <!-- Iuran Wajib -->
+                <!-- Iuran Wajib (Read Only) -->
                 <div>
-                    <label for="iuran_wajib" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="iuran_wajib_display" class="block text-sm font-medium text-gray-700 mb-2">
                         Iuran Wajib (Rp)
                     </label>
-                    <input type="number" id="iuran_wajib" name="iuran_wajib" value="{{ old('iuran_wajib', $member->IURAN_WAJIB) }}" min="0" step="1000"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('iuran_wajib') border-red-500 @enderror"
-                           placeholder="0">
-                    @error('iuran_wajib')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
+                    <input type="text" id="iuran_wajib_display" 
+                           value="{{ $member->IURAN_WAJIB ? 'Rp ' . number_format($member->IURAN_WAJIB, 0, ',', '.') : 'Rp 0' }}" readonly
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed">
+                    <p class="mt-1 text-xs text-gray-500">Iuran wajib tidak dapat diubah</p>
                 </div>
 
                 <!-- Iuran Sukarela -->
@@ -184,6 +182,7 @@
                         <p class="font-medium">Perhatian:</p>
                         <ul class="mt-1 list-disc list-inside">
                             <li>NIK dan tanggal terdaftar tidak dapat diubah</li>
+                            <li>Iuran wajib ditentukan oleh sistem dan tidak dapat diubah</li>
                             <li>Perubahan email akan mempengaruhi login anggota</li>
                             <li>Field yang bertanda (*) wajib diisi</li>
                         </ul>
