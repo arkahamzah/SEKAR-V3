@@ -208,11 +208,16 @@
                             </div>
                         </div>
                         @empty
-                        <div class="text-center py-8">
-                            <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.13 8.13 0 01-2.939-.542l-2.122 2.122A.5.5 0 017 21V8a8 8 0 1114 4z"></path>
-                            </svg>
-                            <p class="text-gray-500">Belum ada komentar atau tanggapan</p>
+                        <div class="text-center py-12">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full shadow-sm relative">
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <svg class="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h6M4.99 18H18a2 2 0 002-2V8a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 001.99 2z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <h4 class="text-sm font-medium text-gray-900 mb-1">Belum ada komentar</h4>
+                            <p class="text-sm text-gray-500">Belum ada komentar atau tanggapan untuk advokasi ini</p>
                         </div>
                         @endforelse
                     </div>
