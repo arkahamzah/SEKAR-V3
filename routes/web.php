@@ -17,7 +17,13 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
     Route::get('/login', [AuthController::class, 'showLogin']);
+    
+    // SSO Routes - Updated untuk true SSO
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    Route::get('/sso/popup/{token}', [AuthController::class, 'showSSOPopup'])->name('sso.popup');
+    Route::post('/sso/auth', [AuthController::class, 'processSSOAuth'])->name('sso.auth');
+    
+    // Manual registration (optional)
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
     
@@ -95,27 +101,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-    // Additional API-style routes for AJAX calls (if needed in the future)
-    Route::middleware(['auth', 'check.admin'])->prefix('api')->name('api.')->group(function () {
-        // Get escalation options for a specific konsultasi
-        Route::get('/konsultasi/{id}/escalation-options', [KonsultasiController::class, 'getEscalationOptions'])->name('konsultasi.escalation-options');
-        
-        // Get konsultasi statistics for dashboard
-        Route::get('/konsultasi/stats', [KonsultasiController::class, 'getStats'])->name('konsultasi.stats');
-        
-        // Bulk actions for konsultasi (future enhancement)
-        Route::post('/konsultasi/bulk-action', [KonsultasiController::class, 'bulkAction'])->name('konsultasi.bulk-action');
-    });
-
-    // Notification routes
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
-        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
-    });
-
-// Fallback route for 404 handling
-Route::fallback(function () {
-    return response()->view('errors.404', [], 404);
+// Additional API-style routes for AJAX calls (if needed in the future)
+Route::middleware(['auth', 'check.admin'])->prefix('api')->name('api.')->group(function () {
+    // Future API endpoints
 });
