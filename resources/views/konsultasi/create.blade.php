@@ -38,7 +38,7 @@
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">1. Pilih Jenis Pengajuan</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <label class="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group">
-                                <input type="radio" name="jenis" value="ADVOKASI" class="mt-1 mr-3" required onchange="toggleKategoriAdvokasi()">
+                                <input type="radio" name="jenis" value="ADVOKASI" class="mt-1 mr-3" required onchange="updateFormBasedOnJenis()">
                                 <div class="flex-1">
                                     <div class="flex items-center mb-2">
                                         <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@
                             </label>
                             
                             <label class="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group">
-                                <input type="radio" name="jenis" value="ASPIRASI" class="mt-1 mr-3" required onchange="toggleKategoriAdvokasi()">
+                                <input type="radio" name="jenis" value="ASPIRASI" class="mt-1 mr-3" required onchange="updateFormBasedOnJenis()">
                                 <div class="flex-1">
                                     <div class="flex items-center mb-2">
                                         <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,38 +90,19 @@
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">
                             <span id="stepNumber">2</span>. Tujuan Pengajuan
                         </h3>
-                        <div class="space-y-3">
-                            @foreach($availableTargets as $key => $value)
-                            <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                <input type="radio" name="tujuan" value="{{ $key }}" class="mr-3" required onchange="toggleTujuanSpesifik()" 
-                                       {{ old('tujuan') === $key ? 'checked' : '' }}>
-                                <div class="flex-1">
-                                    <span class="font-medium text-gray-900">{{ $value }}</span>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        @if($key === 'DPD')
-                                            Untuk masalah tingkat daerah/lokasi kerja
-                                        @elseif($key === 'DPW')
-                                            Untuk masalah tingkat wilayah/provinsi
-                                        @elseif($key === 'DPP')
-                                            Untuk masalah tingkat pusat/nasional
-                                        @else
-                                            Untuk aspirasi umum kepada SEKAR
-                                        @endif
-                                    </p>
-                                </div>
-                            </label>
-                            @endforeach
+                        <div id="tujuanOptions" class="space-y-3">
+                            <!-- Options will be populated by JavaScript -->
                         </div>
                     </div>
 
                     <!-- Tujuan Spesifik -->
                     <div id="tujuanSpesifik" class="mb-8 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tujuan Spesifik</label>
-                        <input type="text" name="tujuan_spesifik" id="tujuanSpesifikInput" 
-                               value="{{ old('tujuan_spesifik') }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Nama DPW/DPD/DPP tujuan">
-                        <p class="text-xs text-gray-500 mt-1">Akan terisi otomatis berdasarkan lokasi kerja Anda</p>
+                        <select name="tujuan_spesifik" id="tujuanSpesifikSelect" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Pilih Tujuan Spesifik</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1" id="tujuanSpesifikHint">Akan terisi otomatis berdasarkan lokasi kerja Anda atau pilih manual</p>
                     </div>
 
                     <!-- Step 4: Detail -->
@@ -130,141 +111,130 @@
                             <span id="stepNumberDetail">3</span>. Detail Pengajuan
                         </h3>
                         
-                        <!-- Judul -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Judul <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" name="judul" value="{{ old('judul') }}" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                   placeholder="Judul singkat dan jelas" required maxlength="200">
-                            <div class="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>Judul yang jelas akan membantu proses penanganan</span>
-                                <span id="judulCounter">0/200</span>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="judul" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Judul <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" 
+                                       name="judul" 
+                                       id="judul" 
+                                       value="{{ old('judul') }}"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Tulis judul yang jelas dan singkat"
+                                       required
+                                       maxlength="200">
+                                <p class="text-xs text-gray-500 mt-1">Maksimal 200 karakter</p>
                             </div>
-                        </div>
-
-                        <!-- Deskripsi -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Deskripsi Lengkap <span class="text-red-500">*</span>
-                            </label>
-                            <textarea name="deskripsi" rows="8" 
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                      placeholder="Jelaskan secara detail..." required>{{ old('deskripsi') }}</textarea>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <p class="mb-1"><strong>Tips penulisan yang baik:</strong></p>
-                                <ul class="list-disc list-inside space-y-1">
-                                    <li>Jelaskan kronologi kejadian secara runtut</li>
-                                    <li>Sertakan tanggal, tempat, dan pihak yang terlibat</li>
-                                    <li>Lampirkan bukti jika ada (nomor surat, foto, dokumen)</li>
-                                    <li>Sebutkan dampak yang dirasakan</li>
-                                    <li>Sampaikan harapan solusi yang diinginkan</li>
-                                </ul>
+                            
+                            <div>
+                                <label for="deskripsi" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Deskripsi <span class="text-red-500">*</span>
+                                </label>
+                                <textarea name="deskripsi" 
+                                          id="deskripsi" 
+                                          rows="6"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                          placeholder="Jelaskan secara detail..."
+                                          required
+                                          maxlength="2000">{{ old('deskripsi') }}</textarea>
+                                <p class="text-xs text-gray-500 mt-1">Maksimal 2000 karakter. Jelaskan kronologi, dampak, dan solusi yang diharapkan.</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Buttons -->
-                    <div class="flex space-x-4 pt-6 border-t border-gray-200">
+                    <!-- Submit Button -->
+                    <div class="flex justify-end space-x-3">
                         <a href="{{ route('konsultasi.index') }}" 
-                           class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg text-center hover:bg-gray-300 transition font-medium">
+                           class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
                             Batal
                         </a>
                         <button type="submit" 
-                                class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium">
-                            Kirim Pengajuan
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                            <span id="submitText">Ajukan</span>
                         </button>
                     </div>
                 </form>
             </div>
 
             <!-- Sidebar -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Info Card Pengirim -->
-                @if($karyawan)
+            <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h4 class="font-semibold text-gray-900 mb-4">Informasi Pengirim</h4>
-                    <div class="space-y-3 text-sm">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                <span class="text-blue-600 font-medium">{{ substr(Auth::user()->name, 0, 1) }}</span>
-                            </div>
-                            <div>
-                                <p class="font-medium text-gray-900">{{ Auth::user()->name }}</p>
-                                <p class="text-gray-600">NIK: {{ Auth::user()->nik }}</p>
-                            </div>
-                        </div>
-                        <hr class="my-3">
-                        <div class="grid grid-cols-1 gap-2">
-                            <div>
-                                <span class="text-gray-600">Jabatan:</span>
-                                <p class="font-medium">{{ $karyawan->V_SHORT_POSISI }}</p>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Unit:</span>
-                                <p class="font-medium">{{ $karyawan->V_SHORT_UNIT }}</p>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Divisi:</span>
-                                <p class="font-medium">{{ $karyawan->V_SHORT_DIVISI }}</p>
-                            </div>
-                            <div>
-                                <span class="text-gray-600">Lokasi:</span>
-                                <p class="font-medium">{{ $karyawan->V_KOTA_GEDUNG }}</p>
+                    <h4 class="font-semibold text-gray-900 mb-4">Informasi Penting</h4>
+                    
+                    <div class="space-y-4 text-sm">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-medium text-blue-900 mb-1">Proses Pengajuan</p>
+                                    <ul class="text-blue-700 text-xs space-y-1">
+                                        <li>• Pengajuan akan direview dalam 1-3 hari kerja</li>
+                                        <li>• Anda akan mendapat notifikasi via email</li>
+                                        <li>• Status dapat dipantau di dashboard</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                @endif
 
-                <!-- Info Process -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h4 class="font-semibold text-blue-900 mb-4">Proses Penanganan</h4>
-                    <div class="space-y-3 text-sm text-blue-800">
-                        <div class="flex items-start">
-                            <div class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">1</div>
-                            <div>
-                                <p class="font-medium">Pengajuan Diterima</p>
-                                <p class="text-blue-700">Admin akan menerima notifikasi email</p>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-medium text-yellow-900 mb-1">Perhatian</p>
+                                    <ul class="text-yellow-700 text-xs space-y-1">
+                                        <li>• Pastikan data yang disampaikan akurat</li>
+                                        <li>• Sertakan bukti pendukung jika ada</li>
+                                        <li>• Gunakan bahasa yang sopan</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex items-start">
-                            <div class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">2</div>
-                            <div>
-                                <p class="font-medium">Review & Tindak Lanjut</p>
-                                <p class="text-blue-700">Admin akan mengkaji dan memberikan respon</p>
-                            </div>
-                        </div>
-                        <div class="flex items-start">
-                            <div class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">3</div>
-                            <div>
-                                <p class="font-medium">Solusi & Penutupan</p>
-                                <p class="text-blue-700">Masalah diselesaikan dan status ditutup</p>
+
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-green-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-medium text-green-900 mb-1">Kerahasiaan</p>
+                                    <p class="text-green-700 text-xs">Semua informasi akan dijaga kerahasiaannya sesuai kebijakan SEKAR.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Help & Contact -->
-                <div class="bg-gray-50 rounded-lg p-6">
-                    <h4 class="font-semibold text-gray-900 mb-4">Butuh Bantuan?</h4>
-                    <div class="space-y-3 text-sm text-gray-700">
-                        <p>Jika Anda mengalami kesulitan dalam mengisi form atau memerlukan konsultasi awal:</p>
-                        <div class="space-y-2">
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                </svg>
-                                <span>admin@sekar.telkom.co.id</span>
-                            </div>
-                            <div class="flex items-center">
-                                <svg class="w-4 h-4 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                                </svg>
-                                <span>0800-1-SEKAR (73527)</span>
-                            </div>
+                <!-- User Info -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+                    <h4 class="font-semibold text-gray-900 mb-4">Informasi Anda</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Nama:</span>
+                            <span class="font-medium">{{ auth()->user()->name }}</span>
                         </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">NIK:</span>
+                            <span class="font-medium">{{ auth()->user()->nik }}</span>
+                        </div>
+                        @if($karyawan)
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Posisi:</span>
+                            <span class="font-medium text-xs">{{ $karyawan->V_SHORT_POSISI }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Unit:</span>
+                            <span class="font-medium text-xs">{{ $karyawan->V_SHORT_UNIT }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Lokasi:</span>
+                            <span class="font-medium">{{ $karyawan->V_KOTA_GEDUNG }}</span>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -273,109 +243,174 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Character counter for judul
-    const judulInput = document.querySelector('input[name="judul"]');
-    const judulCounter = document.getElementById('judulCounter');
-    
-    judulInput.addEventListener('input', function() {
-        judulCounter.textContent = `${this.value.length}/200`;
-    });
-    
-    // Initialize form state
-    toggleKategoriAdvokasi();
-    toggleTujuanSpesifik();
-});
+// Data from backend
+const availableTargets = @json($availableTargets);
+const dpwOptions = @json($dpwOptions);
+const dpdOptions = @json($dpdOptions);
+const userLocation = @json($karyawan ? $karyawan->V_KOTA_GEDUNG : null);
 
-function toggleKategoriAdvokasi() {
-    const jenisRadios = document.querySelectorAll('input[name="jenis"]');
-    const kategoriAdvokasi = document.getElementById('kategoriAdvokasi');
+// Auto-mapping based on location
+function getAutoMappedTarget() {
+    if (!userLocation) {
+        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
+    }
+    
+    const location = userLocation.toUpperCase();
+    
+    if (location.includes('JAKARTA')) {
+        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
+    } else if (location.includes('BANDUNG')) {
+        return { dpw: 'DPW Jabar', dpd: 'DPD Bandung' };
+    } else if (location.includes('SURABAYA')) {
+        return { dpw: 'DPW Jatim', dpd: 'DPD Surabaya' };
+    } else if (location.includes('MEDAN')) {
+        return { dpw: 'DPW Sumut', dpd: 'DPD Medan' };
+    } else if (location.includes('MAKASSAR')) {
+        return { dpw: 'DPW Sulsel', dpd: 'DPD Makassar' };
+    } else {
+        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
+    }
+}
+
+function updateFormBasedOnJenis() {
+    const selectedJenis = document.querySelector('input[name="jenis"]:checked');
+    const kategoriDiv = document.getElementById('kategoriAdvokasi');
     const stepNumber = document.getElementById('stepNumber');
     const stepNumberDetail = document.getElementById('stepNumberDetail');
+    const submitButton = document.getElementById('submitText');
     
-    let selectedJenis = null;
-    jenisRadios.forEach(radio => {
-        if (radio.checked) {
-            selectedJenis = radio.value;
-        }
-    });
+    if (!selectedJenis) return;
     
-    if (selectedJenis === 'ADVOKASI') {
-        kategoriAdvokasi.classList.remove('hidden');
-        kategoriAdvokasi.querySelector('select').required = true;
+    const jenis = selectedJenis.value.toLowerCase();
+    
+    // Show/hide kategori advokasi
+    if (jenis === 'advokasi') {
+        kategoriDiv.classList.remove('hidden');
         stepNumber.textContent = '3';
         stepNumberDetail.textContent = '4';
+        submitButton.textContent = 'Ajukan Advokasi';
     } else {
-        kategoriAdvokasi.classList.add('hidden');
-        kategoriAdvokasi.querySelector('select').required = false;
-        kategoriAdvokasi.querySelector('select').value = '';
+        kategoriDiv.classList.add('hidden');
         stepNumber.textContent = '2';
         stepNumberDetail.textContent = '3';
+        submitButton.textContent = 'Ajukan Aspirasi';
     }
+    
+    // Update target options
+    updateTargetOptions(jenis);
 }
 
-function toggleTujuanSpesifik() {
-    const tujuanRadios = document.querySelectorAll('input[name="tujuan"]');
-    const tujuanSpesifik = document.getElementById('tujuanSpesifik');
-    const tujuanSpesifikInput = document.getElementById('tujuanSpesifikInput');
+function updateTargetOptions(jenis) {
+    const tujuanOptionsDiv = document.getElementById('tujuanOptions');
+    const targets = availableTargets[jenis] || {};
     
-    let selectedTujuan = null;
-    tujuanRadios.forEach(radio => {
-        if (radio.checked) {
-            selectedTujuan = radio.value;
-        }
+    let html = '';
+    Object.entries(targets).forEach(([key, value]) => {
+        const description = getTargetDescription(key);
+        html += `
+            <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <input type="radio" name="tujuan" value="${key}" class="mr-3" required onchange="handleTujuanChange()">
+                <div class="flex-1">
+                    <span class="font-medium text-gray-900">${value}</span>
+                    <p class="text-xs text-gray-500 mt-1">${description}</p>
+                </div>
+            </label>
+        `;
     });
     
-    if (selectedTujuan && selectedTujuan !== 'GENERAL') {
-        tujuanSpesifik.classList.remove('hidden');
-        tujuanSpesifikInput.required = true;
-        
-        // Auto-fill based on selection
-        const selectedOption = document.querySelector(`input[name="tujuan"][value="${selectedTujuan}"]`).closest('label').querySelector('span');
-        tujuanSpesifikInput.value = selectedOption.textContent;
-    } else {
-        tujuanSpesifik.classList.add('hidden');
-        tujuanSpesifikInput.required = false;
-        tujuanSpesifikInput.value = '';
+    tujuanOptionsDiv.innerHTML = html;
+}
+
+function getTargetDescription(target) {
+    const descriptions = {
+        'DPD': 'Untuk masalah tingkat daerah/lokasi kerja',
+        'DPW': 'Untuk masalah tingkat wilayah/provinsi',
+        'DPP': 'Untuk masalah tingkat pusat/nasional',
+        'GENERAL': 'Untuk aspirasi umum kepada SEKAR'
+    };
+    
+    return descriptions[target] || '';
+}
+
+function handleTujuanChange() {
+    const selectedTujuan = document.querySelector('input[name="tujuan"]:checked');
+    const tujuanSpesifikDiv = document.getElementById('tujuanSpesifik');
+    const tujuanSpesifikSelect = document.getElementById('tujuanSpesifikSelect');
+    const tujuanSpesifikHint = document.getElementById('tujuanSpesifikHint');
+    
+    if (!selectedTujuan) {
+        tujuanSpesifikDiv.classList.add('hidden');
+        return;
     }
+    
+    const target = selectedTujuan.value;
+    
+    if (target === 'GENERAL') {
+        // Hide tujuan spesifik for GENERAL
+        tujuanSpesifikDiv.classList.add('hidden');
+        return;
+    }
+    
+    // Show tujuan spesifik for DPD/DPW
+    tujuanSpesifikDiv.classList.remove('hidden');
+    
+    // Populate dropdown based on target
+    let options = ['<option value="">Pilih Tujuan Spesifik</option>'];
+    let autoMapped = getAutoMappedTarget();
+    
+    if (target === 'DPW') {
+        // Add auto-mapped option first
+        options.push(`<option value="${autoMapped.dpw}" selected>📍 ${autoMapped.dpw} (Lokasi Anda)</option>`);
+        
+        // Add other DPW options
+        dpwOptions.forEach(dpw => {
+            if (dpw !== autoMapped.dpw) {
+                options.push(`<option value="${dpw}">${dpw}</option>`);
+            }
+        });
+        
+        tujuanSpesifikHint.textContent = `Auto-mapped ke ${autoMapped.dpw} berdasarkan lokasi kerja Anda, atau pilih manual`;
+        
+    } else if (target === 'DPD') {
+        // Add auto-mapped option first
+        options.push(`<option value="${autoMapped.dpd}" selected>📍 ${autoMapped.dpd} (Lokasi Anda)</option>`);
+        
+        // Add other DPD options
+        dpdOptions.forEach(dpd => {
+            if (dpd !== autoMapped.dpd) {
+                options.push(`<option value="${dpd}">${dpd}</option>`);
+            }
+        });
+        
+        tujuanSpesifikHint.textContent = `Auto-mapped ke ${autoMapped.dpd} berdasarkan lokasi kerja Anda, atau pilih manual`;
+    }
+    
+    tujuanSpesifikSelect.innerHTML = options.join('');
 }
+
+// Initialize form on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if there's an old jenis value
+    const oldJenis = '{{ old("jenis") }}';
+    const oldTujuan = '{{ old("tujuan") }}';
+    
+    if (oldJenis) {
+        const jenisRadio = document.querySelector(`input[name="jenis"][value="${oldJenis}"]`);
+        if (jenisRadio) {
+            jenisRadio.checked = true;
+            updateFormBasedOnJenis();
+            
+            if (oldTujuan) {
+                setTimeout(() => {
+                    const tujuanRadio = document.querySelector(`input[name="tujuan"][value="${oldTujuan}"]`);
+                    if (tujuanRadio) {
+                        tujuanRadio.checked = true;
+                        handleTujuanChange();
+                    }
+                }, 100);
+            }
+        }
+    }
+});
 </script>
-
-<style>
-/* Radio button enhancements */
-input[type="radio"]:checked + div {
-    color: #2563eb;
-}
-
-input[type="radio"]:checked + div .group-hover\:text-blue-700 {
-    color: #1d4ed8 !important;
-}
-
-/* Step transitions */
-#kategoriAdvokasi {
-    transition: all 0.3s ease;
-}
-
-#tujuanSpesifik {
-    transition: all 0.3s ease;
-}
-
-/* Form validation styling */
-input:invalid {
-    border-color: #ef4444;
-}
-
-input:valid {
-    border-color: #10b981;
-}
-
-/* Character counter */
-#judulCounter {
-    transition: color 0.2s ease;
-}
-
-input[name="judul"]:focus + div #judulCounter {
-    color: #2563eb;
-}
-</style>
 @endsection

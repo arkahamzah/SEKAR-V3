@@ -364,7 +364,7 @@
     </div>
 </div>
 
-<!-- Escalation Modal -->
+<!-- Escalation Modal - PERBAIKAN DROPDOWN -->
 @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
 <div id="escalateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] hidden">
     <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
@@ -374,14 +374,26 @@
             @if($canEscalate)
                 <form id="escalateForm" method="POST" action="{{ route('konsultasi.escalate', $konsultasi->ID) }}">
                     @csrf
+                    
+                    <!-- DROPDOWN YANG DIPERBAIKI - TIDAK DOUBLE LAGI -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Eskalasi ke Level</label>
-                        <select name="escalate_to" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                            <option value="">Pilih Level</option>
-                            @foreach($escalationOptions as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <div class="relative">
+                            <select name="escalate_to" 
+                                    class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white" 
+                                    required>
+                                <option value="">Pilih Level</option>
+                                @foreach($escalationOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <!-- Custom dropdown arrow -->
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </div>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">
                             Level saat ini: <strong>{{ $konsultasi->TUJUAN }}</strong>
                         </p>
@@ -570,22 +582,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-</script>
 
 <style>
-/* Styling untuk dropdown yang lebih baik */
+/* STYLING YANG DIPERBAIKI - MENGHILANGKAN DUPLIKASI DROPDOWN */
 select[name="escalate_to"] {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+    /* Hapus appearance default browser dan background image */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: white;
 }
 
 /* Styling untuk opsi yang disabled */
 select[name="escalate_to"] option:disabled {
     color: #9ca3af;
     font-style: italic;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 640px) {
+    select[name="escalate_to"] {
+        font-size: 14px;
+        padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    }
+}
+
+/* Smooth modal transitions */
+#escalateModal {
+    transition: all 0.3s ease;
+}
+
+#escalateModal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#escalateModal:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Focus states untuk accessibility */
+select[name="escalate_to"]:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+}
+
+textarea[name="escalation_note"]:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
 }
 </style>
 @endsection
