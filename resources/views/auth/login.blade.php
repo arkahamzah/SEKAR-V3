@@ -100,7 +100,7 @@
             <!-- Manual Registration Link -->
             <div class="text-center space-y-3">
                 <a href="{{ route('register') }}" class="block w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition duration-200">
-                    Daftar Manual (untuk pengujian)
+                    Daftar (untuk pengujian)
                 </a>
                 
                 <div class="text-sm text-gray-600">

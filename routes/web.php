@@ -18,14 +18,17 @@ Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
     Route::get('/login', [AuthController::class, 'showLogin']);
     
-    // SSO Routes - Updated untuk true SSO
+    // SSO Login Routes
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
     Route::get('/sso/popup/{token}', [AuthController::class, 'showSSOPopup'])->name('sso.popup');
     Route::post('/sso/auth', [AuthController::class, 'processSSOAuth'])->name('sso.auth');
     
-    // Manual registration (optional)
+    // SSO Register Routes
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+    
+    // API Routes for Register
+    Route::post('/api/karyawan-data', [AuthController::class, 'getKaryawanData'])->name('api.karyawan-data');
     
     // Password Reset Routes (for non-authenticated users)
     Route::prefix('password')->name('password.')->group(function () {

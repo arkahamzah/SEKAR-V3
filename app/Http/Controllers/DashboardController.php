@@ -43,7 +43,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get basic statistics - FIXED to match real data
+     * Get basic statistics - sesuai dengan logika di project knowledge
      */
     private function getStatistics(): array
     {
@@ -53,8 +53,7 @@ class DashboardController extends Controller
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
 
-        // Total Pengurus = pengurus yang masih aktif sebagai karyawan (join dengan tabel karyawan)
-        // NOTE: Ini akan mengecualikan pengurus yang tidak ada di tabel karyawan (ex: NIK 980269)
+        // Total Pengurus = pengurus yang masih aktif sebagai karyawan
         $totalPengurus = DB::table('t_sekar_pengurus as sp')
             ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
             ->count();
@@ -75,7 +74,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get DPW mapping with statistics - FIXED to only count active employees
+     * Get DPW mapping with statistics
      */
     private function getDpwMappingWithStats()
     {
@@ -140,6 +139,11 @@ class DashboardController extends Controller
             'BANDUNG' => 'DPW Jabar',
             'JAKARTA' => 'DPW Jakarta', 
             'SURABAYA' => 'DPW Jatim',
+            'MEDAN' => 'DPW Sumut',
+            'MAKASSAR' => 'DPW Sulsel',
+            'SEMARANG' => 'DPW Jateng',
+            'YOGYAKARTA' => 'DPW DIY',
+            'DENPASAR' => 'DPW Bali',
             // Add more mappings as needed
         ];
 
@@ -147,7 +151,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Enrich mapping with area-specific statistics - FIXED
+     * Enrich mapping with area-specific statistics
      */
     private function enrichMappingWithStats($mapping): object
     {
@@ -164,7 +168,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Count active members in specific area - FIXED
+     * Count active members in specific area
      */
     private function getAnggotaAktifByArea(string $kota): int
     {
@@ -176,7 +180,7 @@ class DashboardController extends Controller
     }
  
     /**
-     * Count pengurus in specific area - FIXED to only count active employees
+     * Count pengurus in specific area
      */
     private function getPengurusByArea(string $kota): int
     {
@@ -195,7 +199,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Count non-members in specific area - FIXED
+     * Count non-members in specific area
      */
     private function getNonAnggotaByArea(string $kota): int
     {
@@ -211,15 +215,11 @@ class DashboardController extends Controller
     }
 
     /**
-     * Generate realistic growth indicators - FIXED
+     * Generate realistic growth indicators
      */
     private function getGrowthData(array $statistics): array
     {
         // Calculate realistic growth percentages
-        $baseAnggota = max(1, $statistics['anggotaAktif']);
-        $basePengurus = max(1, $statistics['totalPengurus']);
-        
-        // Mock growth calculation (in real app, compare with previous period)
         $anggotaGrowth = $this->calculateGrowthIndicator($statistics['anggotaAktif'], 'anggota');
         $pengurusGrowth = $this->calculateGrowthIndicator($statistics['totalPengurus'], 'pengurus');
         $keluarGrowth = $this->calculateGrowthIndicator($statistics['anggotaKeluar'], 'keluar');

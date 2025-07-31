@@ -24,15 +24,23 @@
                 <p class="text-sm text-gray-600 mt-2">Masukkan password SSO/LDAP Anda</p>
             </div>
 
-            <!-- User Info -->
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <div class="flex items-center">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <span class="text-blue-600 font-bold text-sm">{{ substr($user_name, 0, 2) }}</span>
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-blue-600 font-bold text-lg">{{ strtoupper(substr($user_name, 0, 2)) }}</span>
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <p class="font-medium text-blue-900">{{ $user_name }}</p>
                         <p class="text-sm text-blue-700">NIK: {{ $nik }}</p>
+                        <p class="text-xs text-blue-600">Status: 
+                            @if($membership_status === 'active')
+                                <span class="text-green-600 font-medium">Anggota Aktif</span>
+                            @elseif($membership_status === 'pending')
+                                <span class="text-orange-600 font-medium">Pending (GPTP)</span>
+                            @else
+                                <span class="text-gray-600">{{ ucfirst($membership_status) }}</span>
+                            @endif
+                        </p>
                     </div>
                 </div>
             </div>
