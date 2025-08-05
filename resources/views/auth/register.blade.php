@@ -1,23 +1,25 @@
-<!-- resources/views/auth/register.blade.php -->
 @extends('layouts.app')
 
-@section('title', 'Daftar Sekar - SEKAR')
+@section('title', 'Daftar SEKAR - Single Sign-On')
 
 @section('content')
 <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-    <!-- Left Side - Logo -->
-    <div class="absolute top-6 left-6">
-        <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-10">
-    </div>
-
     <!-- Center - Register Form -->
     <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
         <div class="text-center mb-6">
-            <h2 class="text-xl font-bold text-gray-900">Daftar Sekar</h2>
+            <div class="flex justify-center mb-4">
+                <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-12">
+            </div>
+            <h2 class="text-xl font-bold text-gray-900">Daftar SEKAR</h2>
+            <p class="text-sm text-gray-600 mt-1">Single Sign-On Registration</p>
         </div>
 
-        <form id="registerForm" method="POST" action="{{ route('register.post') }}" class="space-y-4">
+        <!-- Form -->
+        <form id="registerForm" class="space-y-4">
             @csrf
+            
+            <!-- Error/Success Messages -->
+            <div id="alertContainer" class="hidden"></div>
             
             @if ($errors->any())
                 <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg">
@@ -27,346 +29,481 @@
                 </div>
             @endif
 
-            <div>
-                <label class="block text-gray-700 text-sm font-medium mb-1">NIK</label>
-                <input 
-                    type="text" 
-                    name="nik" 
-                    placeholder="NIK" 
-                    value="{{ old('nik') }}"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 bg-gray-50 text-sm"
-                    required
-                >
-            </div>
-
-            <div>
-                <label class="block text-gray-700 text-sm font-medium mb-1">Nama</label>
-                <input 
-                    type="text" 
-                    name="name" 
-                    placeholder="Nama" 
-                    value="{{ old('name') }}"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 bg-gray-50 text-sm"
-                    required
-                >
-            </div>
-
-            <!-- Email Input -->
+            <!-- NIK Input -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
-                    Email Pribadi <span class="text-red-500">*</span>
+                    NIK Telkom <span class="text-red-500">*</span>
                 </label>
                 <input 
-                    type="email" 
-                    name="email" 
-                    placeholder="email.pribadi@gmail.com" 
-                    value="{{ old('email') }}"
+                    type="text" 
+                    id="nikInput"
+                    name="nik" 
+                    placeholder="Masukkan NIK Anda" 
+                    value="{{ old('nik') }}"
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 text-sm"
                     required
                 >
-                <p class="text-xs text-gray-500 mt-0.5">Email untuk notifikasi dan reset password</p>
+                <p class="text-xs text-gray-500 mt-1">NIK akan divalidasi dengan data karyawan Telkom</p>
             </div>
 
+            <!-- Nama Input (Auto-filled) -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
-                    Iuran Sukarela <span class="text-gray-500">(Opsional)</span>
+                    Nama Lengkap <span class="text-red-500">*</span>
                 </label>
                 <input 
                     type="text" 
-                    name="iuran_sukarela" 
-                    id="iuranInput"
-                    placeholder="0" 
-                    value="{{ old('iuran_sukarela') }}"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 bg-gray-50 text-sm"
-                >
-                <p class="text-xs text-gray-500 mt-0.5">Minimal kelipatan Rp 5.000</p>
-            </div>
-
-            <div class="flex items-start space-x-2">
-                <input 
-                    type="checkbox" 
-                    id="agreement" 
-                    name="agreement"
-                    class="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+                    id="nameInput"
+                    name="name" 
+                    placeholder="Nama akan terisi otomatis" 
+                    value="{{ old('name') }}"
+                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                    readonly
                     required
                 >
-                <label for="agreement" class="text-xs text-gray-700 leading-tight">
-                    Saya bersedia menjadi anggota SEKAR TELKOM, telah memahami hak dan kewajiban anggota, serta menyetujui pemotongan iuran Rp25.000/bulan melalui payroll.
-                </label>
+                <p class="text-xs text-gray-500 mt-1">Nama diambil dari data karyawan</p>
             </div>
 
-            <div class="flex items-start space-x-2">
-                <input 
-                    type="checkbox" 
-                    id="email_agreement" 
-                    name="email_agreement"
-                    class="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
-                    required
-                >
-                <label for="email_agreement" class="text-xs text-gray-700 leading-tight">
-                    Saya menyetujui penggunaan email pribadi untuk notifikasi sistem SEKAR dan konfirmasi reset password.
-                </label>
+            <!-- Employee Info Display -->
+            <div id="employeeInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h4 class="font-medium text-blue-900 text-sm mb-2">Informasi Karyawan:</h4>
+                <div class="space-y-1 text-xs text-blue-800">
+                    <p><span class="font-medium">Posisi:</span> <span id="employeePosition"></span></p>
+                    <p><span class="font-medium">Unit:</span> <span id="employeeUnit"></span></p>
+                    <p><span class="font-medium">Divisi:</span> <span id="employeeDivisi"></span></p>
+                    <p><span class="font-medium">Lokasi:</span> <span id="employeeLocation"></span></p>
+                </div>
             </div>
 
+            <!-- GPTP Notice -->
+            <div id="gptpNotice" class="hidden bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-orange-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div class="text-sm">
+                        <p class="font-medium text-orange-800">Karyawan GPTP - Pre-order Membership</p>
+                        <p class="text-orange-700 mt-1">Sebagai karyawan GPTP, Anda akan resmi menjadi anggota SEKAR <strong>1 tahun</strong> setelah mendaftar.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Iuran Sukarela -->
+            <div>
+                <label class="block text-gray-700 text-sm font-medium mb-1">
+                    Iuran Sukarela (Opsional)
+                </label>
+                <div class="relative">
+                    <span class="absolute left-3 top-2.5 text-gray-500 text-sm">Rp</span>
+                    <input 
+                        type="number" 
+                        id="iuranInput"
+                        name="iuran_sukarela" 
+                        placeholder="0" 
+                        value="{{ old('iuran_sukarela') }}"
+                        min="0"
+                        step="5000"
+                        class="w-full pl-8 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 text-sm"
+                    >
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Dalam kelipatan Rp 5.000 (contoh: 10000, 15000, 20000)</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden text-center py-2">
+                <svg class="animate-spin w-5 h-5 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-gray-600 mt-1">Memvalidasi data karyawan...</p>
+            </div>
+
+            <!-- Register Button -->
             <button 
                 type="button"
-                id="daftarBtn"
-                class="w-full bg-blue-700 text-white py-2.5 rounded-lg font-medium hover:bg-blue-800 transition duration-200 text-sm"
+                id="registerBtn"
+                class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
             >
-                Daftar
+                Daftar dengan SSO
             </button>
 
+            <!-- Login Link -->
             <div class="text-center">
                 <span class="text-gray-600 text-xs">Sudah menjadi anggota? </span>
-                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-medium text-xs">Login dengan NIK</a>
+                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-medium text-xs">Login dengan SSO</a>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Popup Modal for Password Validation with Blur Effect -->
-<div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+<!-- SSO Popup Modal -->
+<div id="ssoModal" class="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
         <div class="text-center mb-6">
-            <div class="flex justify-center mb-4">
-                <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-12">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-3a1 1 0 011-1h2.586l6.414-6.414a6 6 0 015.743-7.743z"></path>
+                </svg>
             </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-1">Validasi dengan Password Portal</h3>
-            <p class="text-sm text-gray-600">Konfirmasi identitas dengan password Global Protect</p>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">Konfirmasi dengan SSO</h3>
+            <p class="text-sm text-gray-600">Masukkan password SSO/LDAP untuk melanjutkan pendaftaran</p>
         </div>
 
-        <form id="passwordForm" class="space-y-6">
-            <div>
-                <input 
-                    type="password" 
-                    id="password_portal" 
-                    name="password_portal" 
-                    placeholder="Password Portal/Global Protect"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
-                    required
-                >
-                <p class="text-xs text-gray-500 mt-1">Password yang sama dengan akses Global Protect Telkom</p>
+        <!-- User Info -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center">
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                    <span id="userInitials" class="text-blue-600 font-bold text-sm"></span>
+                </div>
+                <div>
+                    <p id="modalUserName" class="font-medium text-blue-900"></p>
+                    <p id="modalUserNIK" class="text-sm text-blue-700"></p>
+                </div>
+            </div>
+        </div>
+
+        <form id="ssoForm" class="space-y-6">
+            @csrf
+            
+            <!-- Error Display -->
+            <div id="ssoErrorContainer" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 3a1 1 0 00-1-1H3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V3zM8.293 6.293a1 1 0 011.414 0L12 8.586l2.293-2.293a1 1 0 111.414 1.414L13.414 10l2.293 2.293a1 1 0 01-1.414 1.414L12 11.414l-2.293 2.293a1 1 0 01-1.414-1.414L10.586 10 8.293 7.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span id="ssoErrorMessage" class="text-sm"></span>
+                </div>
             </div>
 
+            <!-- Hidden inputs for form data -->
+            <input type="hidden" id="hiddenNik" name="nik">
+            <input type="hidden" id="hiddenName" name="name">
+            <input type="hidden" id="hiddenIuran" name="iuran_sukarela">
+
+            <!-- Password Input -->
+            <div>
+                <label for="sso_password" class="block text-sm font-medium text-gray-700 mb-2">
+                    Password SSO/LDAP
+                </label>
+                <div class="relative">
+                    <input 
+                        type="password" 
+                        id="sso_password"
+                        name="sso_password" 
+                        placeholder="Masukkan password SSO Anda"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button 
+                        type="button" 
+                        id="toggleSSOPassword"
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                        <svg id="eyeIcon" class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    Password yang sama dengan Global Protect, email, atau sistem Telkom lainnya
+                </p>
+            </div>
+
+            <!-- Buttons -->
             <div class="flex space-x-3">
                 <button 
                     type="button"
-                    id="cancelBtn"
-                    class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition duration-200"
+                    id="cancelSSOBtn"
+                    class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition duration-200"
                 >
                     Batal
                 </button>
                 <button 
                     type="submit"
-                    class="flex-1 bg-blue-700 text-white py-3 rounded-lg font-medium hover:bg-blue-800 transition duration-200"
+                    id="submitSSOBtn"
+                    class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-200"
                 >
                     Daftar
                 </button>
+            </div>
+
+            <!-- SSO Loading State -->
+            <div id="ssoLoadingState" class="hidden">
+                <div class="flex items-center justify-center py-3">
+                    <svg class="animate-spin w-5 h-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-blue-600 font-medium">Memproses registrasi...</span>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<style>
-/* Custom blur effect for modal */
-.backdrop-blur-sm {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-}
-
-/* Smooth transitions */
-.transition-all {
-    transition: all 0.3s ease;
-}
-
-/* Focus states */
-input:focus {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-/* Button hover effects */
-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Modal animation */
-#passwordModal.show {
-    animation: modalFadeIn 0.3s ease;
-}
-
-@keyframes modalFadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const daftarBtn = document.getElementById('daftarBtn');
-    const passwordModal = document.getElementById('passwordModal');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const passwordForm = document.getElementById('passwordForm');
-    const registerForm = document.getElementById('registerForm');
+    const nikInput = document.getElementById('nikInput');
+    const nameInput = document.getElementById('nameInput');
     const iuranInput = document.getElementById('iuranInput');
+    const registerBtn = document.getElementById('registerBtn');
+    const loadingState = document.getElementById('loadingState');
+    const employeeInfo = document.getElementById('employeeInfo');
+    const gptpNotice = document.getElementById('gptpNotice');
+    const ssoModal = document.getElementById('ssoModal');
+    const ssoForm = document.getElementById('ssoForm');
+    const ssoPassword = document.getElementById('sso_password');
+    const toggleSSOPassword = document.getElementById('toggleSSOPassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    let currentKaryawanData = null;
+    let debounceTimer = null;
 
-    // Format iuran input as number
-    iuranInput.addEventListener('input', function(e) {
-        let value = e.target.value;
-        // Remove all non-numeric characters
-        value = value.replace(/[^0-9]/g, '');
+    // Show alert message
+    function showAlert(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertClass = {
+            'success': 'bg-green-50 border-green-200 text-green-700',
+            'error': 'bg-red-50 border-red-200 text-red-700',
+            'warning': 'bg-orange-50 border-orange-200 text-orange-700',
+            'info': 'bg-blue-50 border-blue-200 text-blue-700'
+        };
         
-        // Convert to number and format
-        if (value) {
-            const number = parseInt(value);
-            e.target.value = number.toString();
-        } else {
-            e.target.value = '';
-        }
-    });
-
-    // Validate iuran sukarela on blur
-    iuranInput.addEventListener('blur', function(e) {
-        let value = parseInt(e.target.value) || 0;
-        
-        if (value > 0 && value % 5000 !== 0) {
-            // Round to nearest 5000
-            value = Math.round(value / 5000) * 5000;
-            e.target.value = value.toString();
-            
-            // Show warning
-            showTemporaryMessage('Iuran sukarela dibulatkan ke kelipatan Rp 5.000', 'warning');
-        }
-    });
-
-    // Show temporary message
-    function showTemporaryMessage(message, type = 'info') {
-        const existingAlert = document.querySelector('.temp-alert');
-        if (existingAlert) {
-            existingAlert.remove();
-        }
-
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `temp-alert bg-${type === 'warning' ? 'yellow' : 'blue'}-50 border border-${type === 'warning' ? 'yellow' : 'blue'}-200 text-${type === 'warning' ? 'yellow' : 'blue'}-700 px-3 py-2 rounded-lg text-xs mb-4`;
-        alertDiv.textContent = message;
-        
-        const form = document.getElementById('registerForm');
-        form.insertBefore(alertDiv, form.firstChild);
+        alertContainer.className = `border px-4 py-3 rounded-lg text-sm ${alertClass[type]}`;
+        alertContainer.textContent = message;
+        alertContainer.classList.remove('hidden');
         
         setTimeout(() => {
-            alertDiv.remove();
-        }, 3000);
+            alertContainer.classList.add('hidden');
+        }, 5000);
     }
 
-    // Email validation
-    const emailInput = document.querySelector('input[name="email"]');
-    emailInput.addEventListener('blur', function(e) {
-        const email = e.target.value;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // NIK input handler with debounce
+    nikInput.addEventListener('input', function(e) {
+        const nik = e.target.value.trim();
         
-        if (email && !emailRegex.test(email)) {
-            showTemporaryMessage('Format email tidak valid', 'warning');
-            e.target.focus();
+        // Reset form state
+        nameInput.value = '';
+        registerBtn.disabled = true;
+        employeeInfo.classList.add('hidden');
+        gptpNotice.classList.add('hidden');
+        currentKaryawanData = null;
+        
+        // Clear previous timer
+        clearTimeout(debounceTimer);
+        
+        if (nik.length >= 6) {
+            // Debounce API call
+            debounceTimer = setTimeout(() => {
+                fetchKaryawanData(nik);
+            }, 800);
         }
     });
 
-    // Show modal when Daftar button is clicked
-    daftarBtn.addEventListener('click', function(e) {
-        e.preventDefault();
+    // Fetch karyawan data
+    async function fetchKaryawanData(nik) {
+        loadingState.classList.remove('hidden');
         
-        // Validate required fields first
-        const nik = document.querySelector('input[name="nik"]').value;
-        const name = document.querySelector('input[name="name"]').value;
-        const email = document.querySelector('input[name="email"]').value;
-        const agreement = document.querySelector('input[name="agreement"]').checked;
-        const emailAgreement = document.querySelector('input[name="email_agreement"]').checked;
-        
-        if (!nik || !name || !email || !agreement || !emailAgreement) {
-            showTemporaryMessage('Silakan lengkapi semua field yang wajib diisi', 'warning');
+        try {
+            const response = await fetch('/api/karyawan-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                },
+                body: JSON.stringify({ nik: nik })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentKaryawanData = data.data;
+                
+                // Fill form data
+                nameInput.value = data.data.name;
+                
+                // Show employee info
+                document.getElementById('employeePosition').textContent = data.data.position;
+                document.getElementById('employeeUnit').textContent = data.data.unit;
+                document.getElementById('employeeDivisi').textContent = data.data.divisi;
+                document.getElementById('employeeLocation').textContent = data.data.location;
+                employeeInfo.classList.remove('hidden');
+                
+                // Show GPTP notice if applicable
+                if (data.data.is_gptp) {
+                    gptpNotice.classList.remove('hidden');
+                }
+                
+                // Enable register button
+                registerBtn.disabled = false;
+                
+                showAlert('Data karyawan ditemukan!', 'success');
+            } else {
+                showAlert(data.message, 'error');
+            }
+        } catch (error) {
+            showAlert('Terjadi kesalahan saat memuat data karyawan', 'error');
+            console.error('Error:', error);
+        } finally {
+            loadingState.classList.add('hidden');
+        }
+    }
+
+    // Iuran input formatting
+    iuranInput.addEventListener('input', function(e) {
+        let value = parseInt(e.target.value) || 0;
+        if (value > 0) {
+            // Round to nearest 5000
+            value = Math.round(value / 5000) * 5000;
+            e.target.value = value;
+        }
+    });
+
+    // Register button click
+    registerBtn.addEventListener('click', function() {
+        if (!currentKaryawanData) {
+            showAlert('Silakan masukkan NIK yang valid terlebih dahulu', 'warning');
             return;
         }
-        
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            showTemporaryMessage('Format email tidak valid', 'warning');
-            return;
-        }
-        
-        // Validate iuran sukarela if provided
+
+        // Validate iuran
         const iuranValue = parseInt(iuranInput.value) || 0;
         if (iuranValue > 0 && iuranValue % 5000 !== 0) {
-            showTemporaryMessage('Iuran sukarela harus dalam kelipatan Rp 5.000', 'warning');
+            showAlert('Iuran sukarela harus dalam kelipatan Rp 5.000', 'warning');
             return;
         }
+
+        // Show SSO modal
+        showSSOModal();
+    });
+
+    // Show SSO Modal
+    function showSSOModal() {
+        if (!currentKaryawanData) return;
         
-        passwordModal.classList.remove('hidden');
-        passwordModal.classList.add('show');
-        document.body.style.overflow = 'hidden'; // Prevent scroll
-    });
-
-    // Hide modal when Cancel button is clicked
-    cancelBtn.addEventListener('click', function() {
-        hideModal();
-    });
-
-    // Hide modal when clicking outside
-    passwordModal.addEventListener('click', function(e) {
-        if (e.target === passwordModal) {
-            hideModal();
-        }
-    });
-
-    // Hide modal function
-    function hideModal() {
-        passwordModal.classList.add('hidden');
-        passwordModal.classList.remove('show');
-        document.body.style.overflow = 'auto'; // Restore scroll
-        document.getElementById('password_portal').value = '';
+        // Fill modal data
+        document.getElementById('userInitials').textContent = currentKaryawanData.name.substring(0, 2).toUpperCase();
+        document.getElementById('modalUserName').textContent = currentKaryawanData.name;
+        document.getElementById('modalUserNIK').textContent = 'NIK: ' + currentKaryawanData.nik;
+        
+        // Fill hidden inputs
+        document.getElementById('hiddenNik').value = currentKaryawanData.nik;
+        document.getElementById('hiddenName').value = currentKaryawanData.name;
+        document.getElementById('hiddenIuran').value = iuranInput.value || '0';
+        
+        // Show modal
+        ssoModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        // Focus password input
+        setTimeout(() => {
+            ssoPassword.focus();
+        }, 100);
     }
 
-    // Handle password form submission
-    passwordForm.addEventListener('submit', function(e) {
+    // Hide SSO Modal
+    function hideSSOModal() {
+        ssoModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        ssoForm.reset();
+        document.getElementById('ssoErrorContainer').classList.add('hidden');
+    }
+
+    // Cancel SSO
+    document.getElementById('cancelSSOBtn').addEventListener('click', hideSSOModal);
+
+    // Close modal on outside click
+    ssoModal.addEventListener('click', function(e) {
+        if (e.target === ssoModal) {
+            hideSSOModal();
+        }
+    });
+
+    // Toggle password visibility
+    toggleSSOPassword.addEventListener('click', function() {
+        const type = ssoPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+        ssoPassword.setAttribute('type', type);
+        
+        if (type === 'password') {
+            eyeIcon.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            `;
+        } else {
+            eyeIcon.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+            `;
+        }
+    });
+
+    // SSO Form submission
+    ssoForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const passwordPortal = document.getElementById('password_portal').value;
+        const formData = new FormData(ssoForm);
+        const submitBtn = document.getElementById('submitSSOBtn');
+        const loadingState = document.getElementById('ssoLoadingState');
         
-        if (!passwordPortal) {
-            alert('Silakan masukkan Password Portal');
-            return;
+        // Show loading
+        ssoForm.style.display = 'none';
+        loadingState.classList.remove('hidden');
+        
+        try {
+            const response = await fetch('{{ route("register.post") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success !== false) {
+                // Registration successful - redirect
+                window.location.href = '{{ route("dashboard") }}';
+            } else {
+                // Show error in popup
+                showSSOError(data.message || 'Password SSO/LDAP tidak valid. Silakan periksa kembali.');
+                
+                // Hide loading, show form
+                loadingState.classList.add('hidden');
+                ssoForm.style.display = 'block';
+                
+                // Focus back to password input
+                ssoPassword.focus();
+                ssoPassword.select();
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            showSSOError('Terjadi kesalahan koneksi. Silakan coba lagi.');
+            
+            // Hide loading, show form
+            loadingState.classList.add('hidden');
+            ssoForm.style.display = 'block';
         }
-        
-        // Add password to main form and submit
-        const hiddenPasswordInput = document.createElement('input');
-        hiddenPasswordInput.type = 'hidden';
-        hiddenPasswordInput.name = 'password';
-        hiddenPasswordInput.value = passwordPortal;
-        
-        const hiddenPasswordConfirmInput = document.createElement('input');
-        hiddenPasswordConfirmInput.type = 'hidden';
-        hiddenPasswordConfirmInput.name = 'password_confirmation';
-        hiddenPasswordConfirmInput.value = passwordPortal;
-        
-        registerForm.appendChild(hiddenPasswordInput);
-        registerForm.appendChild(hiddenPasswordConfirmInput);
-        
-        registerForm.submit();
     });
+
+    // Show SSO error
+    function showSSOError(message) {
+        const errorContainer = document.getElementById('ssoErrorContainer');
+        const errorMessage = document.getElementById('ssoErrorMessage');
+        
+        errorMessage.textContent = message;
+        errorContainer.classList.remove('hidden');
+    }
 
     // ESC key to close modal
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !passwordModal.classList.contains('hidden')) {
-            hideModal();
+        if (e.key === 'Escape' && !ssoModal.classList.contains('hidden')) {
+            hideSSOModal();
         }
     });
 });
 </script>
-
 @endsection

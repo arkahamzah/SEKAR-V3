@@ -57,130 +57,154 @@ class NotificationService
      * Create notification for new comment
      */
     public function notifyNewComment(Konsultasi $konsultasi, $commentBy, $isAdminComment = false): void
-    {
-        try {
-            // Safe way to get commenter name
-            $commenterName = $this->getCommenterName($commentBy);
-            
-            if ($isAdminComment) {
-                // Notify original user about admin response
-                $user = User::where('nik', $konsultasi->N_NIK)->first();
-                if ($user) {
-                    Notification::create([
-                        'type' => 'comment',
-                        'data' => [
-                            'konsultasi_id' => $konsultasi->ID,
-                            'jenis' => strtolower($konsultasi->JENIS),
-                            'judul' => $konsultasi->JUDUL,
-                            'admin_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
-                            'comment_by' => $commenterName
-                        ],
-                        'notifiable_type' => User::class,
-                        'notifiable_id' => $user->nik
-                    ]);
-                }
-            } else {
-                // Notify admin about user response
-                $adminUsers = $this->getAdminUsersByTarget($konsultasi->TUJUAN);
+        {
+            try {
+                // Safe way to get commenter name
+                $commenterName = $this->getCommenterName($commentBy);
                 
-                foreach ($adminUsers as $admin) {
-                    Notification::create([
-                        'type' => 'comment',
-                        'data' => [
-                            'konsultasi_id' => $konsultasi->ID,
-                            'jenis' => strtolower($konsultasi->JENIS),
-                            'judul' => $konsultasi->JUDUL,
-                            'admin_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
-                            'comment_by' => $commenterName
-                        ],
-                        'notifiable_type' => User::class,
-                        'notifiable_id' => $admin->nik
-                    ]);
+                if ($isAdminComment) {
+                    // Notify original user about admin response
+                    $user = User::where('nik', $konsultasi->N_NIK)->first();
+                    if ($user) {
+                        Notification::create([
+                            'type' => 'comment',
+                            'data' => [
+                                'konsultasi_id' => $konsultasi->ID,
+                                'jenis' => strtolower($konsultasi->JENIS),
+                                'judul' => $konsultasi->JUDUL,
+                                'admin_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
+                                'comment_by' => $commenterName
+                            ],
+                            'notifiable_type' => User::class,
+                            'notifiable_id' => $user->nik
+                        ]);
+                    }
+                } else {
+                    // Notify admin about user response
+                    $adminUsers = $this->getAdminUsersByTarget($konsultasi->TUJUAN);
+                    
+                    foreach ($adminUsers as $admin) {
+                        Notification::create([
+                            'type' => 'comment',
+                            'data' => [
+                                'konsultasi_id' => $konsultasi->ID,
+                                'jenis' => strtolower($konsultasi->JENIS),
+                                'judul' => $konsultasi->JUDUL,
+                                'admin_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
+                                'comment_by' => $commenterName
+                            ],
+                            'notifiable_type' => User::class,
+                            'notifiable_id' => $admin->nik
+                        ]);
+                    }
                 }
+                
+                Log::debug('Comment notifications created', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'is_admin_comment' => $isAdminComment
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create comment notification', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to create comment notification', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
         }
-    }
+
 
     /**
      * Create notification for escalation
      */
     public function notifyEscalation(Konsultasi $konsultasi, $escalateTo): void
-    {
-        try {
-            // Notify original user about escalation
-            $user = User::where('nik', $konsultasi->N_NIK)->first();
-            if ($user) {
-                Notification::create([
-                    'type' => 'escalate',
-                    'data' => [
-                        'konsultasi_id' => $konsultasi->ID,
-                        'jenis' => strtolower($konsultasi->JENIS),
-                        'judul' => $konsultasi->JUDUL,
-                        'escalate_from' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
-                        'escalate_to' => $this->getAdminLevelByTarget($escalateTo)
-                    ],
-                    'notifiable_type' => User::class,
-                    'notifiable_id' => $user->nik
-                ]);
-            }
+        {
+            try {
+                // Notify original user about escalation
+                $user = User::where('nik', $konsultasi->N_NIK)->first();
+                if ($user) {
+                    Notification::create([
+                        'type' => 'escalate',
+                        'data' => [
+                            'konsultasi_id' => $konsultasi->ID,
+                            'jenis' => strtolower($konsultasi->JENIS),
+                            'judul' => $konsultasi->JUDUL,
+                            'escalate_from' => $this->getAdminLevelByTarget($konsultasi->TUJUAN),
+                            'escalate_to' => $this->getAdminLevelByTarget($escalateTo)
+                        ],
+                        'notifiable_type' => User::class,
+                        'notifiable_id' => $user->nik
+                    ]);
+                }
 
-            // Notify new admin level
-            $newAdminUsers = $this->getAdminUsersByTarget($escalateTo);
-            foreach ($newAdminUsers as $admin) {
-                Notification::create([
-                    'type' => 'new',
-                    'data' => [
-                        'konsultasi_id' => $konsultasi->ID,
-                        'jenis' => strtolower($konsultasi->JENIS),
-                        'judul' => $konsultasi->JUDUL,
-                        'from_user' => $konsultasi->karyawan->V_NAMA_KARYAWAN ?? $konsultasi->N_NIK,
-                        'target_level' => $escalateTo,
-                        'escalated' => true
-                    ],
-                    'notifiable_type' => User::class,
-                    'notifiable_id' => $admin->nik
+                // Notify new admin level
+                $newAdminUsers = $this->getAdminUsersByTarget($escalateTo);
+                $fromUser = $this->getSafeFromUser($konsultasi);
+                
+                foreach ($newAdminUsers as $admin) {
+                    Notification::create([
+                        'type' => 'new',
+                        'data' => [
+                            'konsultasi_id' => $konsultasi->ID,
+                            'jenis' => strtolower($konsultasi->JENIS),
+                            'judul' => $konsultasi->JUDUL,
+                            'from_user' => $fromUser,
+                            'target_level' => $escalateTo,
+                            'escalated' => true
+                        ],
+                        'notifiable_type' => User::class,
+                        'notifiable_id' => $admin->nik
+                    ]);
+                }
+                
+                Log::debug('Escalation notifications created', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'escalated_to' => $escalateTo,
+                    'new_admin_count' => count($newAdminUsers)
                 ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create escalation notification', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to create escalation notification', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
         }
-    }
 
-    /**
-     * Create notification for closed konsultasi
-     */
-    public function notifyKonsultasiClosed(Konsultasi $konsultasi): void
-    {
-        try {
-            $user = User::where('nik', $konsultasi->N_NIK)->first();
-            if ($user) {
-                Notification::create([
-                    'type' => 'closed',
-                    'data' => [
-                        'konsultasi_id' => $konsultasi->ID,
-                        'jenis' => strtolower($konsultasi->JENIS),
-                        'judul' => $konsultasi->JUDUL,
-                        'closed_by_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN)
-                    ],
-                    'notifiable_type' => User::class,
-                    'notifiable_id' => $user->nik
+        /**
+         * Create notification for closed konsultasi - UPDATED VERSION
+         */
+        public function notifyKonsultasiClosed(Konsultasi $konsultasi): void
+        {
+            try {
+                $user = User::where('nik', $konsultasi->N_NIK)->first();
+                if ($user) {
+                    Notification::create([
+                        'type' => 'closed',
+                        'data' => [
+                            'konsultasi_id' => $konsultasi->ID,
+                            'jenis' => strtolower($konsultasi->JENIS),
+                            'judul' => $konsultasi->JUDUL,
+                            'closed_by_level' => $this->getAdminLevelByTarget($konsultasi->TUJUAN)
+                        ],
+                        'notifiable_type' => User::class,
+                        'notifiable_id' => $user->nik
+                    ]);
+                }
+                
+                Log::debug('Close notification created', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'user_nik' => $konsultasi->N_NIK
                 ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to create closed konsultasi notification', [
+                    'konsultasi_id' => $konsultasi->ID,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to create closed konsultasi notification', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
         }
-    }
+
+
 
     /**
      * Get admin users by target level - FIXED TO RETURN OBJECTS
@@ -254,17 +278,17 @@ class NotificationService
         return 'Unknown User';
     }
 
-    /**
-     * Get admin level label
-     */
-    private function getAdminLevelByTarget($target): string
-    {
-        return match($target) {
-            'DPD' => 'DPD (Dewan Pengurus Daerah)',
-            'DPW' => 'DPW (Dewan Pengurus Wilayah)', 
-            'DPP' => 'DPP (Dewan Pengurus Pusat)',
-            'GENERAL' => 'Admin SEKAR',
-            default => 'Admin SEKAR'
-        };
-    }
+        /**
+         * Get admin level label by target - MOVED TO SERVICE
+         */
+        private function getAdminLevelByTarget($target): string
+        {
+            return match($target) {
+                'DPD' => 'DPD (Dewan Pengurus Daerah)',
+                'DPW' => 'DPW (Dewan Pengurus Wilayah)', 
+                'DPP' => 'DPP (Dewan Pengurus Pusat)',
+                'GENERAL' => 'Admin SEKAR',
+                default => 'Admin SEKAR'
+            };
+        }
 }
