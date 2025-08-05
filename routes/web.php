@@ -52,15 +52,17 @@ use Illuminate\Support\Facades\Route;
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Profile Routes (accessible from user dropdown)
-        Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
-        Route::post('/profile/update-email', [ProfileController::class, 'updateEmail'])->name('profile.update-email');
-        Route::post('/profile/update-iuran', [ProfileController::class, 'updateIuranSukarela'])->name('profile.update-iuran');
-        Route::delete('/profile/cancel-iuran', [ProfileController::class, 'cancelIuranChange'])->name('profile.cancel-iuran'); // NEW ROUTE
+    // Profile Routes (accessible from user dropdown)
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::post('/profile/update-email', [ProfileController::class, 'updateEmail'])->name('profile.update-email');
+    Route::post('/profile/update-iuran', [ProfileController::class, 'updateIuranSukarela'])->name('profile.update-iuran');
+    Route::delete('/profile/cancel-iuran', [ProfileController::class, 'cancelIuranChange'])->name('profile.cancel-iuran');
+    Route::get('/profile/history', [ProfileController::class, 'getIuranHistory'])->name('profile.history'); // Iuran change history
+    Route::get('/profile/payment-history', [ProfileController::class, 'getPaymentHistory'])->name('profile.payment-history'); // NEW: Payment history
 
-        // Profile Picture Routes
-        Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
-        Route::delete('/profile/delete-picture', [ProfileController::class, 'deleteProfilePicture'])->name('profile.delete-picture');
+    // Profile Picture Routes
+    Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
+    Route::delete('/profile/delete-picture', [ProfileController::class, 'deleteProfilePicture'])->name('profile.delete-picture');
 
         // Password Change Routes (for authenticated users)
         Route::prefix('password')->name('password.')->group(function () {
