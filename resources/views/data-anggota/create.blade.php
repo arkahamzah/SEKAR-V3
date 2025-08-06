@@ -174,8 +174,6 @@
                     <div class="text-sm text-blue-700">
                         <p class="font-medium">Catatan:</p>
                         <ul class="mt-1 list-disc list-inside">
-                            <li>Password default yang akan dibuat adalah "password123"</li>
-                            <li>Anggota dapat mengubah password setelah login pertama kali</li>
                             <li>Field yang bertanda (*) wajib diisi</li>
                         </ul>
                     </div>

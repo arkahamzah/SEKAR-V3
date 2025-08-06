@@ -44,13 +44,15 @@ class AuthController extends Controller
                 'nik' => ['NIK belum terdaftar sebagai anggota SEKAR. Silakan daftar terlebih dahulu.']
             ]);
         }
-
+        
+        /*
         // Pastikan user masih aktif (optional validation)
         if ($user->membership_status === 'inactive') {
             throw ValidationException::withMessages([
                 'nik' => ['Akun Anda tidak aktif. Hubungi administrator untuk bantuan.']
             ]);
         }
+        */
 
         // Get karyawan data untuk session (masih perlu untuk data lengkap)
         $karyawan = Karyawan::where('N_NIK', $nik)->first();
@@ -261,7 +263,7 @@ class AuthController extends Controller
             ]);
 
             // Check if GPTP for different redirect
-            $isGPTP = stripos($karyawan->V_SHORT_POSISI, 'GPTP') !== false;
+            $isGPTP = stripos($karyawan->V_SHORT_DIVISI, 'GPTP') !== false;
             
             if ($isGPTP) {
                 return response()->json([

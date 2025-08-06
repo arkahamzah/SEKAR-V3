@@ -17,16 +17,16 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // Cache key for dashboard statistics
         $cacheKey = 'dashboard_statistics';
         
-        $data = Cache::remember($cacheKey, 300, function () { // Cache for 5 minutes
+        $data = Cache::remember($cacheKey, 10, function () {
+            // Tambahkan log untuk memastikan function ini dipanggil
+            \Log::info('getDashboardData() dipanggil pada: ' . now());
             return $this->getDashboardData();
         });
 
         return view('dashboard', $data);
     }
-
     /**
      * Get all dashboard data
      */
