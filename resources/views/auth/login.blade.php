@@ -19,9 +19,6 @@
                 <div class="flex justify-center mb-6">
                     <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-12">
                 </div>
-                
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">Single Sign-On</h1>
-                <p class="text-gray-600">Masuk dengan akun Telkom Anda</p>
             </div>
 
             <!-- Success Message -->
@@ -48,7 +45,7 @@
                 <!-- NIK Input -->
                 <div>
                     <label for="nik" class="block text-sm font-medium text-gray-700 mb-2">
-                        NIK Telkom
+                        NIK
                     </label>
                     <input 
                         type="text" 
@@ -60,7 +57,6 @@
                         required
                         autocomplete="username"
                     >
-                    <p class="text-xs text-gray-500 mt-2">NIK akan divalidasi dengan sistem Telkom</p>
                 </div>
 
                 <!-- SSO Login Button -->
@@ -72,7 +68,7 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-3a1 1 0 011-1h2.586l6.414-6.414a6 6 0 015.743-7.743z"></path>
                     </svg>
-                    Login dengan SSO
+                    Login
                 </button>
 
                 <!-- Loading State -->
@@ -100,40 +96,9 @@
             <!-- Manual Registration Link -->
             <div class="text-center space-y-3">
                 <a href="{{ route('register') }}" class="block w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition duration-200">
-                    Daftar (untuk pengujian)
-                </a>
-                
-                <div class="text-sm text-gray-600">
-                    <p>Belum terdaftar sebagai karyawan?</p>
-                    <p>Hubungi administrator untuk bantuan</p>
-                </div>
+                    Daftar
+                </a>    
             </div>
-
-            <!-- SSO Flow Information -->
-            <div class="mt-8 text-center border-t border-gray-200 pt-6">
-                <h4 class="text-sm font-medium text-gray-700 mb-3">Alur Login SSO:</h4>
-                <div class="text-xs text-gray-600 space-y-2">
-                    <div class="flex items-center text-left">
-                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">1</span>
-                        <span>Masukkan NIK Telkom Anda</span>
-                    </div>
-                    <div class="flex items-center text-left">
-                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">2</span>
-                        <span>Popup SSO akan muncul</span>
-                    </div>
-                    <div class="flex items-center text-left">
-                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">3</span>
-                        <span>Masukkan password SSO/LDAP pada popup</span>
-                    </div>
-                    <div class="flex items-center text-left">
-                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-3">4</span>
-                        <span>Otomatis login ke dashboard</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
