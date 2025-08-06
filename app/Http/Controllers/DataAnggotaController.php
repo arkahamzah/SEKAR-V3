@@ -583,9 +583,7 @@ class DataAnggotaController extends Controller
         return Response::stream($callback, 200, $headers);
     }
 
-    /**
-     * Check if current user is super admin (ADM role)
-     */
+
     private function checkSuperAdminAccess()
     {
         $user = Auth::user();

@@ -9,10 +9,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-
     public function index()
     {
         $cacheKey = 'dashboard_statistics';
@@ -21,8 +21,45 @@ class DashboardController extends Controller
             \Log::info('getDashboardData() dipanggil pada: ' . now());
             return $this->getDashboardData();
         });
+        
+        $greeting = $this->getGreetingData();
+        
+        return view('dashboard', array_merge($data, ['greeting' => $greeting]));
+    }
 
-        return view('dashboard', $data);
+    private function getGreetingData()
+    {
+        $user = Auth::user();
+        $hour = (int) now()->format('H');
+        
+        if ($hour >= 5 && $hour < 12) {
+            $greeting = 'Selamat Pagi';
+            $icon = '🌅';
+        } elseif ($hour >= 12 && $hour < 17) {
+            $greeting = 'Selamat Siang';  
+            $icon = '☀️';
+        } elseif ($hour >= 17 && $hour < 21) {
+            $greeting = 'Selamat Sore';
+            $icon = '🌇';
+        } else {
+            $greeting = 'Selamat Malam';
+            $icon = '🌙';
+        }
+        
+        if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
+            $statusMessage = 'Membership GPTP Anda akan segera aktif. Terima kasih atas kesabaran Anda.';
+        } else {
+            $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
+        }
+        
+        return [
+            'time_greeting' => $greeting,
+            'icon' => $icon,
+            'user_name' => explode(' ', $user->name)[0],
+            'status_message' => $statusMessage,
+            'current_date' => now()->format('d M Y'),
+            'current_time' => now()->format('H:i'),
+        ];
     }
 
     private function getDashboardData(): array
@@ -123,24 +160,22 @@ class DashboardController extends Controller
             'DENPASAR' => 'DPW Bali',
         ];
 
-        return $dpwMapping[$city] ?? 'DPW Jabar';
+        return $dpwMapping[$city] ?? 'DPW Lainnya';
     }
 
-    private function enrichMappingWithStats($mapping): object
+    private function enrichMappingWithStats($mapping)
     {
-        $kota = $mapping->kota;
-        
         return (object)[
             'dpw' => $mapping->dpw,
             'dpd' => $mapping->dpd,
-            'anggota_aktif' => $this->getAnggotaAktifByArea($kota),
-            'pengurus' => $this->getPengurusByArea($kota),
-            'anggota_keluar' => $this->getAnggotaKeluarByArea($kota),
-            'non_anggota' => $this->getNonAnggotaByArea($kota)
+            'anggota_aktif' => $this->getAnggotaAktifByArea($mapping->kota),
+            'pengurus' => $this->getPengurusByArea($mapping->kota),
+            'anggota_keluar' => $this->getAnggotaKeluarByArea($mapping->kota),
+            'non_anggota' => $this->getNonAnggotaByArea($mapping->kota)
         ];
     }
 
-    private function getAnggotaAktifByArea(string $kota): int
+    private function getAnggotaAktifByArea($kota)
     {
         return DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
@@ -148,8 +183,8 @@ class DashboardController extends Controller
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
     }
- 
-    private function getPengurusByArea(string $kota): int
+
+    private function getPengurusByArea($kota)
     {
         return DB::table('t_sekar_pengurus as sp')
             ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
@@ -157,18 +192,20 @@ class DashboardController extends Controller
             ->count();
     }
 
-    private function getAnggotaKeluarByArea(string $kota): int
+    private function getAnggotaKeluarByArea($kota)
     {
-        return ExAnggota::where('V_KOTA_GEDUNG', $kota)->count();
+        return DB::table('t_ex_anggota as ea')
+            ->join('t_karyawan as k', 'ea.N_NIK', '=', 'k.N_NIK')
+            ->where('k.V_KOTA_GEDUNG', $kota)
+            ->count();
     }
 
-
-    private function getNonAnggotaByArea(string $kota): int
+    private function getNonAnggotaByArea($kota)
     {
         $totalKaryawan = Karyawan::where('V_KOTA_GEDUNG', $kota)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
-            
+        
         $anggotaAktif = $this->getAnggotaAktifByArea($kota);
         
         return max(0, $totalKaryawan - $anggotaAktif);
@@ -176,26 +213,19 @@ class DashboardController extends Controller
 
     private function getGrowthData(array $statistics): array
     {
-        $anggotaGrowth = $this->calculateGrowthIndicator($statistics['anggotaAktif'], 'anggota');
-        $pengurusGrowth = $this->calculateGrowthIndicator($statistics['totalPengurus'], 'pengurus');
-        $keluarGrowth = $this->calculateGrowthIndicator($statistics['anggotaKeluar'], 'keluar');
-        $nonAnggotaGrowth = $this->calculateGrowthIndicator($statistics['nonAnggota'], 'non_anggota');
-
         return [
-            'anggota_aktif_growth' => $anggotaGrowth,
-            'pengurus_growth' => $pengurusGrowth,
-            'anggota_keluar_growth' => $keluarGrowth,
-            'non_anggota_growth' => $nonAnggotaGrowth
+            'anggota_aktif_growth' => $this->calculateGrowth('aktif', $statistics['anggotaAktif']),
+            'pengurus_growth' => $this->calculateGrowth('pengurus', $statistics['totalPengurus']),
+            'anggota_keluar_growth' => $this->calculateGrowth('keluar', $statistics['anggotaKeluar']),
+            'non_anggota_growth' => $this->calculateGrowth('non_anggota', $statistics['nonAnggota']),
         ];
     }
 
-
-    private function calculateGrowthIndicator(int $currentValue, string $type): string
+    private function calculateGrowth(string $type, int $currentValue): string
     {
-
         switch ($type) {
-            case 'anggota':
-                $growth = round(($currentValue * 0.1), 0);
+            case 'aktif':
+                $growth = round(($currentValue * 0.12), 0);
                 return $growth > 0 ? "+{$growth}" : "0";
                 
             case 'pengurus':
