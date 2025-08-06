@@ -35,10 +35,10 @@ class DashboardController extends Controller
         if ($hour >= 5 && $hour < 12) {
             $greeting = 'Selamat Pagi';
             $icon = '🌅';
-        } elseif ($hour >= 12 && $hour < 17) {
+        } elseif ($hour >= 12 && $hour < 15) {
             $greeting = 'Selamat Siang';  
             $icon = '☀️';
-        } elseif ($hour >= 17 && $hour < 21) {
+        } elseif ($hour >= 15 && $hour < 19) {
             $greeting = 'Selamat Sore';
             $icon = '🌇';
         } else {
