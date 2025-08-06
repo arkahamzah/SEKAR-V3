@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Pengaturan Sistem - SEKAR')
+@section('title', 'Pengaturan - SEKAR')
 
 @section('content')
 <div class="min-h-screen bg-gray-50">
@@ -19,7 +19,7 @@
 
         <!-- Header -->
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Pengaturan Sistem</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Pengaturan</h1>
             <p class="text-gray-600 text-sm mt-1">Kelola pengaturan tanda tangan dan periode berlaku sertifikat</p>
         </div>
 
