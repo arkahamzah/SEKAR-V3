@@ -12,24 +12,19 @@ use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display dashboard with statistics and DPW mapping
-     */
+
     public function index()
     {
         $cacheKey = 'dashboard_statistics';
         
         $data = Cache::remember($cacheKey, 10, function () {
-            // Tambahkan log untuk memastikan function ini dipanggil
             \Log::info('getDashboardData() dipanggil pada: ' . now());
             return $this->getDashboardData();
         });
 
         return view('dashboard', $data);
     }
-    /**
-     * Get all dashboard data
-     */
+
     private function getDashboardData(): array
     {
         $statistics = $this->getStatistics();
@@ -42,26 +37,19 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * Get basic statistics - sesuai dengan logika di project knowledge
-     */
     private function getStatistics(): array
     {
-        // Anggota Aktif = users yang sudah terdaftar (tidak termasuk GPTP)
         $anggotaAktif = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
 
-        // Total Pengurus = pengurus yang masih aktif sebagai karyawan
         $totalPengurus = DB::table('t_sekar_pengurus as sp')
             ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
             ->count();
 
-        // Anggota Keluar = ex anggota
         $anggotaKeluar = ExAnggota::count();
 
-        // Non Anggota = total karyawan (tidak termasuk GPTP) - anggota aktif
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
 
@@ -73,12 +61,8 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Get DPW mapping with statistics
-     */
     private function getDpwMappingWithStats()
     {
-        // Get all DPW/DPD combinations from pengurus yang masih aktif sebagai karyawan
         $mappingQuery = DB::table('t_sekar_pengurus as sp')
             ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
             ->select(
@@ -98,12 +82,8 @@ class DashboardController extends Controller
         });
     }
 
-    /**
-     * Get default mapping when no pengurus data exists
-     */
     private function getDefaultMapping()
     {
-        // Get unique cities from karyawan data
         $cities = Karyawan::select('V_KOTA_GEDUNG')
             ->whereNotNull('V_KOTA_GEDUNG')
             ->where('V_KOTA_GEDUNG', '!=', '')
@@ -130,9 +110,6 @@ class DashboardController extends Controller
         return $mappings;
     }
 
-    /**
-     * Get DPW based on city mapping
-     */
     private function getDpwByCity(string $city): string
     {
         $dpwMapping = [
@@ -144,15 +121,11 @@ class DashboardController extends Controller
             'SEMARANG' => 'DPW Jateng',
             'YOGYAKARTA' => 'DPW DIY',
             'DENPASAR' => 'DPW Bali',
-            // Add more mappings as needed
         ];
 
         return $dpwMapping[$city] ?? 'DPW Jabar';
     }
 
-    /**
-     * Enrich mapping with area-specific statistics
-     */
     private function enrichMappingWithStats($mapping): object
     {
         $kota = $mapping->kota;
@@ -167,9 +140,6 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Count active members in specific area
-     */
     private function getAnggotaAktifByArea(string $kota): int
     {
         return DB::table('users as u')
@@ -179,9 +149,6 @@ class DashboardController extends Controller
             ->count();
     }
  
-    /**
-     * Count pengurus in specific area
-     */
     private function getPengurusByArea(string $kota): int
     {
         return DB::table('t_sekar_pengurus as sp')
@@ -190,36 +157,25 @@ class DashboardController extends Controller
             ->count();
     }
 
-    /**
-     * Count ex-members in specific area
-     */
     private function getAnggotaKeluarByArea(string $kota): int
     {
         return ExAnggota::where('V_KOTA_GEDUNG', $kota)->count();
     }
 
-    /**
-     * Count non-members in specific area
-     */
+
     private function getNonAnggotaByArea(string $kota): int
     {
-        // Total karyawan non-GPTP di area ini
         $totalKaryawan = Karyawan::where('V_KOTA_GEDUNG', $kota)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
             
-        // Anggota aktif di area ini
         $anggotaAktif = $this->getAnggotaAktifByArea($kota);
         
         return max(0, $totalKaryawan - $anggotaAktif);
     }
 
-    /**
-     * Generate realistic growth indicators
-     */
     private function getGrowthData(array $statistics): array
     {
-        // Calculate realistic growth percentages
         $anggotaGrowth = $this->calculateGrowthIndicator($statistics['anggotaAktif'], 'anggota');
         $pengurusGrowth = $this->calculateGrowthIndicator($statistics['totalPengurus'], 'pengurus');
         $keluarGrowth = $this->calculateGrowthIndicator($statistics['anggotaKeluar'], 'keluar');
@@ -233,32 +189,24 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * Calculate growth indicator based on data type
-     */
+
     private function calculateGrowthIndicator(int $currentValue, string $type): string
     {
-        // In real implementation, you would compare with previous period
-        // For now, generate realistic indicators based on current data
-        
+
         switch ($type) {
             case 'anggota':
-                // Positive growth for active members
-                $growth = round(($currentValue * 0.1), 0); // 10% growth simulation
+                $growth = round(($currentValue * 0.1), 0);
                 return $growth > 0 ? "+{$growth}" : "0";
                 
             case 'pengurus':
-                // Moderate growth for pengurus
-                $growth = round(($currentValue * 0.05), 0); // 5% growth simulation
+                $growth = round(($currentValue * 0.05), 0);
                 return $growth > 0 ? "+{$growth}" : "0";
                 
             case 'keluar':
-                // Should be low or zero
                 return $currentValue > 0 ? "+{$currentValue}" : "0";
                 
             case 'non_anggota':
-                // Should decrease over time (negative growth is good)
-                $decrease = round(($currentValue * 0.02), 0); // 2% decrease simulation
+                $decrease = round(($currentValue * 0.02), 0);
                 return $decrease > 0 ? "-{$decrease}" : "0";
                 
             default:

@@ -35,7 +35,6 @@ class AuthController extends Controller
 
         $nik = $validated['nik'];
 
-        // Check if NIK exists as a registered USER (bukan dari tabel karyawan)
         $user = User::where('nik', $nik)->first();
         if (!$user) {
             throw ValidationException::withMessages([
@@ -43,20 +42,15 @@ class AuthController extends Controller
             ]);
         }
         
-        // Get karyawan data untuk session (masih perlu untuk data lengkap)
         $karyawan = Karyawan::where('N_NIK', $nik)->first();
         if (!$karyawan) {
-            // Ini seharusnya tidak terjadi karena user dibuat dari karyawan
-            // Tapi tetap handle edge case
             throw ValidationException::withMessages([
                 'nik' => ['Data karyawan tidak ditemukan. Hubungi administrator.']
             ]);
         }
 
-        // Generate SSO token untuk popup authentication
         $ssoToken = $this->generateSSOToken($nik);
         
-        // Store temporary session untuk SSO process
         Session::put('sso_pending', [
             'nik' => $nik,
             'token' => $ssoToken,
@@ -98,7 +92,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Get data from session
         $userData = $pendingSSO['user_data'];
         $karyawanData = $pendingSSO['karyawan_data'];
 
@@ -133,7 +126,6 @@ class AuthController extends Controller
         $password = $validated['sso_password'];
 
         try {
-            // Authenticate using fallback password
             $authResult = $this->authenticateSSO($nik, $password);
             
             if (!$authResult['success']) {
@@ -143,12 +135,10 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            // Get the existing user (sudah divalidasi di method login)
             $user = User::where('nik', $nik)->first();
             $karyawan = Karyawan::where('N_NIK', $nik)->first();
             
             if (!$user) {
-                // Ini seharusnya tidak terjadi karena sudah divalidasi di login
                 Log::error('User not found during SSO auth', ['NIK' => $nik]);
                 return response()->json([
                     'success' => false,
@@ -156,7 +146,6 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            // Login the existing user
             Auth::login($user);
             $this->setDetailedSession($karyawan);
             Session::forget('sso_pending');
@@ -185,8 +174,6 @@ class AuthController extends Controller
             ], 500);
         }
     }
-
-    // === REGISTRATION METHODS ===
     
     public function register(Request $request)
     {
@@ -226,7 +213,6 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            // Validate using fallback authentication
             $authResult = $this->authenticateSSO($nik, $ssoPassword);
             if (!$authResult['success']) {
                 return response()->json([
@@ -235,12 +221,10 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            // Create user account
             DB::transaction(function () use ($karyawan, $ssoPassword, $iuranSukarela) {
                 $user = $this->createUserFromKaryawan($karyawan, $ssoPassword);
                 $this->createOrUpdateIuranRecord($karyawan->N_NIK, $iuranSukarela);
                 
-                // Auto login
                 Auth::login($user);
                 $this->setDetailedSession($karyawan);
             });
@@ -250,7 +234,6 @@ class AuthController extends Controller
                 'method' => $authResult['method']
             ]);
 
-            // Check if GPTP for different redirect
             $isGPTP = stripos($karyawan->V_SHORT_DIVISI, 'GPTP') !== false;
             
             if ($isGPTP) {
@@ -282,13 +265,11 @@ class AuthController extends Controller
         }
     }
 
-    // === HELPER METHODS ===
 
     private function authenticateSSO($nik, $password)
     {
         Log::info('Starting fallback authentication for development', ['NIK' => $nik]);
 
-        // Hanya gunakan fallback untuk development
         if (env('SSO_USE_FALLBACK', true) && $password === env('SSO_FALLBACK_PASSWORD', 'Telkom')) {
             Log::info('Fallback authentication successful', ['NIK' => $nik]);
             return [
@@ -316,7 +297,6 @@ class AuthController extends Controller
         return DB::transaction(function () use ($karyawan, $password) {
             $email = $karyawan->N_NIK . '@sekar.local';
 
-            // Check if GPTP
             $isGPTP = stripos($karyawan->V_SHORT_POSISI, 'GPTP') !== false;
             $membershipActiveDate = $isGPTP ? now()->addYear() : now();
 
@@ -366,12 +346,10 @@ class AuthController extends Controller
                         ->where('TAHUN', date('Y'))
                         ->first();
         
-        // Gunakan kolom yang benar dari model Params
         $iuranWajib = $params ? (int)$params->NOMINAL_IURAN_WAJIB : 25000;
 
-        // Gunakan kolom yang benar dari model Iuran
         Iuran::updateOrCreate(
-            ['N_NIK' => $nik], // Key untuk mencari record
+            ['N_NIK' => $nik], 
             [
                 'N_NIK' => $nik,
                 'IURAN_WAJIB' => $iuranWajib,
@@ -407,7 +385,6 @@ class AuthController extends Controller
 
             $nik = $validated['nik'];
 
-            // Check if NIK exists in karyawan table
             $karyawan = Karyawan::where('N_NIK', $nik)->first();
             
             if (!$karyawan) {
@@ -417,7 +394,6 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            // Check if already registered as user
             $existingUser = User::where('nik', $nik)->first();
             if ($existingUser) {
                 return response()->json([
@@ -426,10 +402,8 @@ class AuthController extends Controller
                 ], 400);
             }
 
-            // Check if GPTP
             $isGPTP = stripos($karyawan->V_SHORT_POSISI, 'GPTP') !== false;
 
-            // Return karyawan data
             return response()->json([
                 'success' => true,
                 'data' => [

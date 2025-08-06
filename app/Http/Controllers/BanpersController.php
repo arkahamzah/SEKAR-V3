@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\Response;
 
 class BanpersController extends Controller
 {
-    /**
-     * Display banpers information with total calculation
-     */
     public function index()
     {
         $banpersData = $this->getBanpersData();
@@ -88,14 +85,12 @@ class BanpersController extends Controller
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->get();
 
-        // Group by DPW/DPD using collection
         $grouped = $users->groupBy(function ($user) {
             $dpw = !empty(trim($user->DPW)) ? $user->DPW : 'DPW Jabar';
             $dpd = !empty(trim($user->DPD)) ? $user->DPD : 'DPD ' . strtoupper($user->V_KOTA_GEDUNG);
             return $dpw . '|' . $dpd;
         });
 
-        // Transform to final format
         return $grouped->map(function ($items, $key) use ($nominalBanpers) {
             [$dpw, $dpd] = explode('|', $key);
             $count = $items->count();
@@ -109,9 +104,6 @@ class BanpersController extends Controller
         })->values()->sortBy(['dpw', 'dpd']);
     }
 
-    /**
-     * Export banpers data to CSV
-     */
     public function export(Request $request)
     {
         $banpersData = $this->getBanpersData();
@@ -141,7 +133,6 @@ class BanpersController extends Controller
                 ]);
             }
             
-            // Write total
             fputcsv($file, [
                 'TOTAL',
                 '',
