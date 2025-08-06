@@ -145,7 +145,7 @@
                                 <p class="text-green-900 font-bold text-base">Rp {{ number_format($effectiveIuranSukarela, 0, ',', '.') }}</p>
                                 @if($pendingChange)
                                     <p class="text-green-600 text-xs mt-1">
-                                        (Pending: Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }})
+                                        (Ubah Iuran diproses: Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }})
                                     </p>
                                 @endif
                             </div>
@@ -163,7 +163,6 @@
                                         <span class="text-yellow-600">({{ $bulanTunggakan }} belum diproses)</span>
                                     @endif
                                 </p>
-                                <p class="text-indigo-500 text-xs mt-0.5">Auto-deduct dari payroll</p>
                             </div>
                         </div>
 
@@ -172,7 +171,7 @@
                             <div class="flex items-start justify-between">
                                 <div class="flex-1">
                                     <p class="text-sm text-yellow-800">
-                                        <strong>Perubahan Pending:</strong> Iuran sukarela akan berubah dari
+                                        <strong>Perubahan Iuran diproses:</strong> Iuran sukarela akan berubah dari
                                         <strong>Rp {{ number_format($iuranSukarela, 0, ',', '.') }}</strong> menjadi
                                         <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong>
                                         pada tanggal {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('d F Y') }}
@@ -235,7 +234,7 @@
                                     <div>
                                         <label for="iuran_sukarela" class="block text-sm font-medium text-gray-700">
                                             @if($pendingChange)
-                                                Ubah Nominal Pending (saat ini: Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }})
+                                                Ubah Nominal Iuran (saat ini: Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }})
                                             @else
                                                 Nominal Iuran Sukarela Baru
                                             @endif
@@ -473,7 +472,7 @@ function toggleIuranForm() {
         form.style.display = 'none';
         // Reset button text based on pending status
         @if($pendingChange)
-            btn.textContent = 'Ubah Nominal Pending';
+            btn.textContent = 'Ubah Nominal';
         @else
             btn.textContent = 'Ubah Iuran Sukarela';
         @endif
