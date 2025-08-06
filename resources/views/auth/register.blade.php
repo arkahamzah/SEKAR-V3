@@ -11,7 +11,6 @@
                 <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-12">
             </div>
             <h2 class="text-xl font-bold text-gray-900">Daftar SEKAR</h2>
-            <p class="text-sm text-gray-600 mt-1">Single Sign-On Registration</p>
         </div>
 
         <!-- Form -->
@@ -32,7 +31,7 @@
             <!-- NIK Input -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
-                    NIK Telkom <span class="text-red-500">*</span>
+                    NIK <span class="text-red-500">*</span>
                 </label>
                 <input 
                     type="text" 
@@ -43,7 +42,6 @@
                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200 text-sm"
                     required
                 >
-                <p class="text-xs text-gray-500 mt-1">NIK akan divalidasi dengan data karyawan Telkom</p>
             </div>
 
             <!-- Nama Input (Auto-filled) -->
@@ -61,7 +59,6 @@
                     readonly
                     required
                 >
-                <p class="text-xs text-gray-500 mt-1">Nama diambil dari data karyawan</p>
             </div>
 
             <!-- Employee Info Display -->
@@ -125,13 +122,13 @@
                 class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled
             >
-                Daftar dengan SSO
+                Daftar
             </button>
 
             <!-- Login Link -->
             <div class="text-center">
                 <span class="text-gray-600 text-xs">Sudah menjadi anggota? </span>
-                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-medium text-xs">Login dengan SSO</a>
+                <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-medium text-xs">Login</a>
             </div>
         </form>
     </div>
