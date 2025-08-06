@@ -26,8 +26,6 @@ class AuthController extends Controller
     {
         return view('auth.register');
     }
-
-    // === SSO LOGIN METHODS ===
     
     public function login(Request $request)
     {
@@ -45,15 +43,6 @@ class AuthController extends Controller
             ]);
         }
         
-        /*
-        // Pastikan user masih aktif (optional validation)
-        if ($user->membership_status === 'inactive') {
-            throw ValidationException::withMessages([
-                'nik' => ['Akun Anda tidak aktif. Hubungi administrator untuk bantuan.']
-            ]);
-        }
-        */
-
         // Get karyawan data untuk session (masih perlu untuk data lengkap)
         $karyawan = Karyawan::where('N_NIK', $nik)->first();
         if (!$karyawan) {
@@ -116,8 +105,7 @@ class AuthController extends Controller
         return view('auth.sso-popup', [
             'nik' => $pendingSSO['nik'],
             'token' => $token,
-            // Pastikan semua variabel yang dibutuhkan view ada
-            'user_name' => $userData['name'], // Nama dari tabel users
+            'user_name' => $userData['name'],
             'user_email' => $userData['email'] ?? ($userData['nik'] . '@sekar.local'),
             'membership_status' => $userData['membership_status'] ?? 'active',
             'karyawan_position' => $karyawanData['V_SHORT_POSISI'] ?? 'Unknown',

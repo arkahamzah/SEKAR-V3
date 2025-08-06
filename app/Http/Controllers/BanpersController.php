@@ -21,28 +21,21 @@ class BanpersController extends Controller
         return view('banpers.index', $banpersData);
     }
 
-    /**
-     * Get banpers calculation data
-     */
     private function getBanpersData(): array
     {
-        // Get active params for current year
         $params = Params::where('IS_AKTIF', '1')
                        ->where('TAHUN', date('Y'))
                        ->first();
         
         $nominalBanpers = $params ? (int)$params->NOMINAL_BANPERS : 20000;
         
-        // Count total active members (excluding GPTP)
         $totalAnggotaAktif = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
         
-        // Calculate total banpers
         $totalBanpers = $totalAnggotaAktif * $nominalBanpers;
         
-        // Get banpers by DPW/DPD breakdown
         $banpersByWilayah = $this->getBanpersByWilayahSimple($nominalBanpers);
         
         return [
@@ -54,12 +47,8 @@ class BanpersController extends Controller
         ];
     }
 
-    /**
-     * Get banpers breakdown by wilayah (DPW/DPD) - Simple version
-     */
     private function getBanpersByWilayahSimple(int $nominalBanpers): object
     {
-        // Get data with raw SQL to avoid GROUP BY issues
         $query = "
             SELECT 
                 CASE 
@@ -85,12 +74,8 @@ class BanpersController extends Controller
         return collect(DB::select($query, [$nominalBanpers]));
     }
 
-    /**
-     * Alternative method using collection grouping
-     */
     private function getBanpersByWilayah(int $nominalBanpers): object
     {
-        // Get all user data first
         $users = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
