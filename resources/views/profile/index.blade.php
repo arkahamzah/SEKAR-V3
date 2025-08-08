@@ -174,7 +174,7 @@
                                         <strong>Perubahan Iuran diproses:</strong> Iuran sukarela akan berubah dari
                                         <strong>Rp {{ number_format($iuranSukarela, 0, ',', '.') }}</strong> menjadi
                                         <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong>
-                                        pada tanggal {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('d F Y') }}
+                                        pada bulan {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('F') }}
                                     </p>
                                     <p class="text-xs text-yellow-600 mt-1">
                                         Diajukan: {{ \Carbon\Carbon::parse($pendingChange->TGL_PERUBAHAN)->format('d F Y H:i') }}
@@ -760,7 +760,7 @@ function getStatusDateInfo(item) {
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                Target: ${new Date(item.tglImplementasi).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                Target: ${new Date(item.tglImplementasi).toLocaleDateString('id-ID', {month: 'short'})}
             </span>`;
         case 'IMPLEMENTED':
             return `<span class="text-green-600 flex items-center">
