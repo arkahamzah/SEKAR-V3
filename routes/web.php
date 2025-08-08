@@ -105,6 +105,10 @@ use Illuminate\Support\Facades\Route;
         Route::middleware(['check.admin'])->group(function () {
             Route::get('/banpers', [BanpersController::class, 'index'])->name('banpers.index');
             Route::get('/banpers/export', [BanpersController::class, 'export'])->name('banpers.export');
+            
+            // Super Admin only routes for editing banpers
+            Route::get('/banpers/edit', [BanpersController::class, 'edit'])->name('banpers.edit');
+            Route::put('/banpers/update', [BanpersController::class, 'update'])->name('banpers.update');
         });
 
         // Sertifikat Routes (accessible by all authenticated users)

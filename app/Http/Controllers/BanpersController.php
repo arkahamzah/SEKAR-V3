@@ -8,14 +8,160 @@ use App\Models\Params;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class BanpersController extends Controller
 {
     public function index()
     {
         $banpersData = $this->getBanpersData();
+        $isSuperAdmin = $this->isSuperAdmin();
         
-        return view('banpers.index', $banpersData);
+        return view('banpers.index', array_merge($banpersData, [
+            'isSuperAdmin' => $isSuperAdmin
+        ]));
+    }
+
+    /**
+     * Show form for editing banpers nominal (Super Admin only)
+     */
+    public function edit()
+    {
+        if (!$this->isSuperAdmin()) {
+            return redirect()->route('banpers.index')
+                ->with('error', 'Anda tidak memiliki akses untuk mengubah nominal banpers');
+        }
+
+        $params = Params::where('IS_AKTIF', '1')
+                       ->where('TAHUN', date('Y'))
+                       ->first();
+                       
+        $currentNominal = $params ? (int)$params->NOMINAL_BANPERS : 20000;
+        
+        return view('banpers.edit', [
+            'currentNominal' => $currentNominal,
+            'tahun' => date('Y')
+        ]);
+    }
+
+    /**
+     * Update banpers nominal (Super Admin only)
+     */
+    public function update(Request $request)
+    {
+        if (!$this->isSuperAdmin()) {
+            return redirect()->route('banpers.index')
+                ->with('error', 'Anda tidak memiliki akses untuk mengubah nominal banpers');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nominal_banpers' => 'required|integer|min:0|max:999999999',
+            'keterangan' => 'nullable|string|max:255'
+        ], [
+            'nominal_banpers.required' => 'Nominal banpers wajib diisi',
+            'nominal_banpers.integer' => 'Nominal banpers harus berupa angka',
+            'nominal_banpers.min' => 'Nominal banpers minimal 0',
+            'nominal_banpers.max' => 'Nominal banpers terlalu besar',
+            'keterangan.max' => 'Keterangan maksimal 255 karakter'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $tahun = date('Y');
+            $currentUser = Auth::user();
+            
+            // Get current params
+            $params = Params::where('IS_AKTIF', '1')
+                           ->where('TAHUN', $tahun)
+                           ->first();
+            
+            $oldNominal = $params ? $params->NOMINAL_BANPERS : '0';
+            $newNominal = $request->nominal_banpers;
+
+            if ($params) {
+                // Update existing params
+                $params->update([
+                    'NOMINAL_BANPERS' => $newNominal,
+                    'UPDATED_BY' => $currentUser->nik,
+                    'UPDATED_AT' => now()
+                ]);
+            } else {
+                // Create new params for current year
+                Params::create([
+                    'NOMINAL_IURAN_WAJIB' => '25000', // Default from sprint notes
+                    'NOMINAL_BANPERS' => $newNominal,
+                    'TAHUN' => $tahun,
+                    'IS_AKTIF' => '1',
+                    'CREATED_BY' => $currentUser->nik,
+                    'CREATED_AT' => now()
+                ]);
+            }
+
+            // Log the change in banpers history if the table exists
+            $this->logBanpersChange($oldNominal, $newNominal, $tahun, $request->keterangan ?? 'Perubahan nominal banpers oleh admin');
+
+            DB::commit();
+
+            return redirect()->route('banpers.index')
+                ->with('success', 'Nominal banpers berhasil diupdate dari Rp ' . number_format($oldNominal, 0, ',', '.') . ' menjadi Rp ' . number_format($newNominal, 0, ',', '.'));
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Gagal mengupdate nominal banpers: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Log banpers nominal changes
+     */
+    private function logBanpersChange($oldNominal, $newNominal, $tahun, $keterangan = null)
+    {
+        try {
+            // Check if banpers history table exists
+            if (DB::getSchemaBuilder()->hasTable('t_banpers_history')) {
+                DB::table('t_banpers_history')->insert([
+                    'N_NIK' => 'SYSTEM', // System-wide change
+                    'NOMINAL_LAMA' => $oldNominal,
+                    'NOMINAL_BARU' => $newNominal,
+                    'TAHUN' => $tahun,
+                    'STATUS_PROSES' => 'IMPLEMENTED',
+                    'TGL_PERUBAHAN' => now(),
+                    'TGL_PROSES' => now(),
+                    'TGL_IMPLEMENTASI' => now(),
+                    'KETERANGAN' => $keterangan ?? 'Perubahan nominal banpers sistem',
+                    'CREATED_BY' => Auth::user()->nik,
+                    'CREATED_AT' => now()
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            \Log::error('Failed to log banpers change: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Check if current user is super admin
+     */
+    private function isSuperAdmin(): bool
+    {
+        $user = Auth::user();
+        
+        if (!$user || !$user->pengurus || !$user->pengurus->role) {
+            return false;
+        }
+        
+        // Check if user is super admin (ADM role)
+        return in_array($user->pengurus->role->NAME, ['ADM', 'SUPER_ADMIN']);
     }
 
     private function getBanpersData(): array
@@ -69,39 +215,6 @@ class BanpersController extends Controller
         ";
         
         return collect(DB::select($query, [$nominalBanpers]));
-    }
-
-    private function getBanpersByWilayah(int $nominalBanpers): object
-    {
-        $users = DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
-            ->select(
-                'u.nik',
-                'sp.DPW',
-                'sp.DPD', 
-                'k.V_KOTA_GEDUNG'
-            )
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
-            ->get();
-
-        $grouped = $users->groupBy(function ($user) {
-            $dpw = !empty(trim($user->DPW)) ? $user->DPW : 'DPW Jabar';
-            $dpd = !empty(trim($user->DPD)) ? $user->DPD : 'DPD ' . strtoupper($user->V_KOTA_GEDUNG);
-            return $dpw . '|' . $dpd;
-        });
-
-        return $grouped->map(function ($items, $key) use ($nominalBanpers) {
-            [$dpw, $dpd] = explode('|', $key);
-            $count = $items->count();
-            
-            return (object) [
-                'dpw' => $dpw,
-                'dpd' => $dpd,
-                'jumlah_anggota' => $count,
-                'total_banpers' => $count * $nominalBanpers
-            ];
-        })->values()->sortBy(['dpw', 'dpd']);
     }
 
     public function export(Request $request)
