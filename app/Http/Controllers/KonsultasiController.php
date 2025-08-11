@@ -549,7 +549,7 @@ class KonsultasiController extends Controller
             'aspirasi' => [
                 'DPD' => 'DPD (Dewan Pengurus Daerah)', 
                 'DPW' => 'DPW (Dewan Pengurus Wilayah)',
-                'GENERAL' => 'SEKAR Pusat (General/Umum)'
+                'DPP' => 'DPP (Dewan Pengurus Pusat)',
             ]
         ];
     }
