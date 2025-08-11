@@ -14,7 +14,7 @@
         .form-input:focus {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
-        
+
         .modal-overlay {
             backdrop-filter: blur(4px);
         }
@@ -58,18 +58,18 @@
             opacity: 0;
             transform: scale(0.95) translateY(-10px);
         }
-        
+
         .dropdown-enter-active {
             opacity: 1;
             transform: scale(1) translateY(0);
             transition: all 0.15s ease-out;
         }
-        
+
         .dropdown-exit {
             opacity: 1;
             transform: scale(1) translateY(0);
         }
-        
+
         .dropdown-exit-active {
             opacity: 0;
             transform: scale(0.95) translateY(-10px);
@@ -142,7 +142,7 @@
         .bg-orange-100 { background-color: rgb(255 237 213); }
         .bg-purple-100 { background-color: rgb(243 232 255); }
         .bg-gray-100 { background-color: rgb(243 244 246); }
-        
+
         .text-blue-600 { color: rgb(37 99 235); }
         .text-green-600 { color: rgb(22 163 74); }
         .text-yellow-600 { color: rgb(202 138 4); }
@@ -177,31 +177,31 @@
                     <div class="flex items-center">
                         <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-8">
                     </div>
-                    
+
                     <div class="flex items-center space-x-4">
                         <!-- Notification Bell Button -->
                         <div class="relative">
-                            <button id="notificationBtn" 
+                            <button id="notificationBtn"
                                     class="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                                 </svg>
-                                
+
                                 <!-- Unread Count Badge -->
-                                <span id="notificationBadge" 
+                                <span id="notificationBadge"
                                     class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full hidden">
                                     0
                                 </span>
                             </button>
 
                             <!-- Notification Dropdown -->
-                            <div id="notificationDropdown" 
+                            <div id="notificationDropdown"
                                 class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
-                                
+
                                 <!-- Header -->
                                 <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                                     <h3 class="text-sm font-semibold text-gray-900">Notifikasi</h3>
-                                    <button id="markAllReadBtn" 
+                                    <button id="markAllReadBtn"
                                             class="text-xs text-blue-600 hover:text-blue-800 font-medium">
                                         Tandai Semua Dibaca
                                     </button>
@@ -232,20 +232,20 @@
 
                                 <!-- Footer -->
                                 <div class="px-4 py-3 border-t border-gray-200">
-                                    <a href="{{ route('konsultasi.index') }}" 
+                                    <a href="{{ route('konsultasi.index') }}"
                                     class="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium">
                                         Lihat Semua Advokasi & Aspirasi
                                     </a>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- User Dropdown -->
                         <div class="relative">
                             <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 py-1">
                                 @if(Auth::user()->profile_picture)
-                                    <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}" 
-                                         alt="Profile Picture" 
+                                    <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}"
+                                         alt="Profile Picture"
                                          class="w-7 h-7 rounded-full object-cover border border-gray-200">
                                 @else
                                     <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center">
@@ -257,15 +257,15 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                 </svg>
                             </button>
-                            
+
                             <!-- Dropdown Menu -->
                             <div id="userDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                                 <!-- User Info Header -->
                                 <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
                                     <div class="flex items-center space-x-3">
                                         @if(Auth::user()->profile_picture)
-                                            <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}" 
-                                                 alt="Profile Picture" 
+                                            <img src="{{ asset('storage/profile-pictures/' . Auth::user()->profile_picture) }}"
+                                                 alt="Profile Picture"
                                                  class="w-10 h-10 rounded-full object-cover border border-gray-200">
                                         @else
                                             <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
@@ -294,13 +294,22 @@
                                         </svg>
                                         <span>Sertifikat</span>
                                     </a>
-                                    
+
+                                    <!-- NEW: PKB SEKAR Menu -->
+                                    <a href="{{ route('pkb.show') }}" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                        <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span>Dokumen PKB</span>
+                                    </a>
+                                </div>
+
                                     @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
                                     <div class="border-t border-gray-100 mt-1 pt-1">
                                         <div class="px-4 py-2">
                                             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Panel Admin</span>
                                         </div>
-                                        
+
                                         <a href="{{ route('setting.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                             <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -310,7 +319,7 @@
                                         </a>
                                     </div>
                                     @endif
-                                
+
                                 <!-- Logout Section -->
                                 <div class="border-t border-gray-100 mt-1">
                                     <form method="POST" action="{{ route('logout') }}">
@@ -339,7 +348,7 @@
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Menu Utama</p>
                         </div>
-                        
+
                         <a href="{{ route('dashboard') }}" class="flex items-center px-3 py-2.5 {{ request()->routeIs('dashboard') ? 'text-blue-600 bg-blue-50 nav-active' : 'text-gray-600 hover:bg-gray-50' }} rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('dashboard') ? 'font-medium' : '' }}">
                             <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
@@ -347,13 +356,13 @@
                             <span>Dashboard</span>
                         </a>
                     </div>
-                    
+
                     <!-- Service Navigation -->
                     <div class="menu-group">
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Layanan</p>
                         </div>
-                        
+
                         <a href="{{ route('konsultasi.index') }}" class="flex items-center px-3 py-2.5 {{ request()->routeIs('konsultasi.*') ? 'text-blue-600 bg-blue-50 nav-active' : 'text-gray-600 hover:bg-gray-50' }} rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('konsultasi.*') ? 'font-medium' : '' }}">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -361,14 +370,14 @@
                             <span>Advokasi & Aspirasi</span>
                         </a>
                     </div>
-                    
+
                     @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
                     <!-- Admin Navigation -->
                     <div class="menu-group">
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Administrasi</p>
                         </div>
-                        
+
                         <div class="admin-section rounded-lg p-3 mb-3">
                             <a href="{{ route('data-anggota.index') }}" class="flex items-center px-3 py-2.5 {{ request()->routeIs('data-anggota.*') ? 'text-blue-600 bg-white shadow-sm nav-active' : 'text-gray-600 hover:bg-white/50' }} rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('data-anggota.*') ? 'font-medium' : '' }}">
                                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +385,7 @@
                                 </svg>
                                 <span>Data Anggota</span>
                             </a>
-                            
+
                             <a href="{{ route('banpers.index') }}" class="flex items-center px-3 py-2.5 {{ request()->routeIs('banpers.*') ? 'text-blue-600 bg-white shadow-sm nav-active' : 'text-gray-600 hover:bg-white/50' }} rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('banpers.*') ? 'font-medium' : '' }}">
                                 <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -420,34 +429,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
-    
+
     // User dropdown functionality
     const userMenuButton = document.getElementById('userMenuButton');
     const userDropdown = document.getElementById('userDropdown');
     const userMenuChevron = document.getElementById('userMenuChevron');
     const header = document.querySelector('header');
-    
+
     // Header scroll effect
     let lastScrollTop = 0;
     window.addEventListener('scroll', function() {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        
+
         // Add shadow when scrolled
         if (scrollTop > 0) {
             header.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
         } else {
             header.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
         }
-        
+
         lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
     });
-    
+
     if (userMenuButton && userDropdown) {
         userMenuButton.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             userDropdown.classList.toggle('hidden');
-            
+
             // Rotate chevron
             if (userMenuChevron) {
                 if (userDropdown.classList.contains('hidden')) {
@@ -477,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const notificationLoading = document.getElementById('notificationLoading');
     const notificationEmpty = document.getElementById('notificationEmpty');
     const markAllReadBtn = document.getElementById('markAllReadBtn');
-    
+
     // Check if notification elements exist
     console.log('Notification elements found:', {
         notificationBtn: !!notificationBtn,
@@ -488,12 +497,12 @@ document.addEventListener('DOMContentLoaded', function() {
         notificationEmpty: !!notificationEmpty,
         markAllReadBtn: !!markAllReadBtn
     });
-    
+
     if (!notificationBtn || !notificationDropdown) {
         console.log('Notification elements not found - user might not be logged in');
         return;
     }
-    
+
     let isDropdownOpen = false;
     let notifications = [];
 
@@ -502,9 +511,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Notification button clicked');
         e.preventDefault();
         e.stopPropagation();
-        
+
         isDropdownOpen = !isDropdownOpen;
-        
+
         if (isDropdownOpen) {
             notificationDropdown.classList.remove('hidden');
             loadNotifications();
@@ -534,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Loading notifications...');
         try {
             showLoading();
-            
+
             const response = await fetch('/notifications', {
                 method: 'GET',
                 headers: {
@@ -552,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
             console.log('Received data:', data);
-            
+
             if (data.success) {
                 notifications = data.notifications;
                 updateNotificationBadge(data.unread_count);
@@ -570,20 +579,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderNotifications(notifications) {
         console.log('Rendering notifications:', notifications);
         hideLoading();
-        
+
         if (!notifications || notifications.length === 0) {
             showEmpty();
             return;
         }
 
         hideEmpty();
-        
+
         const html = notifications.map(notification => `
             <div class="notification-item ${notification.is_unread ? 'bg-blue-50' : 'bg-white'} px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
                 data-id="${notification.id}"
                 data-konsultasi-id="${notification.konsultasi_id || ''}"
                 onclick="handleNotificationClick(${notification.id}, ${notification.konsultasi_id || 'null'})">
-                
+
                 <div class="flex items-start space-x-3">
                     <!-- Icon -->
                     <div class="flex-shrink-0 mt-1">
@@ -591,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             ${getNotificationIconSVG(notification.icon || 'bell', notification.color || 'blue')}
                         </div>
                     </div>
-                    
+
                     <!-- Content -->
                     <div class="flex-1 min-w-0">
                         <p class="text-sm text-gray-900 leading-relaxed">
@@ -601,13 +610,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             ${notification.time_ago || 'Baru saja'}
                         </p>
                     </div>
-                    
+
                     <!-- Unread indicator -->
                     ${notification.is_unread ? '<div class="flex-shrink-0"><div class="w-2 h-2 bg-blue-600 rounded-full"></div></div>' : ''}
                 </div>
             </div>
         `).join('');
-        
+
         notificationList.innerHTML = html;
         console.log('Notifications rendered');
     }
@@ -709,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         unreadIndicator.remove();
                     }
                 });
-                
+
                 updateNotificationBadge(0);
             }
         } catch (error) {
@@ -724,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'check-circle': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
             'bell': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>`
         };
-        
+
         return icons[iconName] || icons['bell'];
     }
 
