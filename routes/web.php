@@ -11,6 +11,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SertifikatController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PkbController; // NEW: PKB Controller
 use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
@@ -105,7 +106,7 @@ use Illuminate\Support\Facades\Route;
         Route::middleware(['check.admin'])->group(function () {
             Route::get('/banpers', [BanpersController::class, 'index'])->name('banpers.index');
             Route::get('/banpers/export', [BanpersController::class, 'export'])->name('banpers.export');
-            
+
             // Super Admin only routes for editing banpers
             Route::get('/banpers/edit', [BanpersController::class, 'edit'])->name('banpers.edit');
             Route::put('/banpers/update', [BanpersController::class, 'update'])->name('banpers.update');
@@ -114,6 +115,10 @@ use Illuminate\Support\Facades\Route;
         // Sertifikat Routes (accessible by all authenticated users)
         Route::get('/sertifikat', [SertifikatController::class, 'show'])->name('sertifikat.show');
         Route::get('/sertifikat/download', [SertifikatController::class, 'download'])->name('sertifikat.download');
+
+        // NEW: PKB SEKAR Routes (accessible by all authenticated users)
+        Route::get('/pkb-sekar', [PkbController::class, 'show'])->name('pkb.show');
+        Route::get('/pkb-sekar/download', [PkbController::class, 'download'])->name('pkb.download');
 
         // Setting Routes (Admin check will be done in controller and middleware)
         Route::middleware('check.admin')->group(function () {
