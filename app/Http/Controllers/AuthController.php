@@ -250,10 +250,10 @@ class AuthController extends Controller
                 },
             ],
             'sso_password' => 'required|string',
-            'agreement' => 'required|accepted'
+            // Remove the agreement validation since it will be handled as 'on' value
+            'agreement' => 'nullable'
         ], [
-            'agreement.required' => 'Anda harus menyetujui pernyataan keanggotaan',
-            'agreement.accepted' => 'Anda harus menyetujui pernyataan keanggotaan',
+            // Remove the agreement required messages since we'll handle it differently
         ]);
     }
 
