@@ -14,33 +14,25 @@ class PkbController extends Controller
     public function show(Request $request)
     {
         try {
-            // Path to the PKB PDF file - you can store it in storage/app/public/documents/
-            // or in public/documents/ folder
+            // Path ke direktori public
             $pdfPath = public_path('documents/pkb-sekar.pdf');
-
-            // Alternative: if stored in storage/app/public/documents/
-            // $pdfPath = storage_path('app/public/documents/pkb-sekar.pdf');
 
             // Check if file exists
             if (!file_exists($pdfPath)) {
-                abort(404, 'Dokumen PKB SEKAR tidak ditemukan');
+                abort(404, 'Dokumen PKB SEKAR tidak ditemukan. Silakan hubungi admin.');
             }
 
             // Get file contents
             $fileContents = file_get_contents($pdfPath);
 
-            // Return PDF response to display in browser
+            // Return PDF response
             return response($fileContents)
                 ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="PKB-SEKAR.pdf"')
-                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                ->header('Pragma', 'no-cache')
-                ->header('Expires', '0');
+                ->header('Content-Disposition', 'inline; filename="PKB-SEKAR.pdf"');
 
         } catch (\Exception $e) {
-            // Log error and return user-friendly message
             \Log::error('Error displaying PKB SEKAR document: ' . $e->getMessage());
-            abort(500, 'Terjadi kesalahan saat memuat dokumen PKB SEKAR');
+            abort(500, 'Terjadi kesalahan saat memuat dokumen PKB SEKAR.');
         }
     }
 
@@ -50,30 +42,23 @@ class PkbController extends Controller
     public function download(Request $request)
     {
         try {
-            // Path to the PKB PDF file
+            // Path ke direktori public
             $pdfPath = public_path('documents/pkb-sekar.pdf');
-
-            // Alternative: if stored in storage/app/public/documents/
-            // $pdfPath = storage_path('app/public/documents/pkb-sekar.pdf');
 
             // Check if file exists
             if (!file_exists($pdfPath)) {
-                return redirect()->back()->with('error', 'Dokumen PKB SEKAR tidak ditemukan');
+                return redirect()->back()->with('error', 'Dokumen PKB SEKAR tidak ditemukan.');
             }
 
-            // Generate download filename with timestamp
-            $downloadName = 'PKB-SEKAR-' . date('Y-m-d') . '.pdf';
+            // Generate download filename
+            $downloadName = 'PKB-SEKAR-' . date('Ymd') . '.pdf';
 
             // Return download response
-            return response()->download($pdfPath, $downloadName, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $downloadName . '"'
-            ]);
+            return response()->download($pdfPath, $downloadName);
 
         } catch (\Exception $e) {
-            // Log error and return with error message
             \Log::error('Error downloading PKB SEKAR document: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengunduh dokumen PKB SEKAR');
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat mengunduh dokumen.');
         }
     }
 
