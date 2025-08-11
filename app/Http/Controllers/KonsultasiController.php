@@ -611,11 +611,6 @@ class KonsultasiController extends Controller
             case 'ADMIN_DPW':
                 $options = $this->getDPWEscalationOptions($konsultasi, $userDPW);
                 break;
-                
-            case 'ADMIN_DPP':
-            case 'ADM':
-                $options = $this->getDPPEscalationOptions($konsultasi);
-                break;
         }
 
         return $options;
@@ -634,12 +629,6 @@ class KonsultasiController extends Controller
         }
 
         $options = [];
-
-        // DPD hanya bisa eskalasi bertahap:
-        // 1. Ke DPD lain di wilayah yang sama (lateral)
-        // 2. Ke DPW mereka sendiri (step up)
-        
-        // 1. Eskalasi ke DPD lain di DPW yang sama (exclude DPD sendiri)
         if ($userDPW && $currentSpecific === $userDPD) {
             $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
             $otherDPDs = array_diff($dpdInSameDPW, [$userDPD]); // Exclude current user's DPD
@@ -753,9 +742,9 @@ class KonsultasiController extends Controller
         return $options;
     }
 
-    /**
+    /*
      * Get escalation options for DPP Admin
-     */
+     
     private function getDPPEscalationOptions($konsultasi): array
     {
         $currentLevel = $konsultasi->TUJUAN;
@@ -866,16 +855,6 @@ class KonsultasiController extends Controller
                         'message' => 'DPW tidak dapat mengeskalasi ke DPD yang berada di wilayah DPW lain.'
                     ];
                 }
-            }
-        }
-
-        if (in_array($userRole, ['ADMIN_DPP', 'ADM'])) {
-            // DPP hanya bisa ke GENERAL
-            if ($currentLevel !== 'GENERAL' && $escalateTo !== 'GENERAL') {
-                return [
-                    'allowed' => false,
-                    'message' => 'DPP hanya dapat mengeskalasi ke SEKAR Pusat.'
-                ];
             }
         }
         if ($escalateTo === $currentLevel && $escalateToSpecific === $currentSpecific) {

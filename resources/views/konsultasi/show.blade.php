@@ -166,11 +166,6 @@
                                     <p class="text-green-700 font-medium">• Dapat eskalasi ke DPD lain di wilayah DPW yang sama</p>
                                     <p>• Dapat eskalasi ke DPW ({{ $userDPW }})</p>
                                 </div>
-                                @elseif(in_array($userRole, ['ADMIN_DPP', 'ADM']))
-                                <div class="space-y-1 text-xs">
-                                    <p><strong>Admin DPP/Super Admin:</strong></p>
-                                    <p>• Dapat eskalasi ke SEKAR Pusat</p>
-                                </div>
                                 @endif
                                 
                                 <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
