@@ -121,7 +121,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware([CheckAdmin::class])->group(function () {
         Route::get('/banpers', [BanpersController::class, 'index'])->name('banpers.index');
         Route::get('/banpers/export', [BanpersController::class, 'export'])->name('banpers.export');
-        
+
         // Super Admin only routes for editing banpers (validation in controller)
         Route::get('/banpers/edit', [BanpersController::class, 'edit'])->name('banpers.edit');
         Route::put('/banpers/update', [BanpersController::class, 'update'])->name('banpers.update');
@@ -142,6 +142,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware([CheckAdmin::class])->group(function () {
         Route::get('/setting', [SettingController::class, 'index'])->name('setting.index');
         Route::post('/setting', [SettingController::class, 'update'])->name('setting.update');
+        Route::post('/setting/pkb', [SettingController::class, 'updatePkbOnly'])->name('setting.pkb.update');
     });
 
     // Notification routes - accessible by all authenticated users

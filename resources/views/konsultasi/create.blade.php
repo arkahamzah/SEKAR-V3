@@ -326,7 +326,7 @@ function getTargetDescription(target) {
         'DPD': 'Untuk masalah tingkat daerah/lokasi kerja',
         'DPW': 'Untuk masalah tingkat wilayah/provinsi',
         'DPP': 'Untuk masalah tingkat pusat/nasional',
-        'GENERAL': 'Untuk aspirasi umum kepada SEKAR'
+        'GENERAL': 'Untuk aspirasi umum kepada DPP/Pusat'
     };
     
     return descriptions[target] || '';

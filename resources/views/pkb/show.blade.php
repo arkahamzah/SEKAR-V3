@@ -93,13 +93,14 @@
 
         <!-- PDF Viewer -->
         <div class="relative" style="min-height: 800px;">
-            <iframe id="pdfViewer"
-                    src="{{ route('pkb.show') }}#toolbar=1&navpanes=1&scrollbar=1"
+<iframe id="pdfViewer"
+                    src="{{ route('pkb.show') }}?v={{ time() }}#toolbar=1&navpanes=1&scrollbar=1"
                     class="w-full border-0"
                     style="height: 800px;">
                 <p class="p-6 text-center text-gray-500">
                     Browser Anda tidak mendukung tampilan PDF.
-                    <a href="{{ route('pkb.download') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+<a href="{{ route('pkb.download') }}?v={{ time() }}"
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
                         Klik di sini untuk mengunduh dokumen.
                     </a>
                 </p>
