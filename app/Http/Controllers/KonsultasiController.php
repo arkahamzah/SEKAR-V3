@@ -29,58 +29,43 @@ class KonsultasiController extends Controller
     {
         $user = Auth::user();
         $isAdmin = $user->pengurus && $user->pengurus->role && 
-                  in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
+                    in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
+
+        $konsultasiQuery = Konsultasi::query();
 
         if ($isAdmin) {
-            // Admin dapat melihat konsultasi sesuai level mereka
-            $konsultasiQuery = Konsultasi::query();
-            
-            // Filter berdasarkan level admin
+            // Admin hanya bisa melihat konsultasi yang ditujukan ke level mereka
             $adminRole = $user->pengurus->role->NAME;
             $userDPW = $user->pengurus->DPW ?? null;
             $userDPD = $user->pengurus->DPD ?? null;
             
             switch ($adminRole) {
                 case 'ADMIN_DPD':
-                    // Admin DPD hanya bisa lihat konsultasi ke DPD mereka
-                    $konsultasiQuery->where(function($query) use ($userDPD) {
-                        $query->where('TUJUAN', 'DPD')
-                              ->where('TUJUAN_SPESIFIK', $userDPD);
-                    });
+                    $konsultasiQuery->where('TUJUAN', 'DPD')
+                                    ->where('TUJUAN_SPESIFIK', $userDPD);
                     break;
                     
                 case 'ADMIN_DPW':
-                    // Admin DPW bisa lihat konsultasi ke DPW mereka dan DPD di wilayahnya
-                    $konsultasiQuery->where(function($query) use ($userDPW) {
-                        $query->where(function($subQuery) use ($userDPW) {
-                            $subQuery->where('TUJUAN', 'DPW')
-                                     ->where('TUJUAN_SPESIFIK', $userDPW);
-                        })->orWhere(function($subQuery) use ($userDPW) {
-                            // DPD yang berada di DPW yang sama
-                            $subQuery->where('TUJUAN', 'DPD')
-                                     ->whereIn('TUJUAN_SPESIFIK', function($dpQuery) use ($userDPW) {
-                                         $dpQuery->select('DPD')
-                                                 ->from('t_sekar_pengurus')
-                                                 ->where('DPW', $userDPW)
-                                                 ->whereNotNull('DPD')
-                                                 ->distinct();
-                                     });
-                        });
-                    });
+                    $konsultasiQuery->where('TUJUAN', 'DPW')
+                                    ->where('TUJUAN_SPESIFIK', $userDPW);
+                    break;
+                
+                case 'ADMIN_DPP':
+                    $konsultasiQuery->where('TUJUAN', 'DPP');
                     break;
                     
-                case 'ADMIN_DPP':
                 case 'ADM':
-                    // Admin DPP dan Super Admin bisa lihat semua
+                    $konsultasiQuery->whereIn('TUJUAN', ['DPP', 'GENERAL']);
                     break;
             }
             
-            $konsultasi = $konsultasiQuery->orderBy('CREATED_AT', 'desc')->paginate(10);
+            $konsultasi = $konsultasiQuery->with('karyawan')->orderBy('CREATED_AT', 'desc')->paginate(10);
         } else {
-            // User biasa hanya bisa lihat konsultasi mereka sendiri
-            $konsultasi = Konsultasi::where('N_NIK', $user->nik)
-                                   ->orderBy('CREATED_AT', 'desc')
-                                   ->paginate(10);
+            // User biasa hanya bisa melihat konsultasi mereka sendiri
+            $konsultasi = $konsultasiQuery->where('N_NIK', $user->nik)
+                                          ->with('karyawan')
+                                          ->orderBy('CREATED_AT', 'desc')
+                                          ->paginate(10);
         }
 
         return view('konsultasi.index', compact('konsultasi'));
@@ -124,11 +109,44 @@ class KonsultasiController extends Controller
                 return $this->createKonsultasi($user, $validated);
             });
             
-            // Send notifications (non-blocking)
             $this->sendNotifications($konsultasi, 'new');
+
+         
+            if ($validated['jenis'] === 'ASPIRASI' && $validated['tujuan'] === 'DPP') {
+                
+              
+                $dppAdmins = \App\Models\User::whereHas('pengurus.role', function ($query) {
+                    $query->whereIn('NAME', ['ADMIN_DPP', 'ADM']);
+                })->get();
+
+                foreach ($dppAdmins as $admin) {
+               
+                    $existingNotification = \App\Models\Notification::where('notifiable_id', $admin->nik)
+                        ->where('type', 'new') // Cari tipe 'new'
+                        ->whereJsonContains('data->konsultasi_id', $konsultasi->ID)
+                        ->first();
+
+            
+                    if (!$existingNotification) {
+                        \App\Models\Notification::create([
+                            'type' => 'new', 
+                            'notifiable_type' => \App\Models\User::class,
+                            'notifiable_id' => $admin->nik,
+                            'data' => [
+                                'konsultasi_id' => $konsultasi->ID,
+                                'jenis' => strtolower($konsultasi->JENIS),
+                                'judul' => $konsultasi->JUDUL,
+                                'from_user' => $user->name,
+                                'target_level' => 'DPP',
+                            ],
+                        ]);
+                    }
+                }
+            }
             
             return redirect()->route('konsultasi.index')
-                           ->with('success', ucfirst($validated['jenis']) . ' berhasil diajukan dan akan ditindaklanjuti.');
+                            ->with('success', ucfirst(strtolower($validated['jenis'])) . ' berhasil diajukan dan akan ditindaklanjuti.');
+
         } catch (\Exception $e) {
             Log::error('Error creating konsultasi', [
                 'user_nik' => $user->nik,
@@ -136,8 +154,8 @@ class KonsultasiController extends Controller
             ]);
             
             return redirect()->back()
-                           ->withInput()
-                           ->with('error', 'Terjadi kesalahan saat mengajukan ' . strtolower($validated['jenis']) . '. Silakan coba lagi.');
+                            ->withInput()
+                            ->with('error', 'Terjadi kesalahan saat mengajukan ' . strtolower($validated['jenis']) . '. Silakan coba lagi.');
         }
     }
     
@@ -150,6 +168,7 @@ class KonsultasiController extends Controller
             $query->orderBy('CREATED_AT', 'asc');
         }])->findOrFail($id);
 
+       
         // Check access permission
         $user = Auth::user();
         $isAdmin = $user->pengurus && $user->pengurus->role && 
