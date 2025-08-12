@@ -286,8 +286,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-3a1 1 0 011-1h2.586l6.414-6.414a6 6 0 015.743-7.743z"></path>
                 </svg>
             </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-1">Konfirmasi dengan SSO</h3>
-            <p class="text-sm text-gray-600">Masukkan password SSO/LDAP untuk melanjutkan pendaftaran</p>
+
         </div>
 
         <!-- User Info -->
@@ -324,14 +323,14 @@
             <!-- Password Input -->
             <div>
                 <label for="sso_password" class="block text-sm font-medium text-gray-700 mb-2">
-                    Password SSO/LDAP
+                    Password Portal
                 </label>
                 <div class="relative">
                     <input 
                         type="password" 
                         id="sso_password"
                         name="sso_password" 
-                        placeholder="Masukkan password SSO Anda"
+                        placeholder="Masukkan password portal Anda"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
                         required
                         autocomplete="current-password"

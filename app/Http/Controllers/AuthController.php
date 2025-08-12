@@ -26,46 +26,29 @@ class AuthController extends Controller
         return view('auth.register');
     }
     
+    // INILAH FUNGSI YANG SUDAH DIPERBAIKI
     public function login(Request $request)
     {
-        $validated = $request->validate(['nik' => 'required|string']);
-        $nik = $validated['nik'];
-        
-        $user = User::where('nik', $nik)->first();
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'nik' => ['NIK belum terdaftar sebagai anggota SEKAR. Silakan daftar terlebih dahulu.']
-            ]);
-        }
-        
-        $karyawan = Karyawan::where('N_NIK', $nik)->first();
-        if (!$karyawan) {
-            throw ValidationException::withMessages([
-                'nik' => ['Data karyawan tidak ditemukan. Hubungi administrator.']
-            ]);
-        }
-
-        $ssoToken = $this->generateSSOToken($nik);
-        
-        Session::put('sso_pending', [
-            'nik' => $nik,
-            'token' => $ssoToken,
-            'timestamp' => now(),
-            'user_data' => $user->toArray(),
-            'karyawan_data' => $karyawan->toArray()
+        // 1. Validasi input NIK dan password dari form
+        $credentials = $request->validate([
+            'nik' => 'required|string',
+            'password' => 'required|string',
         ]);
 
-        Log::info('Login initiated', ['NIK' => $nik, 'token' => $ssoToken]);
+        // 2. Coba lakukan proses login menggunakan data yang diberikan
+        if (Auth::attempt($credentials)) {
+            // 3. Jika kredensial benar (login berhasil), buat sesi baru dan arahkan ke dashboard
+            $request->session()->regenerate();
+            return redirect()->intended('dashboard');
+        }
 
-        return response()->json([
-            'success' => true,
-            'redirect_to_popup' => true,
-            'sso_token' => $ssoToken,
-            'nik' => $nik,
-            'popup_url' => route('sso.popup', ['token' => $ssoToken])
-        ]);
+        // 4. Jika kredensial salah (login gagal), kembali ke halaman login dengan pesan error
+        return back()->withErrors([
+            'nik' => 'NIK atau Password yang Anda masukkan salah.',
+        ])->onlyInput('nik');
     }
 
+    // Fungsi-fungsi di bawah ini tidak diubah dan dibiarkan apa adanya
     public function showSSOPopup(Request $request, $token)
     {
         $pendingSSO = Session::get('sso_pending');
@@ -369,7 +352,7 @@ class AuthController extends Controller
 
         if ($isGPTP) {
             return "Pendaftaran berhasil! Sebagai karyawan GPTP, Anda akan resmi menjadi anggota SEKAR pada " . 
-                now()->addYear()->format('d F Y') . ". " . $iuranInfo . " Selamat datang di SEKAR TELKOM!";
+                    now()->addYear()->format('d F Y') . ". " . $iuranInfo . " Selamat datang di SEKAR TELKOM!";
         }
 
         return "Pendaftaran berhasil! Selamat datang di SEKAR TELKOM. " . $iuranInfo;
