@@ -154,35 +154,38 @@
                             </div>
                         </div>
 
-                        @if($pendingChange)
-                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <p class="text-sm text-yellow-800">
-                                        <strong>Perubahan Iuran diproses:</strong> Iuran sukarela akan berubah dari
-                                        <strong>Rp {{ number_format($iuranSukarela, 0, ',', '.') }}</strong> menjadi
-                                        <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong>
-                                        pada bulan {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('F') }}
-                                    </p>
-                                    <p class="text-xs text-yellow-600 mt-1">
-                                        Diajukan: {{ \Carbon\Carbon::parse($pendingChange->TGL_PERUBAHAN)->format('d F Y H:i') }}
-                                    </p>
-                                </div>
-                                <div class="ml-4">
-                                    <form method="POST" action="{{ route('profile.cancel-iuran') }}"
-                                          onsubmit="return confirm('Apakah Anda yakin ingin membatalkan perubahan iuran ini?')"
-                                          class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition">
-                                            Batalkan
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
+@if($pendingChange)
+<div class="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <p class="text-sm text-yellow-800">
+                <strong>Perubahan Iuran diproses:</strong> Iuran sukarela akan berubah dari
+                <strong>Rp {{ number_format($iuranSukarela, 0, ',', '.') }}</strong> menjadi
+                <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong>
+                pada bulan {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('F') }}
+            </p>
+            <p class="text-xs text-yellow-600 mt-1 mb-0.5">
+                Diajukan: {{ \Carbon\Carbon::parse($pendingChange->TGL_PERUBAHAN)->format('d F Y H:i') }}
+            </p>
+            <p class="text-xs text-yellow-700 font-medium">
+                (Pembatalan perubahan dapat dilakukan sebelum tanggal 20 pada bulan berjalan)
+            </p>
+        </div>
+        <div class="ml-4">
+            <form method="POST" action="{{ route('profile.cancel-iuran') }}"
+                  onsubmit="return confirm('Apakah Anda yakin ingin membatalkan perubahan iuran ini?')"
+                  class="inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                        class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition">
+                    Batalkan
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 
                         <div class="mt-4 pt-4 border-t border-gray-200">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -274,7 +277,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                 </div>
             </div>
         </div>
@@ -297,11 +300,11 @@
         </div>
         <div class="p-6">
             <p class="text-sm text-gray-700">Tindakan ini akan menonaktifkan akun Anda secara permanen. Data Anda akan dipindahkan ke arsip ex-anggota.</p>
-            
+
             <div class="mt-4 flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div class="flex items-center h-5">
-                    <input id="confirmResignCheckbox" 
-                           name="confirm_resign" 
+                    <input id="confirmResignCheckbox"
+                           name="confirm_resign"
                            type="checkbox"
                            onclick="document.getElementById('confirmResignButton').disabled = !this.checked;"
                            class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
@@ -312,15 +315,15 @@
             </div>
         </div>
         <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-            <button type="button" 
+            <button type="button"
                     onclick="document.getElementById('resignModal').style.display='none'"
                     class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">
                 Batal
             </button>
             <form action="{{ route('profile.resign') }}" method="POST">
                 @csrf
-                <button type="submit" 
-                        id="confirmResignButton" 
+                <button type="submit"
+                        id="confirmResignButton"
                         disabled
                         class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed">
                     Ya, Saya Yakin
