@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'SEKAR')</title>
     <link rel="icon" type="image/png" href="{{ asset('asset/icon.png') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="{{ asset('js/tailwindcss.js') }}"></script>
+    <link href="{{ asset('css/fontawesome-all.min.css') }}" rel="stylesheet">
     <style>
         /* Custom styles for better match with design */
         .form-input:focus {
