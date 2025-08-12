@@ -85,7 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/data-anggota', [DataAnggotaController::class, 'store'])->name('data-anggota.store');
         Route::get('/data-anggota/{nik}/edit', [DataAnggotaController::class, 'edit'])->name('data-anggota.edit');
         Route::put('/data-anggota/{nik}', [DataAnggotaController::class, 'update'])->name('data-anggota.update');
-        Route::delete('/data-anggota/{nik}', [DataAnggotaController::class, 'destroy'])->name('data-anggota.destroy');
+        //Route::delete('/data-anggota/{nik}', [DataAnggotaController::class, 'destroy'])->name('data-anggota.destroy');
     });
 
     // Advokasi & Aspirasi Routes (Enhanced with Smart Escalation)
