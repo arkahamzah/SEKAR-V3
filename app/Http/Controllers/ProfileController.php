@@ -8,6 +8,9 @@ use App\Models\Iuran;
 use App\Models\IuranHistory;
 use App\Models\IuranBulanan;
 use App\Models\Params;
+use App\Models\ExAnggota;
+use App\Models\SekarPengurus;
+use App\Models\SekarKaryawan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -661,5 +664,57 @@ class ProfileController extends Controller
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    public function resign(Request $request)
+    {
+        // 1. Dapatkan pengguna yang sedang login
+        $user = Auth::user();
+
+        if (!$user) {
+            return redirect('/login')->with('error', 'Sesi tidak valid.');
+        }
+
+        try {
+            DB::transaction(function () use ($user) {
+                
+                $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
+                $iuran = Iuran::where('N_NIK', $user->nik)->first();
+                $pengurus = SekarPengurus::where('N_NIK', $user->nik)->first();
+
+                ExAnggota::create([
+                    'N_NIK'                     => $user->nik,
+                    'V_NAMA_KARYAWAN'           => $karyawan->V_NAMA_KARYAWAN ?? $user->name,
+                    'V_SHORT_POSISI'            => $karyawan->V_SHORT_POSISI ?? null,
+                    'V_SHORT_DIVISI'            => $karyawan->V_SHORT_DIVISI ?? null,
+                    'NO_TELP'                   => $karyawan->NO_TELP ?? null,
+                    'TGL_KELUAR'                => now(),
+                    'ALASAN_KELUAR'             => 'Pengunduran Diri Mandiri',
+                    'IURAN_WAJIB_TERAKHIR'      => $iuran->IURAN_WAJIB ?? 0,
+                    'IURAN_SUKARELA_TERAKHIR'   => $iuran->IURAN_SUKARELA ?? 0,
+                    'DPW'                       => $pengurus ? $pengurus->DPW : null,
+                    'DPD'                       => $pengurus ? $pengurus->DPD : null,
+                    'V_KOTA_GEDUNG'             => $karyawan->V_KOTA_GEDUNG ?? null,
+                    'CREATED_BY'                => $user->nik,
+                    'CREATED_AT'                => now(),
+                ]);
+
+                if ($iuran) $iuran->delete();
+                if ($pengurus) $pengurus->delete();
+                
+                User::where('id', $user->id)->delete();
+
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal memproses pengunduran diri. Silakan coba lagi. Error: ' . $e->getMessage());
+        }
+
+        // 6. Logout pengguna setelah transaksi berhasil
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // 7. Arahkan ke halaman login dengan pesan sukses
+        return redirect('/login')->with('success', 'Anda telah berhasil mengundurkan diri. Terima kasih atas kontribusi Anda selama ini.');
     }
 }

@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/cancel-iuran', [ProfileController::class, 'cancelIuranChange'])->name('profile.cancel-iuran');
     Route::get('/profile/history', [ProfileController::class, 'getIuranHistory'])->name('profile.history'); // Iuran change history
     Route::get('/profile/payment-history', [ProfileController::class, 'getPaymentHistory'])->name('profile.payment-history'); // NEW: Payment history
+    Route::post('/profile/resign', [ProfileController::class, 'resign'])->name('profile.resign');
 
     // Profile Picture Routes
     Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');

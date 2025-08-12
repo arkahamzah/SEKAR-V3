@@ -5,7 +5,6 @@
 @section('content')
 <div class="min-h-screen bg-gray-50">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <!-- Success/Error Messages -->
         @if(session('success'))
             <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg mb-3 text-sm">
                 {{ session('success') }}
@@ -30,7 +29,6 @@
             </div>
         @endif
 
-        <!-- Validation Errors -->
         @if($errors->any())
             <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 text-sm">
                 <ul class="list-disc list-inside space-y-1">
@@ -41,19 +39,15 @@
             </div>
         @endif
 
-        <!-- Header - Compressed -->
         <div class="mb-2">
             <h1 class="text-2xl font-bold text-gray-900">Profile Anggota</h1>
             <p class="text-gray-600 text-sm">Kelola informasi profil Anda</p>
         </div>
 
-        <!-- Main Grid - Reduced gap and better responsive -->
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-2">
-            <!-- Profile Card - Compressed -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="p-4 text-center">
-                        <!-- Profile Picture Section - Smaller -->
                         <div class="relative inline-block mb-3">
                             @if($user->profile_picture)
                                 <img src="{{ asset('storage/profile-pictures/' . $user->profile_picture) }}"
@@ -65,7 +59,6 @@
                                 </div>
                             @endif
 
-                            <!-- Edit Profile Picture Button - Smaller -->
                             <button onclick="document.getElementById('profilePictureModal').style.display='block'"
                                     class="absolute bottom-0 right-0 bg-blue-600 text-white p-1 rounded-full hover:bg-blue-700 transition text-xs">
                                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,9 +78,7 @@
                 </div>
             </div>
 
-            <!-- Profile Information - Expanded to 3 columns -->
             <div class="lg:col-span-3 space-y-2">
-                <!-- Basic Info - More compact -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Informasi Dasar</h3>
@@ -128,13 +119,11 @@
                     </div>
                 </div>
 
-                <!-- Iuran Section - Enhanced with payment summary -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-base font-semibold text-gray-900">Informasi Iuran</h3>
                     </div>
                     <div class="p-4">
-                        <!-- Current Iuran Grid -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm mb-4">
                             <div class="bg-blue-50 p-3 rounded">
                                 <p class="text-blue-600 font-medium text-sm">Iuran Wajib</p>
@@ -153,7 +142,6 @@
                                 <p class="text-purple-600 font-medium text-sm">Total/Bulan</p>
                                 <p class="text-purple-900 font-bold text-base">Rp {{ number_format($totalIuranPerBulan, 0, ',', '.') }}</p>
                             </div>
-                            <!-- NEW: Payment Summary -->
                             <div class="bg-indigo-50 p-3 rounded">
                                 <p class="text-indigo-600 font-medium text-sm">Total Terbayar</p>
                                 <p class="text-indigo-900 font-bold text-base">Rp {{ number_format($totalIuranTerbayar, 0, ',', '.') }}</p>
@@ -196,7 +184,6 @@
                         </div>
                         @endif
 
-                        <!-- Action Buttons -->
                         <div class="mt-4 pt-4 border-t border-gray-200">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <button onclick="toggleIuranForm()" id="iuranToggleBtn"
@@ -208,7 +195,6 @@
                                     @endif
                                 </button>
 
-                                <!-- History Button -->
                                 <button onclick="openHistoryModal()"
                                         class="w-full text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center justify-center">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,7 +203,6 @@
                                     Riwayat Perubahan
                                 </button>
 
-                                <!-- NEW: Payment History Button -->
                                 <button onclick="openPaymentModal()"
                                         class="w-full text-sm bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition flex items-center justify-center">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +212,6 @@
                                 </button>
                             </div>
 
-                            <!-- Iuran Update Form -->
                             <div id="iuranUpdateForm" style="display: none;" class="mt-4">
                                 <form method="POST" action="{{ route('profile.update-iuran') }}" class="space-y-3">
                                     @csrf
@@ -240,13 +224,13 @@
                                             @endif
                                         </label>
                                         <input type="number"
-                                            name="iuran_sukarela"
-                                            id="iuran_sukarela"
-                                            value="{{ $effectiveIuranSukarela }}"
-                                            min="0"
-                                            step="5000"
-                                            class="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500"
-                                            placeholder="0">
+                                               name="iuran_sukarela"
+                                               id="iuran_sukarela"
+                                               value="{{ $effectiveIuranSukarela }}"
+                                               min="0"
+                                               step="5000"
+                                               class="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                                               placeholder="0">
                                         <p class="text-sm text-gray-500 mt-1">
                                             Minimal kelipatan Rp 5.000
                                             @if($pendingChange)
@@ -272,17 +256,85 @@
                         </div>
                     </div>
                 </div>
+
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-200">
+                            <h3 class="text-base font-semibold text-gray-900">Pengaturan Akun</h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-800">Pengunduran Diri</h4>
+                                    <p class="text-xs text-gray-600 mt-1">Nonaktifkan akun Anda secara permanen dari keanggotaan SEKAR.</p>
+                                </div>
+                                <button onclick="document.getElementById('resignModal').style.display='flex'"
+                                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-medium">
+                                    Undur Diri
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
             </div>
+        </div>
+    </div>
+
+    <div id="resignModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Pengunduran Diri</h3>
+                    <p class="text-sm text-gray-600 mt-1">Apakah Anda benar-benar yakin?</p>
+                </div>
+            </div>
+        </div>
+        <div class="p-6">
+            <p class="text-sm text-gray-700">Tindakan ini akan menonaktifkan akun Anda secara permanen. Data Anda akan dipindahkan ke arsip ex-anggota.</p>
+            
+            <div class="mt-4 flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div class="flex items-center h-5">
+                    <input id="confirmResignCheckbox" 
+                           name="confirm_resign" 
+                           type="checkbox"
+                           onclick="document.getElementById('confirmResignButton').disabled = !this.checked;"
+                           class="focus:ring-red-500 h-4 w-4 text-red-600 border-gray-300 rounded">
+                </div>
+                <div class="ml-3 text-sm">
+                    <label for="confirmResignCheckbox" class="font-medium text-yellow-800">Saya mengerti dan menyetujui konsekuensi dari tindakan ini.</label>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+            <button type="button" 
+                    onclick="document.getElementById('resignModal').style.display='none'"
+                    class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition">
+                Batal
+            </button>
+            <form action="{{ route('profile.resign') }}" method="POST">
+                @csrf
+                <button type="submit" 
+                        id="confirmResignButton" 
+                        disabled
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition disabled:bg-red-300 disabled:cursor-not-allowed">
+                    Ya, Saya Yakin
+                </button>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Profile Picture Modal - Compact -->
+
 <div id="profilePictureModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white p-4 rounded-lg shadow-lg max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-gray-900 mb-3">Update Foto Profil</h3>
 
-        <!-- Current Photo Preview -->
         <div class="text-center mb-3">
             @if($user->profile_picture)
                 <img src="{{ asset('storage/profile-pictures/' . $user->profile_picture) }}"
@@ -295,7 +347,6 @@
             @endif
         </div>
 
-        <!-- Upload Form -->
         <form method="POST" action="{{ route('profile.update-picture') }}" enctype="multipart/form-data" class="space-y-3">
             @csrf
             <div>
@@ -320,7 +371,6 @@
             </div>
         </form>
 
-        <!-- Delete Photo Button -->
         @if($user->profile_picture)
         <div class="mt-3 pt-3 border-t border-gray-200">
             <form method="POST" action="{{ route('profile.delete-picture') }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus foto profil?')">
@@ -335,10 +385,8 @@
     </div>
 </div>
 
-<!-- Iuran History Modal -->
 <div id="historyModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div class="flex items-center justify-between">
                 <div>
@@ -359,20 +407,15 @@
             </div>
         </div>
 
-        <!-- Modal Body -->
         <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-            <!-- Loading State -->
             <div id="historyLoading" class="text-center py-8">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p class="text-gray-600 mt-2">Memuat riwayat...</p>
             </div>
 
-            <!-- History Content -->
             <div id="historyContent" style="display: none;">
-                <!-- History items will be loaded here -->
-            </div>
+                </div>
 
-            <!-- Empty State -->
             <div id="historyEmpty" style="display: none;" class="text-center py-12">
                 <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,18 +433,14 @@
                 </button>
             </div>
 
-            <!-- Pagination -->
             <div id="historyPagination" style="display: none;" class="mt-6 border-t border-gray-200 pt-4">
-                <!-- Pagination will be loaded here -->
-            </div>
+                </div>
         </div>
     </div>
 </div>
 
-<!-- NEW: Payment History Modal -->
 <div id="paymentModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
-        <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
             <div class="flex items-center justify-between">
                 <div>
@@ -422,20 +461,15 @@
             </div>
         </div>
 
-        <!-- Modal Body -->
         <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-            <!-- Loading State -->
             <div id="paymentLoading" class="text-center py-8">
                 <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 <p class="text-gray-600 mt-2">Memuat riwayat pembayaran...</p>
             </div>
 
-            <!-- Payment Content -->
             <div id="paymentContent" style="display: none;">
-                <!-- Payment items will be loaded here -->
-            </div>
+                </div>
 
-            <!-- Empty State -->
             <div id="paymentEmpty" style="display: none;" class="text-center py-12">
                 <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -447,10 +481,8 @@
                 <p class="text-sm text-gray-500">Pembayaran iuran dipotong otomatis dari gaji setiap tanggal 1.</p>
             </div>
 
-            <!-- Pagination -->
             <div id="paymentPagination" style="display: none;" class="mt-6 border-t border-gray-200 pt-4">
-                <!-- Pagination will be loaded here -->
-            </div>
+                </div>
         </div>
     </div>
 </div>
@@ -863,22 +895,25 @@ function renderPagination(data, type) {
 
 // Close modals when clicking outside
 document.addEventListener('DOMContentLoaded', function() {
-    ['historyModal', 'paymentModal', 'profilePictureModal'].forEach(modalId => {
-        document.getElementById(modalId).addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        });
+    ['historyModal', 'paymentModal', 'profilePictureModal', 'resignModal'].forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                }
+            });
+        }
     });
 
     // Close modals with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            const modals = ['historyModal', 'paymentModal', 'profilePictureModal'];
+            const modals = ['historyModal', 'paymentModal', 'profilePictureModal', 'resignModal'];
             modals.forEach(modalId => {
                 const modal = document.getElementById(modalId);
-                if (modal.style.display === 'flex' || modal.style.display === 'block') {
+                if (modal && (modal.style.display === 'flex' || modal.style.display === 'block')) {
                     modal.style.display = 'none';
                     document.body.style.overflow = 'auto';
                 }
