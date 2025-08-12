@@ -17,7 +17,7 @@ class SertifikatController extends Controller
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
-        
+
         if (!$karyawan) {
             return redirect()->route('profile.index')
                            ->with('error', 'Data karyawan tidak ditemukan.');
@@ -25,7 +25,7 @@ class SertifikatController extends Controller
 
         // Check if signature period is active
         $isSignaturePeriodActive = $this->isSignaturePeriodActive();
-        
+
         $certificateData = [
             'user' => $user,
             'karyawan' => $karyawan,
@@ -45,7 +45,7 @@ class SertifikatController extends Controller
     {
         // TODO: Implement PDF generation
         // This would require a PDF library like DomPDF or TCPDF
-        
+
         return redirect()->route('sertifikat.show')
                        ->with('info', 'Fitur download PDF sedang dalam pengembangan.');
     }
@@ -97,7 +97,7 @@ class SertifikatController extends Controller
         }
 
         $today = now()->format('Y-m-d');
-        
+
         return $today >= $startDate && $today <= $endDate;
     }
 
@@ -108,7 +108,7 @@ class SertifikatController extends Controller
     {
         $year = $user->created_at->format('Y');
         $month = $user->created_at->format('m');
-        
+
         return "SEKAR/{$year}/{$month}/{$user->nik}";
     }
 }
