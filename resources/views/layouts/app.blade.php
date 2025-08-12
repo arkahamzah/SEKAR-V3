@@ -1,4 +1,3 @@
-<!-- resources/views/layouts/app.blade.php -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,16 +169,16 @@
 </head>
 <body class="bg-gray-50">
     @if(Auth::check())
-        <!-- Header dengan User Dropdown dan Notification - Fixed -->
         <header class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
             <div class="max-w-none px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-14">
                     <div class="flex items-center">
-                        <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-8">
+                        <a href="{{ route('dashboard') }}">
+                            <img src="{{ asset('asset/logo.png') }}" alt="SEKAR Logo" class="h-8">
+                        </a>
                     </div>
 
                     <div class="flex items-center space-x-4">
-                        <!-- Notification Bell Button -->
                         <div class="relative">
                             <button id="notificationBtn"
                                     class="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -187,18 +186,15 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                                 </svg>
 
-                                <!-- Unread Count Badge -->
                                 <span id="notificationBadge"
                                     class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full hidden">
                                     0
                                 </span>
                             </button>
 
-                            <!-- Notification Dropdown -->
                             <div id="notificationDropdown"
                                 class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 hidden">
 
-                                <!-- Header -->
                                 <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                                     <h3 class="text-sm font-semibold text-gray-900">Notifikasi</h3>
                                     <button id="markAllReadBtn"
@@ -207,9 +203,7 @@
                                     </button>
                                 </div>
 
-                                <!-- Notification List -->
                                 <div id="notificationList" class="max-h-96 overflow-y-auto">
-                                    <!-- Loading State -->
                                     <div id="notificationLoading" class="p-4 text-center">
                                         <svg class="animate-spin h-5 w-5 text-gray-500 mx-auto" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -218,7 +212,6 @@
                                         <p class="text-sm text-gray-500 mt-2">Memuat notifikasi...</p>
                                     </div>
 
-                                    <!-- Empty State -->
                                     <div id="notificationEmpty" class="p-8 text-center hidden">
                                         <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
@@ -227,10 +220,8 @@
                                         <p class="text-sm text-gray-500">Semua notifikasi akan muncul di sini</p>
                                     </div>
 
-                                    <!-- Notifications will be loaded here dynamically -->
-                                </div>
+                                    </div>
 
-                                <!-- Footer -->
                                 <div class="px-4 py-3 border-t border-gray-200">
                                     <a href="{{ route('konsultasi.index') }}"
                                     class="block text-center text-sm text-blue-600 hover:text-blue-800 font-medium">
@@ -240,7 +231,6 @@
                             </div>
                         </div>
 
-                        <!-- User Dropdown -->
                         <div class="relative">
                             <button id="userMenuButton" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 py-1">
                                 @if(Auth::user()->profile_picture)
@@ -258,9 +248,7 @@
                                 </svg>
                             </button>
 
-                            <!-- Dropdown Menu -->
                             <div id="userDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                                <!-- User Info Header -->
                                 <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
                                     <div class="flex items-center space-x-3">
                                         @if(Auth::user()->profile_picture)
@@ -279,7 +267,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Menu Items -->
                                 <div class="py-1">
                                 <a href="{{ route('profile.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                     <svg class="w-4 h-4 mr-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -295,7 +282,6 @@
                                         <span>Sertifikat</span>
                                     </a>
 
-                                    <!-- NEW: PKB SEKAR Menu -->
                                     <a href="{{ route('pkb.show') }}" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -320,7 +306,6 @@
                                     </div>
                                     @endif
 
-                                <!-- Logout Section -->
                                 <div class="border-t border-gray-100 mt-1">
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
@@ -339,11 +324,9 @@
             </div>
         </header>
 
-        <!-- Sidebar - Fixed -->
         <aside class="fixed left-0 top-14 w-64 bg-white shadow-sm border-r border-gray-200 z-40" style="height: calc(100vh - 3.5rem);">
             <nav class="h-full overflow-y-auto py-6">
                 <div class="px-3 space-y-2">
-                    <!-- Main Navigation -->
                     <div class="menu-group pb-4">
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Menu Utama</p>
@@ -357,7 +340,6 @@
                         </a>
                     </div>
 
-                    <!-- Service Navigation -->
                     <div class="menu-group">
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Layanan</p>
@@ -372,7 +354,6 @@
                     </div>
 
                     @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
-                    <!-- Admin Navigation -->
                     <div class="menu-group">
                         <div class="px-3 mb-3">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Administrasi</p>
@@ -399,14 +380,11 @@
             </nav>
         </aside>
 
-        <!-- Main Content Area -->
         <main class="ml-64 pt-14 min-h-screen">
     @else
-        <!-- Login Layout -->
         <main class="min-h-screen">
     @endif
 
-    <!-- Success Message Global -->
     @if(session('success'))
     <div id="successAlert" class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 mx-4 mt-4 rounded-lg relative alert">
         <div class="flex items-center">
@@ -594,14 +572,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 onclick="handleNotificationClick(${notification.id}, ${notification.konsultasi_id || 'null'})">
 
                 <div class="flex items-start space-x-3">
-                    <!-- Icon -->
                     <div class="flex-shrink-0 mt-1">
                         <div class="w-8 h-8 rounded-full bg-${notification.color || 'blue'}-100 flex items-center justify-center">
                             ${getNotificationIconSVG(notification.icon || 'bell', notification.color || 'blue')}
                         </div>
                     </div>
 
-                    <!-- Content -->
                     <div class="flex-1 min-w-0">
                         <p class="text-sm text-gray-900 leading-relaxed">
                             ${notification.message}
@@ -611,7 +587,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         </p>
                     </div>
 
-                    <!-- Unread indicator -->
                     ${notification.is_unread ? '<div class="flex-shrink-0"><div class="w-2 h-2 bg-blue-600 rounded-full"></div></div>' : ''}
                 </div>
             </div>
