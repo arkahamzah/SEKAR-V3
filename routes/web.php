@@ -21,6 +21,8 @@ Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
     Route::get('/login', [AuthController::class, 'showLogin']);
 
+    Route::post('/', [AuthController::class, 'login']);
+
     // SSO Login Routes
 
     // SSO Routes - Updated untuk true SSO
