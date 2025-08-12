@@ -5,7 +5,6 @@
 @section('content')
 <div class="min-h-screen bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <!-- Breadcrumb -->
         <div class="mb-6">
             <div class="flex items-center space-x-2 text-sm text-gray-600 mb-2">
                 <a href="{{ route('konsultasi.index') }}" class="hover:text-blue-600">Advokasi & Aspirasi</a>
@@ -17,7 +16,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Main Form -->
             <div class="lg:col-span-2">
                 <form method="POST" action="{{ route('konsultasi.store') }}" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     @csrf
@@ -33,7 +31,6 @@
                         </div>
                     @endif
 
-                    <!-- Step 1: Jenis -->
                     <div class="mb-8">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">1. Pilih Jenis Pengajuan</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -71,7 +68,6 @@
                         </div>
                     </div>
 
-                    <!-- Kategori Advokasi -->
                     <div id="kategoriAdvokasi" class="mb-8 hidden">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">2. Kategori Advokasi</h3>
                         <select name="kategori_advokasi" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -85,27 +81,23 @@
                         <p class="text-xs text-gray-500 mt-1">Pilih kategori yang paling sesuai dengan masalah yang dihadapi</p>
                     </div>
 
-                    <!-- Step 3: Tujuan -->
                     <div class="mb-8">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">
                             <span id="stepNumber">2</span>. Tujuan Pengajuan
                         </h3>
                         <div id="tujuanOptions" class="space-y-3">
-                            <!-- Options will be populated by JavaScript -->
-                        </div>
+                            </div>
                     </div>
 
-                    <!-- Tujuan Spesifik -->
                     <div id="tujuanSpesifik" class="mb-8 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Tujuan Spesifik</label>
                         <select name="tujuan_spesifik" id="tujuanSpesifikSelect" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             <option value="">Pilih Tujuan Spesifik</option>
                         </select>
                         <p class="text-xs text-gray-500 mt-1" id="tujuanSpesifikHint">Akan terisi otomatis berdasarkan lokasi kerja Anda atau pilih manual</p>
                     </div>
 
-                    <!-- Step 4: Detail -->
                     <div class="mb-8">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">
                             <span id="stepNumberDetail">3</span>. Detail Pengajuan
@@ -143,7 +135,6 @@
                         </div>
                     </div>
 
-                    <!-- Submit Button -->
                     <div class="flex justify-end space-x-3">
                         <a href="{{ route('konsultasi.index') }}" 
                            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
@@ -157,7 +148,6 @@
                 </form>
             </div>
 
-            <!-- Sidebar -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h4 class="font-semibold text-gray-900 mb-4">Informasi Penting</h4>
@@ -209,7 +199,6 @@
                     </div>
                 </div>
 
-                <!-- User Info -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
                     <h4 class="font-semibold text-gray-900 mb-4">Informasi Anda</h4>
                     <div class="space-y-2 text-sm">
@@ -345,14 +334,18 @@ function handleTujuanChange() {
     
     const target = selectedTujuan.value;
     
-    if (target === 'GENERAL') {
-        // Hide tujuan spesifik for GENERAL
+    // === PERBAIKAN DI SINI ===
+    // Sembunyikan 'Tujuan Spesifik' untuk GENERAL dan DPP
+    if (target === 'GENERAL' || target === 'DPP') {
         tujuanSpesifikDiv.classList.add('hidden');
+        tujuanSpesifikSelect.value = ''; // Kosongkan nilainya
+        tujuanSpesifikSelect.required = false; // Jadikan tidak wajib diisi
         return;
     }
     
-    // Show tujuan spesifik for DPD/DPW
+    // Tampilkan 'Tujuan Spesifik' untuk DPD/DPW
     tujuanSpesifikDiv.classList.remove('hidden');
+    tujuanSpesifikSelect.required = true; // Jadikan wajib diisi
     
     // Populate dropdown based on target
     let options = ['<option value="">Pilih Tujuan Spesifik</option>'];
