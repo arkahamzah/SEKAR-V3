@@ -170,7 +170,7 @@
                                 
                                 <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                                     <p class="font-medium text-blue-800">Hierarki Eskalasi:</p>
-                                    <p class="text-blue-700">DPD → DPW → DPP → SEKAR Pusat</p>
+                                    <p class="text-blue-700">DPD → DPW → DPP</p>
                                     <p class="text-blue-600 text-[10px] mt-1">* Eskalasi lateral (ke level yang sama) diperbolehkan dalam wilayah yang sesuai</p>
                                 </div>
                             </div>
