@@ -158,7 +158,7 @@
                     </svg>
                     <div class="text-sm">
                         <p class="font-medium text-orange-800">Karyawan GPTP - Pre-order Membership</p>
-                        <p class="text-orange-700 mt-1">Sebagai karyawan GPTP, Anda akan resmi menjadi anggota SEKAR <strong>1 tahun</strong> setelah mendaftar.</p>
+                        <p class="text-orange-700 mt-1">Setelah Mendaftar Sebagai karyawan GPTP, Anda baru akan bisa login setelah <strong>Menjadi karyawan resmi </strong>.</p>
                     </div>
                 </div>
             </div>

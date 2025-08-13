@@ -37,12 +37,29 @@ class AuthController extends Controller
 
         // 2. Coba lakukan proses login menggunakan data yang diberikan
         if (Auth::attempt($credentials)) {
-            // 3. Jika kredensial benar (login berhasil), buat sesi baru dan arahkan ke dashboard
+            $user = Auth::user();
+
+            // ## PERUBAHAN DIMULAI DI SINI ##
+            // 3. Cek apakah user adalah anggota GPTP Pre-order
+            if ($user->is_gptp_preorder) {
+                // Jika ya, langsung logout dan kembalikan ke halaman login
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                
+                // Kembalikan dengan pesan error khusus untuk GPTP
+                return back()->withErrors([
+                    'nik' => 'Akun Anda terdaftar sebagai GPTP dan belum dapat mengakses sistem. Silakan hubungi administrator untuk informasi lebih lanjut.',
+                ])->onlyInput('nik');
+            }
+            // ## PERUBAHAN SELESAI DI SINI ##
+
+            // 4. Jika bukan GPTP, buat sesi baru dan arahkan ke dashboard
             $request->session()->regenerate();
             return redirect()->intended('dashboard');
         }
 
-        // 4. Jika kredensial salah (login gagal), kembali ke halaman login dengan pesan error
+        // 5. Jika kredensial salah, kembali ke halaman login dengan pesan error
         return back()->withErrors([
             'nik' => 'NIK atau Password yang Anda masukkan salah.',
         ])->onlyInput('nik');
@@ -132,13 +149,6 @@ class AuthController extends Controller
             $iuranWajib = $this->getIuranWajib();
             $totalIuran = $iuranWajib + $iuranSukarela;
 
-            Log::info('Registration started', [
-                'NIK' => $nik,
-                'iuran_wajib' => $iuranWajib,
-                'iuran_sukarela' => $iuranSukarela,
-                'total_iuran' => $totalIuran
-            ]);
-
             // Check existing user
             if (User::where('nik', $nik)->exists()) {
                 return $this->jsonError('NIK sudah terdaftar sebagai anggota SEKAR.', 400);
@@ -156,21 +166,25 @@ class AuthController extends Controller
                 return $this->jsonError($authResult['message'], 401);
             }
 
-            // Create user and records
-            DB::transaction(function () use ($karyawan, $ssoPassword, $iuranSukarela) {
+            // Variabel user untuk menampung hasil dari transaksi
+            $user = null;
+
+            DB::transaction(function () use ($karyawan, $ssoPassword, $iuranSukarela, &$user) {
                 $user = $this->createUserFromKaryawan($karyawan, $ssoPassword);
                 $this->createOrUpdateIuranRecord($karyawan->N_NIK, $iuranSukarela);
                 
-                Auth::login($user);
-                $this->setDetailedSession($karyawan);
             });
-
-            $isGPTP = $this->isGPTPEmployee($karyawan);
-            $successMessage = $this->buildSuccessMessage($isGPTP, $iuranWajib, $iuranSukarela, $totalIuran);
-
-            Log::info('Registration successful', ['NIK' => $nik, 'is_gptp' => $isGPTP, 'total_iuran' => $totalIuran]);
             
-            return $this->jsonSuccess($successMessage, route('dashboard'));
+            if ($user->is_gptp_preorder) {
+                $successMessage = 'Registrasi berhasil! Akun GPTP Anda sedang dalam peninjauan dan belum dapat digunakan untuk login.';
+            } else {
+                $successMessage = 'Registrasi berhasil! Silakan login dengan NIK dan password yang telah Anda daftarkan.';
+            }
+            $request->session()->flash('success', $successMessage);
+
+            Log::info('Registration successful', ['NIK' => $nik, 'is_gptp' => $user->is_gptp_preorder]);
+            
+            return $this->jsonSuccess('Registrasi berhasil, mengalihkan...', route('login'));
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->jsonError(collect($e->errors())->flatten()->first(), 422, $e->errors());
@@ -260,20 +274,21 @@ class AuthController extends Controller
     }
 
     private function createUserFromKaryawan(Karyawan $karyawan, string $password): User
-    {
-        $isGPTP = $this->isGPTPEmployee($karyawan);
-        $membershipActiveDate = $isGPTP ? now()->addYear() : now();
+{
+    $isGPTP = $this->isGPTPEmployee($karyawan);
 
-        return User::create([
-            'nik' => $karyawan->N_NIK,
-            'name' => $karyawan->V_NAMA_KARYAWAN,
-            'email' => $karyawan->N_NIK . '@sekar.local',
-            'password' => Hash::make($password),
-            'membership_status' => $isGPTP ? 'pending' : 'active',
-            'membership_active_date' => $membershipActiveDate,
-            'is_gptp_preorder' => $isGPTP,
-        ]);
-    }
+    // ## PERUBAHAN DIMULAI DI SINI ##
+    // Logika masa aktif 1 tahun dan status 'pending' dihilangkan
+    return User::create([
+        'nik' => $karyawan->N_NIK,
+        'name' => $karyawan->V_NAMA_KARYAWAN,
+        'email' => $karyawan->N_NIK . '@sekar.local',
+        'password' => Hash::make($password),
+        'membership_status' => 'active', 
+        'membership_active_date' => null, 
+        'is_gptp_preorder' => $isGPTP, 
+    ]);
+}
 
     private function setDetailedSession(Karyawan $karyawan): void
     {
@@ -326,8 +341,8 @@ class AuthController extends Controller
 
     private function isGPTPEmployee($karyawan): bool
     {
-        $divisi = is_object($karyawan) ? $karyawan->V_SHORT_DIVISI : $karyawan['V_SHORT_DIVISI'];
-        return stripos($divisi ?? '', 'GPTP') !== false;
+        $posisi = is_object($karyawan) ? $karyawan->V_SHORT_POSISI : ($karyawan['V_SHORT_POSISI'] ?? '');
+         return stripos($posisi, 'GPTP') !== false;
     }
 
     private function formatKaryawanData(Karyawan $karyawan): array
