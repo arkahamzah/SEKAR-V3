@@ -20,32 +20,37 @@ class DataAnggotaController extends Controller
      * Display data anggota with filtering and search
      */
     public function index(Request $request)
-    {
-        $activeTab = $request->get('tab', 'anggota');
-        
-        $data = [
-            'activeTab' => $activeTab,
-            'dpwOptions' => $this->getDpwOptions(),
-            'dpdOptions' => $this->getDpdOptions(),
-        ];
-
-        switch ($activeTab) {
-            case 'anggota':
-                $data['anggota'] = $this->getAnggotaData($request);
-                break;
-            case 'gptp':
-                $data['gptp'] = $this->getGptpData($request);
-                break;
-            case 'pengurus':
-                $data['pengurus'] = $this->getPengurusData($request);
-                break;
-            case 'ex-anggota':
-                $data['ex_anggota'] = $this->getExAnggotaData($request);
-                break;
-        }
-
-        return view('data-anggota.index', $data);
+{
+    if ($request->get('tab') === 'ex-anggota' && !Auth::user()->hasRole('ADM')) {
+        return redirect()->route('data-anggota.index')->with('error', 'Anda tidak memiliki hak akses untuk melihat halaman ini.');
     }
+
+    $activeTab = $request->get('tab', 'anggota');
+    
+    $data = [
+        'activeTab' => $activeTab,
+        'dpwOptions' => $this->getDpwOptions(),
+        'dpdOptions' => $this->getDpdOptions(),
+    ];
+
+    switch ($activeTab) {
+        case 'anggota':
+            $data['anggota'] = $this->getAnggotaData($request);
+            break;
+        case 'gptp':
+            $data['gptp'] = $this->getGptpData($request);
+            break;
+        case 'pengurus':
+            $data['pengurus'] = $this->getPengurusData($request);
+            break;
+        
+        case 'ex-anggota':
+            $data['ex_anggota'] = $this->getExAnggotaData($request);
+            break;
+    }
+
+    return view('data-anggota.index', $data);
+}
 
     /**
      * Show the form for creating a new member (Super Admin only)
