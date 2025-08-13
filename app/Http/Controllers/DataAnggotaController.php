@@ -39,6 +39,9 @@ class DataAnggotaController extends Controller
             case 'pengurus':
                 $data['pengurus'] = $this->getPengurusData($request);
                 break;
+            case 'ex-anggota':
+                $data['ex_anggota'] = $this->getExAnggotaData($request);
+                break;
         }
 
         return view('data-anggota.index', $data);
@@ -447,6 +450,29 @@ class DataAnggotaController extends Controller
     }
 
     /**
+     * Get Ex-Anggota data with filters
+     */
+    private function getExAnggotaData(Request $request)
+    {
+        $query = ExAnggota::query();
+
+        // Apply filters
+        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
+            $query->byDpw($request->dpw);
+        }
+        
+        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
+            $query->byDpd($request->dpd);
+        }
+
+        if ($request->filled('search')) {
+            $query->search($request->search);
+        }
+
+        return $query->orderBy('TGL_KELUAR', 'desc')->paginate(10);
+    }
+
+    /**
      * Get DPW options for filter
      */
     private function getDpwOptions()
@@ -497,6 +523,10 @@ class DataAnggotaController extends Controller
                 $data = $this->getPengurusData($request);
                 $filename = 'data_pengurus_' . date('Y-m-d');
                 break;
+            case 'ex-anggota':
+                $data = $this->getExAnggotaData($request);
+                $filename = 'data_ex_anggota_' . date('Y-m-d');
+                break;
             default:
                 return redirect()->back()->with('error', 'Tipe data tidak valid.');
         }
@@ -535,6 +565,9 @@ class DataAnggotaController extends Controller
                 case 'pengurus':
                     fputcsv($file, ['NIK', 'Nama', 'No. Telp', 'Tanggal Terdaftar', 'DPW', 'DPD', 'Role', 'Posisi SEKAR']);
                     break;
+                case 'ex-anggota':
+                    fputcsv($file, ['NIK', 'Nama', 'Posisi Terakhir', 'Tanggal Keluar', 'Alasan Keluar', 'DPW', 'DPD']);
+                    break;
             }
             
             // Write data
@@ -572,6 +605,17 @@ class DataAnggotaController extends Controller
                             $row->DPD,
                             $row->ROLE,
                             $row->POSISI_SEKAR
+                        ]);
+                        break;
+                    case 'ex-anggota':
+                        fputcsv($file, [
+                            $row->N_NIK,
+                            $row->V_NAMA_KARYAWAN,
+                            $row->V_SHORT_POSISI,
+                            $row->TGL_KELUAR ? date('d-m-Y', strtotime($row->TGL_KELUAR)) : '',
+                            $row->ALASAN_KELUAR,
+                            $row->DPW,
+                            $row->DPD
                         ]);
                         break;
                 }

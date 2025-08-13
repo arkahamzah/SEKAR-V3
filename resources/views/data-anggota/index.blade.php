@@ -17,7 +17,6 @@
             </div>
         @endif
 
-        <!-- Header -->
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Data Anggota SEKAR</h1>
             <div class="flex space-x-3">
@@ -30,7 +29,6 @@
             </div>
         </div>
 
-        <!-- Tab Navigation -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div class="border-b border-gray-200">
                 <nav class="flex space-x-8 px-6" aria-label="Tabs">
@@ -46,17 +44,19 @@
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'pengurus' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Pengurus
                     </a>
+                    <a href="{{ route('data-anggota.index', ['tab' => 'ex-anggota']) }}" 
+                       class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'ex-anggota' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                        Ex Anggota
+                    </a>
                 </nav>
             </div>
 
-            <!-- Filters -->
             <div class="p-6 border-b border-gray-200">
                 <form method="GET" action="{{ route('data-anggota.index') }}" class="space-y-4">
                     <input type="hidden" name="tab" value="{{ $activeTab }}">
                     
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        @if(in_array($activeTab, ['anggota', 'pengurus']))
-                        <!-- DPW Filter -->
+                        @if(in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']))
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">DPW</label>
                             <select name="dpw" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
@@ -68,7 +68,6 @@
                             </select>
                         </div>
 
-                        <!-- DPD Filter -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">DPD</label>
                             <select name="dpd" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
@@ -81,15 +80,13 @@
                         </div>
                         @endif
 
-                        <!-- Search -->
-                        <div class="{{ in_array($activeTab, ['anggota', 'pengurus']) ? 'md:col-span-1' : 'md:col-span-3' }}">
+                        <div class="{{ in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']) ? 'md:col-span-1' : 'md:col-span-3' }}">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Cari berdasarkan nama</label>
                             <input type="text" name="search" value="{{ request('search') }}" 
                                    placeholder="Masukkan nama atau NIK" 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         </div>
 
-                        <!-- Filter Button -->
                         <div class="flex items-end">
                             <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
                                 Filter
@@ -119,7 +116,6 @@
                 </form>
             </div>
 
-            <!-- Table Content -->
             <div class="overflow-x-auto">
                 @if($activeTab === 'anggota')
                     @include('data-anggota.partials.anggota-table')
@@ -127,13 +123,14 @@
                     @include('data-anggota.partials.gptp-table')
                 @elseif($activeTab === 'pengurus')
                     @include('data-anggota.partials.pengurus-table')
+                @elseif($activeTab === 'ex-anggota')
+                    @include('data-anggota.partials.ex-anggota-table')
                 @endif
             </div>
         </div>
     </div>
 </div>
 
-<!-- Export Modal -->
 <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Export Data</h3>
@@ -150,6 +147,7 @@
                     <option value="anggota" {{ $activeTab === 'anggota' ? 'selected' : '' }}>Data Anggota</option>
                     <option value="gptp" {{ $activeTab === 'gptp' ? 'selected' : '' }}>Data Anggota GPTP</option>
                     <option value="pengurus" {{ $activeTab === 'pengurus' ? 'selected' : '' }}>Data Pengurus</option>
+                    <option value="ex-anggota" {{ $activeTab === 'ex-anggota' ? 'selected' : '' }}>Ex Anggota</option>
                 </select>
             </div>
             
