@@ -104,7 +104,7 @@
                     </div>
                     @if($pendingChange)
                         <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                            <strong>Perubahan Iuran diproses:</strong> Sukarela akan menjadi <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong> pada {{ \Carbon\Carbon::parse($pendingChange->TGL_IMPLEMENTASI)->format('F Y') }}.
+                            <strong>Perubahan Iuran diproses:</strong> Sukarela akan menjadi <strong>Rp {{ number_format($pendingChange->NOMINAL_BARU, 0, ',', '.') }}</strong> pada {{ $pendingChange->TGL_IMPLEMENTASI->translatedFormat('F Y') }}.
                         </div>
                     @endif
                     <div class="border border-gray-200 rounded-lg">
