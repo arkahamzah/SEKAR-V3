@@ -24,61 +24,86 @@
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">Pengaturan Tanda Tangan & Periode</h3>
-                <p class="text-sm text-gray-600 mt-1">Upload tanda tangan dan atur periode berlaku untuk sertifikat anggota</p>
+                <h3 class="text-lg font-semibold text-gray-900">Pengaturan Sertifikat Anggota</h3>
+                <p class="text-sm text-gray-600 mt-1">Atur nama pejabat, tanda tangan, dan periode berlaku untuk sertifikat.</p>
+            </div>
+
+            <div class="p-6 border-b border-gray-200">
+                <h4 class="text-md font-medium text-gray-900 mb-4">Jajaran Aktif & Tanda Tangan</h4>
+                <div class="space-y-4">
+                    @forelse($jajaran as $pejabat)
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">{{ $pejabat->nama }}</p>
+                            <p class="text-xs text-gray-500 uppercase">{{ $pejabat->posisi }}</p>
+                        </div>
+                        @if($pejabat->signature_file)
+                            <img src="{{ asset('storage/signatures/' . $pejabat->signature_file) }}" alt="Tanda Tangan" class="h-12 border rounded bg-white p-1">
+                        @else
+                            <span class="text-xs text-red-500 bg-red-100 px-2 py-1 rounded-full">Tanda Tangan Belum Diunggah</span>
+                        @endif
+                    </div>
+                    @empty
+                    <div class="text-center py-4 text-sm text-gray-500">
+                        Tidak ada data jajaran aktif yang ditemukan di database.
+                    </div>
+                    @endforelse
+                </div>
             </div>
 
             <form method="POST" action="{{ route('setting.update') }}" enctype="multipart/form-data" class="p-6">
                 @csrf
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tanda Tangan Sekretaris Jenderal</label>
+                        <label for="ketum_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Ketua Umum</label>
+                        <input type="text" name="ketum_name" id="ketum_name" value="{{ old('ketum_name', $settings['ketum_name'] ?? 'ASEP MULYANA') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="sekjen_name" class="block text-sm font-medium text-gray-700 mb-2">Nama Sekretaris Jenderal</label>
+                        <input type="text" name="sekjen_name" id="sekjen_name" value="{{ old('sekjen_name', $settings['sekjen_name'] ?? 'ABDUL KARIM') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Unggah Tanda Tangan Ketua Umum</label>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                            @if(!empty($settings['sekjen_signature']))
-                                <div class="text-center mb-4">
-                                    <img src="{{ asset('storage/signatures/' . $settings['sekjen_signature']) }}"
-                                         alt="Tanda Tangan Sekjen" class="max-h-20 mx-auto border rounded">
-                                </div>
-                            @endif
+                            <input type="file" name="ketum_signature" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Unggah Tanda Tangan Sekretaris Jenderal</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
                             <input type="file" name="sekjen_signature" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tanda Tangan Wakil Ketua Umum</label>
-                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                             @if(!empty($settings['waketum_signature']))
-                                <div class="text-center mb-4">
-                                    <img src="{{ asset('storage/signatures/' . $settings['waketum_signature']) }}"
-                                         alt="Tanda Tangan Waketum" class="max-h-20 mx-auto border rounded">
-                                </div>
-                            @endif
-                            <input type="file" name="waketum_signature" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        </div>
-                    </div>
                 </div>
+
                 <div class="border-t border-gray-200 pt-6">
                     <h4 class="text-md font-medium text-gray-900 mb-4">Periode Berlaku Tanda Tangan</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
-                            <input type="date" name="signature_periode_start" value="{{ $settings['signature_periode_start'] ?? '' }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                            <label for="signature_periode_start" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Mulai</label>
+                            <input type="date" id="signature_periode_start" name="signature_periode_start" value="{{ $settings['signature_periode_start'] ?? '' }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Berakhir</label>
-                            <input type="date" name="signature_periode_end" value="{{ $settings['signature_periode_end'] ?? '' }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                            <label for="signature_periode_end" class="block text-sm font-medium text-gray-700 mb-2">Tanggal Berakhir</label>
+                            <input type="date" id="signature_periode_end" name="signature_periode_end" value="{{ $settings['signature_periode_end'] ?? '' }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
                         </div>
                     </div>
                 </div>
+
                 <div class="flex justify-end pt-6 mt-6 border-t border-gray-200">
                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">
-                        Simpan Tanda Tangan & Periode
+                        Simpan Pengaturan Sertifikat
                     </button>
                 </div>
             </form>
         </div>
 
         @if(Auth::user()->hasRole('ADM'))
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mt-8">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">Pengaturan Dokumen</h3>
                 <p class="text-sm text-gray-600 mt-1">Unggah dan kelola dokumen penting untuk anggota (misal: PKB, AD/ART).</p>

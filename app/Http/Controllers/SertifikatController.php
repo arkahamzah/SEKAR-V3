@@ -26,13 +26,17 @@ class SertifikatController extends Controller
         // Check if signature period is active
         $isSignaturePeriodActive = $this->isSignaturePeriodActive();
 
+        // Mengambil nama pejabat dari tabel settings untuk membuatnya dinamis
+        $settings = Setting::getValues(['ketum_name', 'sekjen_name']);
+
         $certificateData = [
             'user' => $user,
             'karyawan' => $karyawan,
             'joinDate' => $user->created_at,
             'isSignaturePeriodActive' => $isSignaturePeriodActive,
             'signatures' => $this->getSignatures(),
-            'periode' => $this->getSignaturePeriode()
+            'periode' => $this->getSignaturePeriode(),
+            'settings' => $settings // <-- Menambahkan nama pejabat ke data view
         ];
 
         return view('sertifikat.show', $certificateData);
@@ -57,7 +61,8 @@ class SertifikatController extends Controller
     {
         $signatures = [
             'sekjen' => null,
-            'waketum' => null
+            // DIUBAH: Mengambil tanda tangan Ketua Umum
+            'ketum' => null 
         ];
 
         $sekjenSetting = Setting::where('SETTING_KEY', 'sekjen_signature')->first();
@@ -65,9 +70,10 @@ class SertifikatController extends Controller
             $signatures['sekjen'] = asset('storage/signatures/' . $sekjenSetting->SETTING_VALUE);
         }
 
-        $waketumSetting = Setting::where('SETTING_KEY', 'waketum_signature')->first();
-        if ($waketumSetting && $waketumSetting->SETTING_VALUE) {
-            $signatures['waketum'] = asset('storage/signatures/' . $waketumSetting->SETTING_VALUE);
+        // DIUBAH: Mengambil 'ketum_signature' dari database
+        $ketumSetting = Setting::where('SETTING_KEY', 'ketum_signature')->first();
+        if ($ketumSetting && $ketumSetting->SETTING_VALUE) {
+            $signatures['ketum'] = asset('storage/signatures/' . $ketumSetting->SETTING_VALUE);
         }
 
         return $signatures;

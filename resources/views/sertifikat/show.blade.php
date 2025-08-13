@@ -325,12 +325,14 @@
                             <div class="signature-section">
                                 <div class="signature-title">Ketua Umum Sekar</div>
                                 <div class="signature-image">
-                                    @if(!empty($signatures['waketum']))
-                                        <img src="{{ $signatures['waketum'] }}" alt="Tanda Tangan Ketua Umum">
+                                    {{-- DIUBAH: Menggunakan kunci 'ketum' --}}
+                                    @if(!empty($signatures['ketum']))
+                                        <img src="{{ $signatures['ketum'] }}" alt="Tanda Tangan Ketua Umum">
                                     @endif
                                 </div>
                                 <div class="signature-name">
-                                    {{ $settings['waketum_name'] ?? 'ASEP MULYANA' }}
+                                    {{-- DIUBAH: Mengambil nama dari settings, dengan fallback --}}
+                                    {{ $settings['ketum_name'] ?? 'ASEP MULYANA' }}
                                 </div>
                             </div>
                             <div class="signature-section">
@@ -341,6 +343,7 @@
                                     @endif
                                 </div>
                                 <div class="signature-name">
+                                    {{-- DIUBAH: Mengambil nama dari settings, dengan fallback --}}
                                     {{ $settings['sekjen_name'] ?? 'ABDUL KARIM' }}
                                 </div>
                             </div>
