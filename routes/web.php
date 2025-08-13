@@ -15,6 +15,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DocumentController; 
 use App\Http\Middleware\CheckAdmin;
 use App\Http\Middleware\CheckSmartEscalationAccess;
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
@@ -50,6 +51,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware('auth')->group(function () {
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

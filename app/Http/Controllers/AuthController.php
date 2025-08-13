@@ -39,7 +39,7 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             // 3. Jika kredensial benar (login berhasil), buat sesi baru dan arahkan ke dashboard
             $request->session()->regenerate();
-            return redirect()->intended('dashboard');
+            return redirect()->intended('/home');
         }
 
         // 4. Jika kredensial salah (login gagal), kembali ke halaman login dengan pesan error
