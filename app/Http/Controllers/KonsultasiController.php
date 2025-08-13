@@ -34,39 +34,34 @@ class KonsultasiController extends Controller
         $konsultasiQuery = Konsultasi::query();
 
         if ($isAdmin) {
-            // Admin hanya bisa melihat konsultasi yang ditujukan ke level mereka
             $adminRole = $user->pengurus->role->NAME;
             $userDPW = $user->pengurus->DPW ?? null;
             $userDPD = $user->pengurus->DPD ?? null;
             
-            switch ($adminRole) {
-                case 'ADMIN_DPD':
-                    $konsultasiQuery->where('TUJUAN', 'DPD')
-                                    ->where('TUJUAN_SPESIFIK', $userDPD);
-                    break;
-                    
-                case 'ADMIN_DPW':
-                    $konsultasiQuery->where('TUJUAN', 'DPW')
-                                    ->where('TUJUAN_SPESIFIK', $userDPW);
-                    break;
-                
-                case 'ADMIN_DPP':
-                    $konsultasiQuery->where('TUJUAN', 'DPP');
-                    break;
-                    
-                case 'ADM':
-                    $konsultasiQuery->whereIn('TUJUAN', ['DPP', 'GENERAL']);
-                    break;
-            }
-            
-            $konsultasi = $konsultasiQuery->with('karyawan')->orderBy('CREATED_AT', 'desc')->paginate(10);
+            $konsultasiQuery->where(function ($query) use ($adminRole, $userDPW, $userDPD, $user) {
+                $query->where(function ($q) use ($adminRole, $userDPW, $userDPD) {
+                    if ($adminRole === 'ADMIN_DPD') {
+                        $q->where('TUJUAN', 'DPD')->where('TUJUAN_SPESIFIK', $userDPD);
+                    } elseif ($adminRole === 'ADMIN_DPW') {
+                        $q->where('TUJUAN', 'DPW')->where('TUJUAN_SPESIFIK', $userDPW);
+                    } elseif ($adminRole === 'ADMIN_DPP') {
+                        $q->where('TUJUAN', 'DPP');
+                    } elseif ($adminRole === 'ADM') {
+                        $q->whereIn('TUJUAN', ['DPP', 'GENERAL']);
+                    }
+                });
+
+                $query->orWhereHas('komentar', function ($q) use ($user) {
+                    $q->where('N_NIK', $user->nik);
+                });
+            });
         } else {
-            // User biasa hanya bisa melihat konsultasi mereka sendiri
-            $konsultasi = $konsultasiQuery->where('N_NIK', $user->nik)
-                                          ->with('karyawan')
-                                          ->orderBy('CREATED_AT', 'desc')
-                                          ->paginate(10);
+            $konsultasiQuery->where('N_NIK', $user->nik);
         }
+
+        $konsultasi = $konsultasiQuery->with('karyawan')
+                                    ->orderBy('CREATED_AT', 'desc')
+                                    ->paginate(10);
 
         return view('konsultasi.index', compact('konsultasi'));
     }
@@ -162,14 +157,12 @@ class KonsultasiController extends Controller
     /**
      * Display the specified konsultasi
      */
-    public function show($id)
+   public function show($id)
     {
         $konsultasi = Konsultasi::with(['komentar' => function($query) {
             $query->orderBy('CREATED_AT', 'asc');
         }])->findOrFail($id);
 
-       
-        // Check access permission
         $user = Auth::user();
         $isAdmin = $user->pengurus && $user->pengurus->role && 
                   in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
@@ -177,11 +170,21 @@ class KonsultasiController extends Controller
         if (!$isAdmin && $konsultasi->N_NIK !== $user->nik) {
             abort(403, 'Anda tidak memiliki akses untuk melihat konsultasi ini.');
         }
-
-        // Get escalation options based on current user role and konsultasi level
         $escalationOptions = $this->getSmartEscalationOptions($konsultasi, $user);
         
-        return view('konsultasi.show', compact('konsultasi', 'escalationOptions'));
+        $isCurrentUserActiveHandler = false;
+        if ($isAdmin) {
+            $adminRole = $user->pengurus->role->NAME;
+            $userDPW = $user->pengurus->DPW ?? null;
+            $userDPD = $user->pengurus->DPD ?? null;
+
+            if ($adminRole === 'ADM' && in_array($konsultasi->TUJUAN, ['DPP', 'GENERAL'])) $isCurrentUserActiveHandler = true;
+            if ($adminRole === 'ADMIN_DPP' && $konsultasi->TUJUAN === 'DPP') $isCurrentUserActiveHandler = true;
+            if ($adminRole === 'ADMIN_DPW' && $konsultasi->TUJUAN === 'DPW' && $konsultasi->TUJUAN_SPESIFIK === $userDPW) $isCurrentUserActiveHandler = true;
+            if ($adminRole === 'ADMIN_DPD' && $konsultasi->TUJUAN === 'DPD' && $konsultasi->TUJUAN_SPESIFIK === $userDPD) $isCurrentUserActiveHandler = true;
+        }
+        
+        return view('konsultasi.show', compact('konsultasi', 'escalationOptions', 'isCurrentUserActiveHandler'));
     }
     
     /**

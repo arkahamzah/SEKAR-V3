@@ -86,8 +86,8 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']) && $konsultasi->STATUS !== 'CLOSED')
-
+                 @if($isCurrentUserActiveHandler && $konsultasi->STATUS !== 'CLOSED')
+                    
                     @if(!empty($escalationOptions))
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                         <div class="flex">
@@ -109,13 +109,13 @@
                             <h3 class="text-lg font-semibold text-gray-900">Aksi Admin</h3>
                             <p class="mt-1 text-sm text-gray-600">Pilih tindakan yang ingin dilakukan untuk konsultasi ini</p>
                         </div>
-
+                        
                         <div class="p-6">
                             <div class="flex flex-col sm:flex-row gap-3">
-
+                                
                                 @if(!empty($escalationOptions))
                                 <button onclick="openEscalationModal()"
-                                        class="inline-flex items-center justify-center px-4 py-2 border border-yellow-600 text-sm font-medium rounded-lg text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200">
+                                        class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
                                     </svg>
@@ -130,7 +130,7 @@
                                     </svg>
                                     Tutup Konsultasi
                                 </button>
-
+                                
                             </div>
 
                             @if(!empty($escalationOptions))
@@ -141,7 +141,7 @@
                                     $userDPW = auth()->user()->pengurus->DPW ?? null;
                                     $userDPD = auth()->user()->pengurus->DPD ?? null;
                                 @endphp
-
+                                
                                 @if($userRole === 'ADMIN_DPW')
                                 <div class="space-y-1 text-xs">
                                     <p><strong>Sebagai Admin DPW ({{ $userDPW }}):</strong></p>
@@ -156,7 +156,7 @@
                                     <p>• Dapat eskalasi ke DPW ({{ $userDPW }})</p>
                                 </div>
                                 @endif
-
+                                
                                 <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                                     <p class="font-medium text-blue-800">Hierarki Eskalasi:</p>
                                     <p class="text-blue-700">DPD → DPW → DPP</p>
