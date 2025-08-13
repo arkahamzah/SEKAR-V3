@@ -117,11 +117,11 @@
                                 @csrf
                                 <div>
                                     <label for="iuran_sukarela" class="block text-sm font-medium text-gray-700">Nominal Iuran Sukarela Baru</label>
-                                    <input type="number" name="iuran_sukarela" id="iuran_sukarela" value="{{ old('iuran_sukarela', $effectiveIuranSukarela) }}" min="0" step="5000" class="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-green-500 focus:border-green-500" placeholder="0">
+                                    <input type="number" name="iuran_sukarela" id="iuran_sukarela" value="{{ old('iuran_sukarela', $effectiveIuranSukarela) }}" min="0" step="5000" class="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="0">
                                     <p class="text-xs text-gray-500 mt-1">Gunakan kelipatan Rp 5.000. Perubahan akan diterapkan pada bulan berikutnya.</p>
                                 </div>
                                 <div class="flex space-x-3">
-                                    <button type="submit" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition">Ajukan Perubahan</button>
+                                    <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition">Ajukan Perubahan</button>
                                     @if($pendingChange)
                                         <button type="button" onclick="document.getElementById('cancelChangeForm').submit()" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Batalkan Pending</button>
                                     @endif
@@ -222,16 +222,16 @@
         const loadingDiv = document.getElementById(`${type}Loading`);
         const contentDiv = document.getElementById(`${type}Content`);
         const emptyDiv = document.getElementById(`${type}Empty`);
-        
+
         loadingDiv.style.display = 'block';
         contentDiv.style.display = 'none';
         emptyDiv.style.display = 'none';
-        
+
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 if (type === 'history') renderHistoryData(data.data);
                 if (type === 'payment') renderPaymentData(data.data);
@@ -288,7 +288,7 @@
         const paginationId = type === 'history' ? 'historyPagination' : 'paymentPagination';
         const loadFunction = type === 'history' ? 'loadHistoryData' : 'loadPaymentData';
         const paginationDiv = document.getElementById(paginationId);
-        
+
         if (totalPages <= 1) { paginationDiv.style.display = 'none'; return; }
         paginationDiv.style.display = 'flex';
         let html = `<div class="flex items-center justify-between w-full"><div class="text-sm text-gray-700">Menampilkan ${firstItem}-${lastItem} dari ${totalItems}</div><div class="flex items-center space-x-1"><button onclick="${loadFunction}(${currentPage - 1})" class="px-3 py-1 text-sm rounded-md border ${currentPage === 1 ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}" ${currentPage === 1 ? 'disabled' : ''}>Prev</button><span class="px-3 py-1 text-sm">${currentPage} / ${totalPages}</span><button onclick="${loadFunction}(${currentPage + 1})" class="px-3 py-1 text-sm rounded-md border ${currentPage === totalPages ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:bg-gray-50'}" ${currentPage === totalPages ? 'disabled' : ''}>Next</button></div></div>`;
