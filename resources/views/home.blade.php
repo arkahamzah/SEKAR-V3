@@ -23,15 +23,8 @@
                 <p class="mt-4 text-base leading-relaxed text-gray-300">
                     "Seluruh pegawai Telkom yang saya cintai dan saya banggakan, mari kita jadikan portal ini sebagai wadah untuk menyatukan suara, memperjuangkan aspirasi, dan mempererat solidaritas kita bersama. Dengan semangat persatuan, kita wujudkan lingkungan kerja yang adil, transparan, dan profesional untuk kemajuan kita dan kejayaan Telkom Indonesia."
                 </p>
-                @if($ketuaUmum)
-                    {{-- Jika data ditemukan, tampilkan nama dan jabatan dari database --}}
-                    <p class="mt-6 font-bold text-lg">{{ $ketuaUmum->nama }}</p>
-                    <p class="text-sm text-gray-400">{{ Str::title(strtolower($ketuaUmum->jabatan)) }} SEKAR Telkom</p>
-                @else
-                    {{-- Jika tidak ada, tampilkan teks cadangan --}}
-                    <p class="mt-6 font-bold text-lg">Nama Ketua Umum</p>
-                    <p class="text-sm text-gray-400">Ketua Umum SEKAR Telkom</p>
-                @endif
+                <p class="mt-6 font-bold text-lg">Asep Mulyana</p>
+                <p class="text-sm text-gray-400">Ketua Umum SEKAR Telkom</p>
             </div>
         </div>
     </div>
