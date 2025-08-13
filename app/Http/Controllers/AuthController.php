@@ -56,7 +56,7 @@ class AuthController extends Controller
 
             // 4. Jika bukan GPTP, buat sesi baru dan arahkan ke dashboard
             $request->session()->regenerate();
-            return redirect()->intended('dashboard');
+            return redirect()->intended('/home');
         }
 
         // 5. Jika kredensial salah, kembali ke halaman login dengan pesan error
