@@ -11,7 +11,6 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SertifikatController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NotificationController;
-// DIUBAH: Menggunakan DocumentController yang lebih generik
 use App\Http\Controllers\DocumentController; 
 use App\Http\Middleware\CheckAdmin;
 use App\Http\Middleware\CheckSmartEscalationAccess;

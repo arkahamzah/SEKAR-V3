@@ -427,91 +427,49 @@
     @yield('content')
 </main>
 
-<script>
+   <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing...');
+    // Hanya jalankan skrip jika pengguna sudah login (ada elemen header)
+    if (!document.querySelector('header')) {
+        return;
+    }
 
-    // User dropdown functionality
-    const userMenuButton = document.getElementById('userMenuButton');
-    const userDropdown = document.getElementById('userDropdown');
-    const userMenuChevron = document.getElementById('userMenuChevron');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // --- GENERAL SETUP ---
     const header = document.querySelector('header');
-
-    // Header scroll effect
-    let lastScrollTop = 0;
+    
+    // --- HEADER SCROLL EFFECT ---
     window.addEventListener('scroll', function() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-
-        if (scrollTop > 0) {
+        if (window.pageYOffset > 0) {
             header.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
         } else {
             header.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
         }
-
-        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
     });
+
+    // --- USER DROPDOWN LOGIC ---
+    const userMenuButton = document.getElementById('userMenuButton');
+    const userDropdown = document.getElementById('userDropdown');
+    const userMenuChevron = document.getElementById('userMenuChevron');
 
     if (userMenuButton && userDropdown) {
         userMenuButton.addEventListener('click', function(e) {
-            e.preventDefault();
             e.stopPropagation();
-            userDropdown.classList.toggle('hidden');
-
+            const isHidden = userDropdown.classList.toggle('hidden');
             if (userMenuChevron) {
-                userMenuChevron.style.transform = userDropdown.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                userMenuChevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
             }
         });
-
         document.addEventListener('click', function(e) {
             if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.classList.add('hidden');
-                if (userMenuChevron) {
-                    userMenuChevron.style.transform = 'rotate(0deg)';
-                }
+                if (userMenuChevron) userMenuChevron.style.transform = 'rotate(0deg)';
             }
         });
     }
 
-    // Notification system initialization
-    const notificationBtn = document.getElementById('notificationBtn');
-    const notificationDropdown = document.getElementById('notificationDropdown');
-    const notificationBadge = document.getElementById('notificationBadge');
-    const notificationList = document.getElementById('notificationList');
-    const notificationLoading = document.getElementById('notificationLoading');
-    const notificationEmpty = document.getElementById('notificationEmpty');
-    const markAllReadBtn = document.getElementById('markAllReadBtn');
-
-    if (notificationBtn && notificationDropdown) {
-        let isNotificationDropdownOpen = false;
-
-        notificationBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            isNotificationDropdownOpen = !isNotificationDropdownOpen;
-            if (isNotificationDropdownOpen) {
-                notificationDropdown.classList.remove('hidden');
-                loadNotifications();
-            } else {
-                notificationDropdown.classList.add('hidden');
-            }
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!notificationDropdown.contains(e.target) && !notificationBtn.contains(e.target)) {
-                notificationDropdown.classList.add('hidden');
-                isNotificationDropdownOpen = false;
-            }
-        });
-        
-        if(markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                markAllNotificationsAsRead();
-            });
-        }
-    }
-
-    // === FUNGSI BARU UNTUK DROPDOWN DOKUMEN ===
+    // --- DOCUMENT DROPDOWN LOGIC ---
     const documentBtn = document.getElementById('documentBtn');
     const documentDropdown = document.getElementById('documentDropdown');
     const documentListContainer = document.getElementById('documentListContainer');
@@ -527,35 +485,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadDocuments();
             }
         });
-
         document.addEventListener('click', function(e) {
             if (!documentDropdown.contains(e.target) && !documentBtn.contains(e.target)) {
                 documentDropdown.classList.add('hidden');
             }
         });
     }
-
+    
     async function loadDocuments() {
         documentLoading.style.display = 'block';
         documentEmpty.style.display = 'none';
-        
-        const existingItems = documentListContainer.querySelectorAll('.document-item');
-        existingItems.forEach(item => item.remove());
-
+        documentListContainer.querySelectorAll('.document-item').forEach(item => item.remove());
         try {
-            const response = await fetch("{{ route('api.documents.list') }}", {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
+            const response = await fetch("{{ route('api.documents.list') }}", { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }});
+            if (response.status === 401) { window.location.href = '{{ route("login") }}'; return; }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            
             if (data.success && data.documents.length > 0) {
                 renderDocuments(data.documents);
             } else {
@@ -574,62 +519,139 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         documents.forEach(doc => {
             const viewUrl = `{{ url('dokumen') }}/${doc.filename}`;
-            html += `
-                <a href="${viewUrl}" target="_blank" class="document-item block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0 mt-1">
-                            <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0011.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                            </div>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm text-gray-900 font-medium truncate">${doc.name}</p>
-                            <div class="flex items-center text-xs text-gray-500 mt-1 space-x-2">
-                                <span>${doc.size}</span>
-                                <span>•</span>
-                                <span class="text-blue-600 hover:underline">Lihat Dokumen</span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            `;
+            html += `<a href="${viewUrl}" target="_blank" class="document-item block px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"><div class="flex items-start space-x-3"><div class="flex-shrink-0 mt-1"><div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0011.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div></div><div class="flex-1 min-w-0"><p class="text-sm text-gray-900 font-medium truncate">${doc.name}</p><div class="flex items-center text-xs text-gray-500 mt-1 space-x-2"><span>${doc.size}</span><span>•</span><span class="text-blue-600 hover:underline">Lihat Dokumen</span></div></div></div></a>`;
         });
         documentListContainer.insertAdjacentHTML('beforeend', html);
     }
     
-    // Load notifications from server
-    async function loadNotifications() {
-        // ... (fungsi loadNotifications tidak berubah) ...
+    // --- NOTIFICATION LOGIC ---
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationList = document.getElementById('notificationList');
+    const notificationLoading = document.getElementById('notificationLoading');
+    const notificationEmpty = document.getElementById('notificationEmpty');
+    const notificationBadge = document.getElementById('notificationBadge');
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+    if (notificationBtn) {
+        notificationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isHidden = notificationDropdown.classList.toggle('hidden');
+            if (!isHidden) {
+                loadNotifications();
+            }
+        });
+    }
+    
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', (e) => { e.preventDefault(); markAllNotificationsAsRead(); });
     }
 
-    // Render notifications in dropdown
-    function renderNotifications(notifications) {
-        // ... (fungsi renderNotifications tidak berubah) ...
-    }
-
-    // Helper functions for notifications
-    function showLoading() { if (notificationLoading) notificationLoading.classList.remove('hidden'); if (notificationEmpty) notificationEmpty.classList.add('hidden'); }
-    function hideLoading() { if (notificationLoading) notificationLoading.classList.add('hidden'); }
-    function showEmpty() { if (notificationEmpty) notificationEmpty.classList.remove('hidden'); }
-    function hideEmpty() { if (notificationEmpty) notificationEmpty.classList.add('hidden'); }
-    function showError(message) { hideLoading(); if (notificationList) notificationList.innerHTML = `<div class="p-4 text-center"><svg class="w-8 h-8 text-red-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><p class="text-sm text-red-600">${message}</p></div>`;}
-    function updateNotificationBadge(count) { if (notificationBadge) { if (count > 0) { notificationBadge.textContent = count > 99 ? '99+' : count; notificationBadge.classList.remove('hidden'); } else { notificationBadge.classList.add('hidden'); } } }
-    async function updateUnreadCount() { try { const response = await fetch('/notifications/unread-count', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }); if (response.ok) { const data = await response.json(); if (data.success) { updateNotificationBadge(data.unread_count); } } } catch (error) { console.error('Error updating unread count:', error); } }
-    async function markAllNotificationsAsRead() { try { const response = await fetch('/notifications/mark-all-read', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') } }); if (response.ok) { document.querySelectorAll('.notification-item').forEach(item => { item.classList.remove('bg-blue-50'); item.classList.add('bg-white'); const unreadIndicator = item.querySelector('.w-2.h-2.bg-blue-600'); if (unreadIndicator) { unreadIndicator.remove(); } }); updateNotificationBadge(0); } } catch (error) { console.error('Error marking all as read:', error); } }
-    function getNotificationIconSVG(iconName, color) { const icons = { 'chat-bubble-left-right': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`, 'arrow-trending-up': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`, 'check-circle': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`, 'bell': `<svg class="w-4 h-4 text-${color}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>` }; return icons[iconName] || icons['bell']; }
-    window.handleNotificationClick = async function(notificationId, konsultasiId) { try { await fetch(`/notifications/${notificationId}/read`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') } }); const notificationElement = document.querySelector(`.notification-item[data-id="${notificationId}"]`); if (notificationElement) { notificationElement.classList.remove('bg-blue-50'); notificationElement.classList.add('bg-white'); const unreadIndicator = notificationElement.querySelector('.w-2.h-2.bg-blue-600'); if (unreadIndicator) unreadIndicator.remove(); } updateUnreadCount(); if (konsultasiId && konsultasiId !== 'null') { window.location.href = `/advokasi-aspirasi/${konsultasiId}`; } } catch (error) { console.error('Error handling notification click:', error); } };
-    updateUnreadCount();
-
-    // Auto hide alerts after 5 seconds
-    const alerts = ['successAlert'];
-    alerts.forEach(alertId => {
-        const alert = document.getElementById(alertId);
-        if (alert) {
-            setTimeout(() => {
-                closeAlert(alertId);
-            }, 5000);
+    document.addEventListener('click', function(e) {
+        if (notificationDropdown && !notificationDropdown.contains(e.target) && !notificationBtn.contains(e.target)) {
+            notificationDropdown.classList.add('hidden');
         }
     });
+
+    async function loadNotifications() {
+        notificationLoading.style.display = 'block';
+        notificationEmpty.style.display = 'none';
+        
+        const oldItems = notificationList.querySelectorAll('.notification-item');
+        oldItems.forEach(item => item.remove());
+        
+        try {
+            const response = await fetch("{{ route('notifications.index') }}", { headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'} });
+            if (response.status === 401) { window.location.href = '{{ route("login") }}'; return; }
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+            const data = await response.json();
+            
+            if (data.success && data.notifications.length > 0) {
+                renderNotifications(data.notifications);
+            } else {
+                notificationEmpty.style.display = 'block';
+            }
+            updateNotificationBadge(data.unread_count);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            notificationList.innerHTML = `<div class="p-4 text-center text-sm text-red-600">Gagal memuat notifikasi.</div>`;
+        } finally {
+            notificationLoading.style.display = 'none';
+        }
+    }
+
+    function renderNotifications(notifications) {
+        let html = '';
+        notifications.forEach(notification => {
+            const unreadClass = notification.is_unread ? 'bg-blue-50' : '';
+            const detailUrl = notification.konsultasi_id ? `/advokasi-aspirasi/${notification.konsultasi_id}` : '#';
+            const color = notification.color || 'gray';
+            
+            let avatarHtml = '';
+            if (notification.profile_picture_url) {
+                avatarHtml = `<img src="${notification.profile_picture_url}" alt="Profile Picture" class="w-8 h-8 rounded-full object-cover">`;
+            } else {
+                avatarHtml = `<div class="w-8 h-8 rounded-full flex items-center justify-center bg-${color}-100"><span class="font-bold text-sm text-${color}-600">${notification.user_initial}</span></div>`;
+            }
+
+            html += `
+                <a href="${detailUrl}" 
+                   onclick="handleNotificationClick(event, ${notification.id}, '${detailUrl}')"
+                   class="notification-item flex items-start p-3 hover:bg-gray-100 transition duration-150 ${unreadClass}"
+                   data-notification-id="${notification.id}">
+                    <div class="flex-shrink-0">${avatarHtml}</div>
+                    <div class="ml-3 w-0 flex-1">
+                        <p class="text-sm text-gray-700">${notification.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">${notification.time_ago}</p>
+                    </div>
+                </a>
+            `;
+        });
+        notificationList.innerHTML = html;
+    }
+
+    function updateNotificationBadge(count) {
+        if (!notificationBadge) return;
+        if (count > 0) {
+            notificationBadge.textContent = count > 99 ? '99+' : count;
+            notificationBadge.classList.remove('hidden');
+        } else {
+            notificationBadge.classList.add('hidden');
+        }
+    }
+    
+    async function markAllNotificationsAsRead() {
+        try {
+            const response = await fetch('{{ route("notifications.mark-all-read") }}', {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken}
+            });
+            if (response.status === 401) { window.location.href = '{{ route("login") }}'; return; }
+            if (response.ok) {
+                document.querySelectorAll('.notification-item').forEach(item => item.classList.remove('bg-blue-50'));
+                updateNotificationBadge(0);
+            }
+        } catch (error) { console.error('Error marking all as read:', error); }
+    }
+    
+    (async () => {
+        try {
+            const response = await fetch('{{ route("notifications.unread-count") }}');
+            if (response.status === 401) { window.location.href = '{{ route("login") }}'; return; }
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) updateNotificationBadge(data.unread_count);
+            }
+        } catch (error) { 
+            console.error('Could not fetch initial unread count. Session might be expired.');
+            window.location.href = '{{ route("login") }}';
+        }
+    })();
+    
+    const successAlert = document.getElementById('successAlert');
+    if (successAlert) {
+        setTimeout(() => closeAlert('successAlert'), 5000);
+    }
 });
 
 function closeAlert(alertId) {
@@ -637,12 +659,25 @@ function closeAlert(alertId) {
     if (alert) {
         alert.style.opacity = '0';
         alert.style.transform = 'translateY(-10px)';
-        setTimeout(() => {
-            alert.remove();
-        }, 300);
+        setTimeout(() => alert.remove(), 300);
+    }
+}
+
+async function handleNotificationClick(event, notificationId, redirectUrl) {
+    event.preventDefault(); 
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        await fetch(`/notifications/${notificationId}/read`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+        });
+    } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+    } finally {
+        if (redirectUrl !== '#') window.location.href = redirectUrl;
     }
 }
 </script>
 
-</body>
+    </body>
 </html>

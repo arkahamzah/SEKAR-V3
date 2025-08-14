@@ -29,33 +29,39 @@ class KonsultasiController extends Controller
     {
         $user = Auth::user();
         $isAdmin = $user->pengurus && $user->pengurus->role && 
-                    in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
+                in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
 
         $konsultasiQuery = Konsultasi::query();
 
         if ($isAdmin) {
             $adminRole = $user->pengurus->role->NAME;
-            $userDPW = $user->pengurus->DPW ?? null;
-            $userDPD = $user->pengurus->DPD ?? null;
-            
-            $konsultasiQuery->where(function ($query) use ($adminRole, $userDPW, $userDPD, $user) {
-                $query->where(function ($q) use ($adminRole, $userDPW, $userDPD) {
-                    if ($adminRole === 'ADMIN_DPD') {
-                        $q->where('TUJUAN', 'DPD')->where('TUJUAN_SPESIFIK', $userDPD);
-                    } elseif ($adminRole === 'ADMIN_DPW') {
-                        $q->where('TUJUAN', 'DPW')->where('TUJUAN_SPESIFIK', $userDPW);
-                    } elseif ($adminRole === 'ADMIN_DPP') {
-                        $q->where('TUJUAN', 'DPP');
-                    } elseif ($adminRole === 'ADM') {
-                        $q->whereIn('TUJUAN', ['DPP', 'GENERAL']);
-                    }
-                });
 
-                $query->orWhereHas('komentar', function ($q) use ($user) {
-                    $q->where('N_NIK', $user->nik);
+
+            if ($adminRole === 'ADM') {
+
+            } else {
+                $userDPW = $user->pengurus->DPW ?? null;
+                $userDPD = $user->pengurus->DPD ?? null;
+                
+                $konsultasiQuery->where(function ($query) use ($adminRole, $userDPW, $userDPD, $user) {
+                    $query->where(function ($q) use ($adminRole, $userDPW, $userDPD) {
+                        if ($adminRole === 'ADMIN_DPD') {
+                            $q->where('TUJUAN', 'DPD')->where('TUJUAN_SPESIFIK', $userDPD);
+                        } elseif ($adminRole === 'ADMIN_DPW') {
+                            $q->where('TUJUAN', 'DPW')->where('TUJUAN_SPESIFIK', $userDPW);
+                        } elseif ($adminRole === 'ADMIN_DPP') {
+                            $q->where('TUJUAN', 'DPP');
+                        }
+                    });
+
+                    $query->orWhereHas('komentar', function ($q) use ($user) {
+                        $q->where('N_NIK', $user->nik);
+                    });
                 });
-            });
+            }
+
         } else {
+            // Jika bukan admin, hanya lihat konsultasi milik sendiri
             $konsultasiQuery->where('N_NIK', $user->nik);
         }
 
