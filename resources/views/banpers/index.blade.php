@@ -5,7 +5,6 @@
 @section('content')
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
         <div class="mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -35,7 +34,6 @@
             </div>
         </div>
 
-        <!-- Alert Messages -->
         @if(session('success'))
         <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
             <div class="flex">
@@ -66,9 +64,7 @@
         </div>
         @endif
 
-        <!-- Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <!-- Total Anggota -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -85,7 +81,6 @@
                 </div>
             </div>
 
-            <!-- Nominal per Orang -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -107,7 +102,6 @@
                 </div>
             </div>
 
-            <!-- Total Banpers -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -125,7 +119,6 @@
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="bg-white shadow-sm rounded-lg border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-medium text-gray-900">Detail Banpers per Wilayah</h2>
@@ -228,7 +221,7 @@
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: #c1c1f1;
     border-radius: 10px;
 }
 

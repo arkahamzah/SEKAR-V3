@@ -194,24 +194,16 @@ class BanpersController extends Controller
     {
         $query = "
             SELECT 
-                CASE 
-                    WHEN sp.DPW IS NOT NULL AND TRIM(sp.DPW) != '' 
-                    THEN sp.DPW 
-                    ELSE 'DPW Jabar' 
-                END as dpw,
-                CASE 
-                    WHEN sp.DPD IS NOT NULL AND TRIM(sp.DPD) != '' 
-                    THEN sp.DPD 
-                    ELSE CONCAT('DPD ', UPPER(k.V_KOTA_GEDUNG)) 
-                END as dpd,
-                COUNT(*) as jumlah_anggota,
-                (COUNT(*) * ?) as total_banpers
+                COALESCE(md.DPW, 'Belum Termapping') as dpw,
+                COALESCE(md.DPD, 'Belum Termapping') as dpd,
+                COUNT(u.id) as jumlah_anggota,
+                (COUNT(u.id) * ?) as total_banpers
             FROM users u
             INNER JOIN t_karyawan k ON u.nik = k.N_NIK
-            LEFT JOIN t_sekar_pengurus sp ON u.nik = sp.N_NIK
+            LEFT JOIN mapping_dpd md ON k.PSA_Kodlok = md.PSA_Kodlok
             WHERE k.V_SHORT_POSISI NOT LIKE '%GPTP%'
-            GROUP BY 1, 2
-            ORDER BY 1, 2
+            GROUP BY dpw, dpd
+            ORDER BY dpw, dpd
         ";
         
         return collect(DB::select($query, [$nominalBanpers]));

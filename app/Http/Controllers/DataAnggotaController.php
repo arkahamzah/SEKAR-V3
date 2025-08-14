@@ -339,7 +339,20 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc')->paginate(10);
+        // --- PERUBAHAN DI SINI ---
+        // Mengurutkan 7 NIK spesifik di awal, sisanya diacak
+        return $query->orderByRaw("
+            CASE
+                WHEN u.nik = '401031' THEN 1
+                WHEN u.nik = '401032' THEN 2
+                WHEN u.nik = '401033' THEN 3
+                WHEN u.nik = '401034' THEN 4
+                WHEN u.nik = '401035' THEN 5
+                WHEN u.nik = '501031' THEN 6
+                WHEN u.nik = '501032' THEN 7
+                ELSE 8
+            END, RAND()
+        ")->paginate(10);
     }
 
     /**
