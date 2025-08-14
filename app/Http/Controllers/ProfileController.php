@@ -687,7 +687,6 @@ class ProfileController extends Controller
                     'V_NAMA_KARYAWAN'           => $karyawan->V_NAMA_KARYAWAN ?? $user->name,
                     'V_SHORT_POSISI'            => $karyawan->V_SHORT_POSISI ?? null,
                     'V_SHORT_DIVISI'            => $karyawan->V_SHORT_DIVISI ?? null,
-                    'NO_TELP'                   => $karyawan->NO_TELP ?? null,
                     'TGL_KELUAR'                => now(),
                     'ALASAN_KELUAR'             => 'Pengunduran Diri Mandiri',
                     'IURAN_WAJIB_TERAKHIR'      => $iuran->IURAN_WAJIB ?? 0,
