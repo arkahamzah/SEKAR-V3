@@ -3,7 +3,8 @@
         <tr>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NIK</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NAMA</th>
-            <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NO TELP</th>
+            {{-- UPDATED: Changed from NO TELP to LOKASI --}}
+            <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">LOKASI</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">Tanggal Terdaftar</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">DPW</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">DPD</th>
@@ -16,7 +17,8 @@
         <tr class="hover:bg-gray-50 transition-colors">
             <td class="py-3 px-4 text-xs text-gray-900">{{ $member->NIK }}</td>
             <td class="py-3 px-4 text-xs font-medium text-gray-900">{{ $member->NAMA }}</td>
-            <td class="py-3 px-4 text-xs text-gray-900">{{ $member->NO_TELP }}</td>
+            {{-- UPDATED: Changed from NO_TELP to LOKASI --}}
+            <td class="py-3 px-4 text-xs text-gray-900">{{ $member->LOKASI }}</td>
             <td class="py-3 px-4 text-xs text-gray-900">
                 {{ $member->TANGGAL_TERDAFTAR ? \Carbon\Carbon::parse($member->TANGGAL_TERDAFTAR)->format('d-m-Y') : '-' }}
             </td>

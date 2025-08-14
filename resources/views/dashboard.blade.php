@@ -47,9 +47,6 @@
                         <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaAktif) }}</p>
                         <p class="text-xs text-gray-500 mt-1">Anggota terdaftar</p>
                     </div>
-                    <div class="bg-{{ str_starts_with($growthData['anggota_aktif_growth'], '+') ? 'green' : (str_starts_with($growthData['anggota_aktif_growth'], '-') ? 'red' : 'gray') }}-100 text-{{ str_starts_with($growthData['anggota_aktif_growth'], '+') ? 'green' : (str_starts_with($growthData['anggota_aktif_growth'], '-') ? 'red' : 'gray') }}-700 px-2 py-1 rounded text-xs font-medium">
-                        {{ $growthData['anggota_aktif_growth'] }}
-                    </div>
                 </div>
             </div>
 
@@ -59,9 +56,6 @@
                         <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Pengurus</p>
                         <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($totalPengurus) }}</p>
                         <p class="text-xs text-gray-500 mt-1">Total pengurus aktif</p>
-                    </div>
-                    <div class="bg-{{ str_starts_with($growthData['pengurus_growth'], '+') ? 'green' : (str_starts_with($growthData['pengurus_growth'], '-') ? 'red' : 'gray') }}-100 text-{{ str_starts_with($growthData['pengurus_growth'], '+') ? 'green' : (str_starts_with($growthData['pengurus_growth'], '-') ? 'red' : 'gray') }}-700 px-2 py-1 rounded text-xs font-medium">
-                        {{ $growthData['pengurus_growth'] }}
                     </div>
                 </div>
             </div>
@@ -73,9 +67,6 @@
                         <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaKeluar) }}</p>
                         <p class="text-xs text-gray-500 mt-1">Total keluar</p>
                     </div>
-                    <div class="bg-{{ str_starts_with($growthData['anggota_keluar_growth'], '+') ? 'red' : (str_starts_with($growthData['anggota_keluar_growth'], '-') ? 'green' : 'gray') }}-100 text-{{ str_starts_with($growthData['anggota_keluar_growth'], '+') ? 'red' : (str_starts_with($growthData['anggota_keluar_growth'], '-') ? 'green' : 'gray') }}-700 px-2 py-1 rounded text-xs font-medium">
-                        {{ $growthData['anggota_keluar_growth'] }}
-                    </div>
                 </div>
             </div>
 
@@ -85,9 +76,6 @@
                         <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Non Anggota</p>
                         <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($nonAnggota) }}</p>
                         <p class="text-xs text-gray-500 mt-1">Karyawan non-anggota</p>
-                    </div>
-                    <div class="bg-{{ str_starts_with($growthData['non_anggota_growth'], '+') ? 'yellow' : (str_starts_with($growthData['non_anggota_growth'], '-') ? 'green' : 'gray') }}-100 text-{{ str_starts_with($growthData['non_anggota_growth'], '+') ? 'yellow' : (str_starts_with($growthData['non_anggota_growth'], '-') ? 'green' : 'gray') }}-700 px-2 py-1 rounded text-xs font-medium">
-                        {{ $growthData['non_anggota_growth'] }}
                     </div>
                 </div>
             </div>

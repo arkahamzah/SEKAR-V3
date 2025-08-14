@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Tambah Anggota Baru</h1>
@@ -19,7 +18,6 @@
         </a>
     </div>
 
-    <!-- Form -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900">Informasi Anggota</h2>
@@ -28,7 +26,6 @@
         <form action="{{ route('data-anggota.store') }}" method="POST" class="p-6">
             @csrf
             
-            <!-- Alert Error -->
             @if ($errors->any())
                 <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                     <div class="flex">
@@ -48,7 +45,6 @@
             @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- NIK -->
                 <div>
                     <label for="nik" class="block text-sm font-medium text-gray-700 mb-2">
                         NIK <span class="text-red-500">*</span>
@@ -61,7 +57,6 @@
                     @enderror
                 </div>
 
-                <!-- Nama -->
                 <div>
                     <label for="nama" class="block text-sm font-medium text-gray-700 mb-2">
                         Nama Lengkap <span class="text-red-500">*</span>
@@ -74,7 +69,6 @@
                     @enderror
                 </div>
 
-                <!-- Email -->
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                         Email <span class="text-red-500">*</span>
@@ -87,7 +81,6 @@
                     @enderror
                 </div>
 
-                <!-- No Telepon -->
                 <div>
                     <label for="no_telp" class="block text-sm font-medium text-gray-700 mb-2">
                         No. Telepon
@@ -100,10 +93,10 @@
                     @enderror
                 </div>
 
-                <!-- DPW -->
                 <div>
+                    {{-- UPDATED: Added required indicator --}}
                     <label for="dpw" class="block text-sm font-medium text-gray-700 mb-2">
-                        DPW (Dewan Pengurus Wilayah)
+                        DPW (Dewan Pengurus Wilayah) <span class="text-red-500">*</span>
                     </label>
                     <select id="dpw" name="dpw" 
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('dpw') border-red-500 @enderror">
@@ -119,10 +112,10 @@
                     @enderror
                 </div>
 
-                <!-- DPD -->
                 <div>
+                    {{-- UPDATED: Added required indicator --}}
                     <label for="dpd" class="block text-sm font-medium text-gray-700 mb-2">
-                        DPD (Dewan Pengurus Daerah)
+                        DPD (Dewan Pengurus Daerah) <span class="text-red-500">*</span>
                     </label>
                     <select id="dpd" name="dpd" 
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('dpd') border-red-500 @enderror">
@@ -138,20 +131,18 @@
                     @enderror
                 </div>
 
-                <!-- Iuran Wajib -->
                 <div>
                     <label for="iuran_wajib" class="block text-sm font-medium text-gray-700 mb-2">
                         Iuran Wajib (Rp)
                     </label>
-                    <input type="number" id="iuran_wajib" name="iuran_wajib" value="{{ old('iuran_wajib') }}" min="0" step="1000"
+                    <input type="number" id="iuran_wajib" name="iuran_wajib" value="{{ old('iuran_wajib', 25000) }}" min="0" step="1000"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('iuran_wajib') border-red-500 @enderror"
-                           placeholder="0">
+                           placeholder="25000">
                     @error('iuran_wajib')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
 
-                <!-- Iuran Sukarela -->
                 <div>
                     <label for="iuran_sukarela" class="block text-sm font-medium text-gray-700 mb-2">
                         Iuran Sukarela (Rp)
@@ -165,7 +156,6 @@
                 </div>
             </div>
 
-            <!-- Catatan -->
             <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div class="flex">
                     <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -175,12 +165,12 @@
                         <p class="font-medium">Catatan:</p>
                         <ul class="mt-1 list-disc list-inside">
                             <li>Field yang bertanda (*) wajib diisi</li>
+                            <li>Password default untuk anggota baru adalah <strong>password123</strong></li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
                 <a href="{{ route('data-anggota.index') }}" 
                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">

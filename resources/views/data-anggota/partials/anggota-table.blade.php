@@ -10,7 +10,6 @@
     }
 @endphp
 
-<!-- Add Member Button (Super Admin Only) -->
 @if($isSuperAdmin)
 <div class="mb-4 flex justify-end">
     <a href="{{ route('data-anggota.create') }}" 
@@ -28,11 +27,14 @@
         <tr>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NIK</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NAMA</th>
-            <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">NO TELP</th>
+            {{-- UPDATED: Changed from NO TELP to LOKASI --}}
+            <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">LOKASI</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">Tanggal Terdaftar</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">Iuran Wajib</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">Iuran Sukarela</th>
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">DPW</th>
+            {{-- ADDED: DPD Column --}}
+            <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">DPD</th>
             @if($isSuperAdmin)
             <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs">Aksi</th>
             @endif
@@ -43,7 +45,8 @@
         <tr class="hover:bg-gray-50 transition-colors">
             <td class="py-3 px-4 text-xs text-gray-900">{{ $member->NIK }}</td>
             <td class="py-3 px-4 text-xs font-medium text-gray-900">{{ $member->NAMA }}</td>
-            <td class="py-3 px-4 text-xs text-gray-900">{{ $member->NO_TELP }}</td>
+            {{-- UPDATED: Changed from NO_TELP to LOKASI --}}
+            <td class="py-3 px-4 text-xs text-gray-900">{{ $member->LOKASI }}</td>
             <td class="py-3 px-4 text-xs text-gray-900">
                 {{ $member->TANGGAL_TERDAFTAR ? \Carbon\Carbon::parse($member->TANGGAL_TERDAFTAR)->format('d-m-Y') : '-' }}
             </td>
@@ -54,10 +57,11 @@
                 {{ $member->IURAN_SUKARELA ? 'Rp ' . number_format($member->IURAN_SUKARELA, 0, ',', '.') : 'Rp 0' }}
             </td>
             <td class="py-3 px-4 text-xs text-gray-900">{{ $member->DPW }}</td>
+            {{-- ADDED: DPD Column data --}}
+            <td class="py-3 px-4 text-xs text-gray-900">{{ $member->DPD }}</td>
             @if($isSuperAdmin)
             <td class="py-3 px-4 text-xs">
                 <div class="flex items-center space-x-2">
-                    <!-- Edit Button -->
                     <a href="{{ route('data-anggota.edit', $member->NIK) }}" 
                        class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded hover:bg-yellow-200 transition-colors"
                        title="Edit Anggota">
@@ -71,7 +75,8 @@
         </tr>
         @empty
         <tr>
-            <td colspan="{{ $isSuperAdmin ? '8' : '7' }}" class="py-12 px-4 text-center text-gray-500 text-sm">
+            {{-- UPDATED: Colspan adjusted for new column --}}
+            <td colspan="{{ $isSuperAdmin ? '9' : '8' }}" class="py-12 px-4 text-center text-gray-500 text-sm">
                 <div class="flex flex-col items-center">
                     <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
@@ -100,8 +105,8 @@
 </div>
 @endif
 
+{{-- The delete modal script does not need changes --}}
 @if($isSuperAdmin)
-<!-- Delete Confirmation Modal -->
 <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <div class="flex items-center mb-4">
@@ -141,7 +146,6 @@
 
 <script>
 function confirmDelete(nik, nama) {
-    // Escape nama untuk menghindari masalah dengan quote
     const escapedNama = nama.replace(/'/g, "\\'");
     document.getElementById('memberName').textContent = nama;
     document.getElementById('deleteForm').action = "{{ url('data-anggota') }}/" + nik;
@@ -152,7 +156,6 @@ function closeDeleteModal() {
     document.getElementById('deleteModal').classList.add('hidden');
 }
 
-// Close modal when clicking outside
 document.getElementById('deleteModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeDeleteModal();

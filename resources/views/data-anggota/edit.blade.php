@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Edit Anggota</h1>
@@ -19,7 +18,6 @@
         </a>
     </div>
 
-    <!-- Form -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900">Informasi Anggota</h2>
@@ -29,7 +27,6 @@
             @csrf
             @method('PUT')
             
-            <!-- Alert Error -->
             @if ($errors->any())
                 <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                     <div class="flex">
@@ -49,7 +46,6 @@
             @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- NIK (Read Only) -->
                 <div>
                     <label for="nik" class="block text-sm font-medium text-gray-700 mb-2">
                         NIK
@@ -59,7 +55,6 @@
                     <p class="mt-1 text-xs text-gray-500">NIK tidak dapat diubah</p>
                 </div>
 
-                <!-- Nama -->
                 <div>
                     <label for="nama" class="block text-sm font-medium text-gray-700 mb-2">
                         Nama Lengkap <span class="text-red-500">*</span>
@@ -72,7 +67,6 @@
                     @enderror
                 </div>
 
-                <!-- Email -->
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
                         Email <span class="text-red-500">*</span>
@@ -85,12 +79,11 @@
                     @enderror
                 </div>
 
-                <!-- No Telepon -->
                 <div>
                     <label for="no_telp" class="block text-sm font-medium text-gray-700 mb-2">
                         No. Telepon
                     </label>
-                    <input type="text" id="no_telp" name="no_telp" value="{{ old('no_telp', $member->NO_TELP) }}"
+                    <input type="text" id="no_telp" name="no_telp" value="{{ old('no_telp', $member->V_KOTA_GEDUNG) }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('no_telp') border-red-500 @enderror"
                            placeholder="Masukkan nomor telepon">
                     @error('no_telp')
@@ -98,10 +91,10 @@
                     @enderror
                 </div>
 
-                <!-- DPW -->
                 <div>
+                    {{-- UPDATED: Added required indicator --}}
                     <label for="dpw" class="block text-sm font-medium text-gray-700 mb-2">
-                        DPW (Dewan Pengurus Wilayah)
+                        DPW (Dewan Pengurus Wilayah) <span class="text-red-500">*</span>
                     </label>
                     <select id="dpw" name="dpw" 
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('dpw') border-red-500 @enderror">
@@ -117,10 +110,10 @@
                     @enderror
                 </div>
 
-                <!-- DPD -->
                 <div>
+                    {{-- UPDATED: Added required indicator --}}
                     <label for="dpd" class="block text-sm font-medium text-gray-700 mb-2">
-                        DPD (Dewan Pengurus Daerah)
+                        DPD (Dewan Pengurus Daerah) <span class="text-red-500">*</span>
                     </label>
                     <select id="dpd" name="dpd" 
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('dpd') border-red-500 @enderror">
@@ -136,7 +129,6 @@
                     @enderror
                 </div>
 
-                <!-- Iuran Wajib (Read Only) -->
                 <div>
                     <label for="iuran_wajib_display" class="block text-sm font-medium text-gray-700 mb-2">
                         Iuran Wajib (Rp)
@@ -147,7 +139,6 @@
                     <p class="mt-1 text-xs text-gray-500">Iuran wajib tidak dapat diubah</p>
                 </div>
 
-                <!-- Iuran Sukarela -->
                 <div>
                     <label for="iuran_sukarela" class="block text-sm font-medium text-gray-700 mb-2">
                         Iuran Sukarela (Rp)
@@ -160,7 +151,6 @@
                     @enderror
                 </div>
 
-                <!-- Tanggal Terdaftar (Read Only) -->
                 <div>
                     <label for="tanggal_terdaftar" class="block text-sm font-medium text-gray-700 mb-2">
                         Tanggal Terdaftar
@@ -172,7 +162,6 @@
                 </div>
             </div>
 
-            <!-- Info Card -->
             <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div class="flex">
                     <svg class="w-5 h-5 text-yellow-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -190,7 +179,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
                 <a href="{{ route('data-anggota.index') }}" 
                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">

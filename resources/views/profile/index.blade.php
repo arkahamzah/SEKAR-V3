@@ -88,6 +88,8 @@
                     <div><label class="text-gray-500 font-medium">Unit Kerja</label><p class="text-gray-800 font-semibold mt-1">{{ $karyawan->V_SHORT_UNIT }}</p></div>
                     <div class="sm:col-span-2"><label class="text-gray-500 font-medium">Divisi</label><p class="text-gray-800 font-semibold mt-1">{{ $karyawan->V_SHORT_DIVISI }}</p></div>
                     <div><label class="text-gray-500 font-medium">Lokasi</label><p class="text-gray-800 font-semibold mt-1">{{ $karyawan->V_KOTA_GEDUNG }}</p></div>
+                    <div><label class="text-gray-500 font-medium">DPW</label><p class="text-gray-800 font-semibold mt-1">{{ $karyawan->DPW }}</p></div>
+                    <div><label class="text-gray-500 font-medium">DPD</label><p class="text-gray-800 font-semibold mt-1">{{ $karyawan->DPD }}</p></div>
                     @endif
                     <div><label class="text-gray-500 font-medium">Tanggal Bergabung</label><p class="text-gray-800 font-semibold mt-1">{{ $joinDate->format('d F Y') }}</p></div>
                 </div>

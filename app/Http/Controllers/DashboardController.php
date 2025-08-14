@@ -66,11 +66,9 @@ class DashboardController extends Controller
     {
         $statistics = $this->getStatistics();
         $mappingWithStats = $this->getDpwMappingWithStats();
-        $growthData = $this->getGrowthData($statistics);
 
         return array_merge($statistics, [
-            'mappingWithStats' => $mappingWithStats,
-            'growthData' => $growthData
+            'mappingWithStats' => $mappingWithStats
         ]);
     }
 
@@ -100,147 +98,78 @@ class DashboardController extends Controller
 
     private function getDpwMappingWithStats()
     {
-        $mappingQuery = DB::table('t_sekar_pengurus as sp')
-            ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(sp.DPW), ''), 'DPW Jabar') as dpw"),
-                DB::raw("COALESCE(NULLIF(TRIM(sp.DPD), ''), CONCAT('DPD ', UPPER(k.V_KOTA_GEDUNG))) as dpd"),
-                'k.V_KOTA_GEDUNG as kota'
-            )
+        $karyawanMappings = DB::table('t_karyawan')
+            ->select('DPW', 'DPD')
+            ->whereNotNull('DPW')
+            ->where('DPW', '!=', '')
+            ->whereNotNull('DPD')
+            ->where('DPD', '!=', '');
+
+        $allMappings = DB::table('t_sekar_pengurus')
+            ->select('DPW', 'DPD')
+            ->whereNotNull('DPW')
+            ->where('DPW', '!=', '')
+            ->whereNotNull('DPD')
+            ->where('DPD', '!=', '')
+            ->union($karyawanMappings)
             ->distinct()
             ->get();
-
-        if ($mappingQuery->isEmpty()) {
-            return $this->getDefaultMapping();
-        }
-
-        return $mappingQuery->map(function ($mapping) {
+            
+        return $allMappings->map(function ($mapping) {
             return $this->enrichMappingWithStats($mapping);
         });
     }
-
-    private function getDefaultMapping()
-    {
-        $cities = Karyawan::select('V_KOTA_GEDUNG')
-            ->whereNotNull('V_KOTA_GEDUNG')
-            ->where('V_KOTA_GEDUNG', '!=', '')
-            ->groupBy('V_KOTA_GEDUNG')
-            ->get();
-        
-        $mappings = collect();
-        
-        foreach ($cities as $city) {
-            $cityName = strtoupper($city->V_KOTA_GEDUNG);
-            $dpw = $this->getDpwByCity($cityName);
-            $dpd = 'DPD ' . $cityName;
-            
-            $mappings->push((object)[
-                'dpw' => $dpw,
-                'dpd' => $dpd,
-                'anggota_aktif' => $this->getAnggotaAktifByArea($city->V_KOTA_GEDUNG),
-                'pengurus' => $this->getPengurusByArea($city->V_KOTA_GEDUNG),
-                'anggota_keluar' => $this->getAnggotaKeluarByArea($city->V_KOTA_GEDUNG),
-                'non_anggota' => $this->getNonAnggotaByArea($city->V_KOTA_GEDUNG)
-            ]);
-        }
-        
-        return $mappings;
-    }
-
-    private function getDpwByCity(string $city): string
-    {
-        $dpwMapping = [
-            'BANDUNG' => 'DPW Jabar',
-            'JAKARTA' => 'DPW Jakarta', 
-            'SURABAYA' => 'DPW Jatim',
-            'MEDAN' => 'DPW Sumut',
-            'MAKASSAR' => 'DPW Sulsel',
-            'SEMARANG' => 'DPW Jateng',
-            'YOGYAKARTA' => 'DPW DIY',
-            'DENPASAR' => 'DPW Bali',
-        ];
-
-        return $dpwMapping[$city] ?? 'DPW Lainnya';
-    }
-
+    
+    // ## THIS FUNCTION HAS BEEN CORRECTED ##
     private function enrichMappingWithStats($mapping)
     {
+        // FIXED: Changed property access from lowercase (e.g., $mapping->dpw)
+        // to uppercase (e.g., $mapping->DPW) to match the database query result.
         return (object)[
-            'dpw' => $mapping->dpw,
-            'dpd' => $mapping->dpd,
-            'anggota_aktif' => $this->getAnggotaAktifByArea($mapping->kota),
-            'pengurus' => $this->getPengurusByArea($mapping->kota),
-            'anggota_keluar' => $this->getAnggotaKeluarByArea($mapping->kota),
-            'non_anggota' => $this->getNonAnggotaByArea($mapping->kota)
+            'dpw' => $mapping->DPW,
+            'dpd' => $mapping->DPD,
+            'anggota_aktif' => $this->getAnggotaAktifByArea($mapping->DPW, $mapping->DPD),
+            'pengurus' => $this->getPengurusByArea($mapping->DPW, $mapping->DPD),
+            'anggota_keluar' => $this->getAnggotaKeluarByArea($mapping->DPW, $mapping->DPD),
+            'non_anggota' => $this->getNonAnggotaByArea($mapping->DPW, $mapping->DPD)
         ];
     }
 
-    private function getAnggotaAktifByArea($kota)
+    private function getAnggotaAktifByArea($dpw, $dpd)
     {
         return DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->where('k.V_KOTA_GEDUNG', $kota)
+            ->where('k.DPW', $dpw)
+            ->where('k.DPD', $dpd)
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
     }
-
-    private function getPengurusByArea($kota)
+    
+    private function getPengurusByArea($dpw, $dpd)
     {
         return DB::table('t_sekar_pengurus as sp')
-            ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
-            ->where('k.V_KOTA_GEDUNG', $kota)
+            ->where('sp.DPW', $dpw)
+            ->where('sp.DPD', $dpd)
             ->count();
     }
-
-    private function getAnggotaKeluarByArea($kota)
+    
+    private function getAnggotaKeluarByArea($dpw, $dpd)
     {
         return DB::table('t_ex_anggota as ea')
-            ->join('t_karyawan as k', 'ea.N_NIK', '=', 'k.N_NIK')
-            ->where('k.V_KOTA_GEDUNG', $kota)
+            ->where('ea.DPW', $dpw)
+            ->where('ea.DPD', $dpd)
             ->count();
     }
 
-    private function getNonAnggotaByArea($kota)
+    private function getNonAnggotaByArea($dpw, $dpd)
     {
-        $totalKaryawan = Karyawan::where('V_KOTA_GEDUNG', $kota)
+        $totalKaryawan = Karyawan::where('DPW', $dpw)
+            ->where('DPD', $dpd)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
         
-        $anggotaAktif = $this->getAnggotaAktifByArea($kota);
+        $anggotaAktif = $this->getAnggotaAktifByArea($dpw, $dpd);
         
         return max(0, $totalKaryawan - $anggotaAktif);
-    }
-
-    private function getGrowthData(array $statistics): array
-    {
-        return [
-            'anggota_aktif_growth' => $this->calculateGrowth('aktif', $statistics['anggotaAktif']),
-            'pengurus_growth' => $this->calculateGrowth('pengurus', $statistics['totalPengurus']),
-            'anggota_keluar_growth' => $this->calculateGrowth('keluar', $statistics['anggotaKeluar']),
-            'non_anggota_growth' => $this->calculateGrowth('non_anggota', $statistics['nonAnggota']),
-        ];
-    }
-
-    private function calculateGrowth(string $type, int $currentValue): string
-    {
-        switch ($type) {
-            case 'aktif':
-                $growth = round(($currentValue * 0.12), 0);
-                return $growth > 0 ? "+{$growth}" : "0";
-                
-            case 'pengurus':
-                $growth = round(($currentValue * 0.05), 0);
-                return $growth > 0 ? "+{$growth}" : "0";
-                
-            case 'keluar':
-                return $currentValue > 0 ? "+{$currentValue}" : "0";
-                
-            case 'non_anggota':
-                $decrease = round(($currentValue * 0.02), 0);
-                return $decrease > 0 ? "-{$decrease}" : "0";
-                
-            default:
-                return "0";
-        }
     }
 }

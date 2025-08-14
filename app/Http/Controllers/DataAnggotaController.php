@@ -20,37 +20,37 @@ class DataAnggotaController extends Controller
      * Display data anggota with filtering and search
      */
     public function index(Request $request)
-{
-    if ($request->get('tab') === 'ex-anggota' && !Auth::user()->hasRole('ADM')) {
-        return redirect()->route('data-anggota.index')->with('error', 'Anda tidak memiliki hak akses untuk melihat halaman ini.');
-    }
+    {
+        if ($request->get('tab') === 'ex-anggota' && !Auth::user()->hasRole('ADM')) {
+            return redirect()->route('data-anggota.index')->with('error', 'Anda tidak memiliki hak akses untuk melihat halaman ini.');
+        }
 
-    $activeTab = $request->get('tab', 'anggota');
-    
-    $data = [
-        'activeTab' => $activeTab,
-        'dpwOptions' => $this->getDpwOptions(),
-        'dpdOptions' => $this->getDpdOptions(),
-    ];
-
-    switch ($activeTab) {
-        case 'anggota':
-            $data['anggota'] = $this->getAnggotaData($request);
-            break;
-        case 'gptp':
-            $data['gptp'] = $this->getGptpData($request);
-            break;
-        case 'pengurus':
-            $data['pengurus'] = $this->getPengurusData($request);
-            break;
+        $activeTab = $request->get('tab', 'anggota');
         
-        case 'ex-anggota':
-            $data['ex_anggota'] = $this->getExAnggotaData($request);
-            break;
-    }
+        $data = [
+            'activeTab' => $activeTab,
+            'dpwOptions' => $this->getDpwOptions(),
+            'dpdOptions' => $this->getDpdOptions(),
+        ];
 
-    return view('data-anggota.index', $data);
-}
+        switch ($activeTab) {
+            case 'anggota':
+                $data['anggota'] = $this->getAnggotaData($request);
+                break;
+            case 'gptp':
+                $data['gptp'] = $this->getGptpData($request);
+                break;
+            case 'pengurus':
+                $data['pengurus'] = $this->getPengurusData($request);
+                break;
+            
+            case 'ex-anggota':
+                $data['ex_anggota'] = $this->getExAnggotaData($request);
+                break;
+        }
+
+        return view('data-anggota.index', $data);
+    }
 
     /**
      * Show the form for creating a new member (Super Admin only)
@@ -77,27 +77,11 @@ class DataAnggotaController extends Controller
             'nama' => 'required|string|max:150',
             'email' => 'required|email|unique:users,email',
             'no_telp' => 'nullable|string|max:20',
-            'dpw' => 'nullable|string|max:100',
-            'dpd' => 'nullable|string|max:100',
+            'dpw' => 'required|string|max:100',
+            'dpd' => 'required|string|max:100',
             'iuran_wajib' => 'nullable|numeric|min:0',
             'iuran_sukarela' => 'nullable|numeric|min:0',
         ]);
-
-        // Check if NIK exists in ex-anggota (allow reactivation)
-        $exAnggota = ExAnggota::where('N_NIK', $request->nik)->first();
-        if ($exAnggota) {
-            // Remove unique validation for NIK if it's a reactivation
-            $validator = Validator::make($request->all(), [
-                'nik' => 'required|string|max:30',
-                'nama' => 'required|string|max:150',
-                'email' => 'required|email|unique:users,email',
-                'no_telp' => 'nullable|string|max:20',
-                'dpw' => 'nullable|string|max:100',
-                'dpd' => 'nullable|string|max:100',
-                'iuran_wajib' => 'nullable|numeric|min:0',
-                'iuran_sukarela' => 'nullable|numeric|min:0',
-            ]);
-        }
 
         if ($validator->fails()) {
             return redirect()->back()
@@ -108,8 +92,10 @@ class DataAnggotaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Check if this NIK exists in ex-anggota, if yes delete it (reactivation)
-            ExAnggota::where('N_NIK', $request->nik)->delete();
+            $exAnggota = ExAnggota::where('N_NIK', $request->nik)->first();
+            if ($exAnggota) {
+                $exAnggota->delete();
+            }
 
             // Create user account
             $user = User::create([
@@ -117,42 +103,34 @@ class DataAnggotaController extends Controller
                 'name' => $request->nama,
                 'email' => $request->email,
                 'password' => Hash::make('password123'),
-                'role' => 'USER',
+                'membership_status' => 'active',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            // Create karyawan record
+            // Create or update karyawan record with correct DPW/DPD
             Karyawan::updateOrCreate(
                 ['N_NIK' => $request->nik],
                 [
                     'V_NAMA_KARYAWAN' => $request->nama,
-                    'NO_TELP' => $request->no_telp,
                     'V_SHORT_POSISI' => 'ANGGOTA SEKAR',
                     'V_SHORT_UNIT' => 'SEKAR',
+                    'DPW' => $request->dpw,
+                    'DPD' => $request->dpd,
                 ]
             );
 
-            // Create pengurus record if DPW/DPD specified
-            if ($request->dpw || $request->dpd) {
-                SekarPengurus::updateOrCreate(
-                    ['N_NIK' => $request->nik],
-                    [
-                        'DPW' => $request->dpw,
-                        'DPD' => $request->dpd,
-                        'CREATED_BY' => Auth::user()->nik,
-                        'CREATED_AT' => now(),
-                    ]
-                );
-            }
-
             // Create iuran record if specified
-            if ($request->iuran_wajib || $request->iuran_sukarela) {
-                DB::table('t_iuran')->updateOrInsert(
+            if ($request->filled('iuran_wajib') || $request->filled('iuran_sukarela')) {
+                Iuran::updateOrCreate(
                     ['N_NIK' => $request->nik],
                     [
-                        'IURAN_WAJIB' => $request->iuran_wajib ?: 0,
+                        'IURAN_WAJIB' => $request->iuran_wajib ?: 25000,
                         'IURAN_SUKARELA' => $request->iuran_sukarela ?: 0,
+                        'TAHUN' => now()->year,
+                        'STATUS_BAYAR' => 'AKTIF',
+                        'CREATED_BY' => Auth::user()->nik,
+                        'CREATED_AT' => now()
                     ]
                 );
             }
@@ -160,7 +138,7 @@ class DataAnggotaController extends Controller
             DB::commit();
 
             return redirect()->route('data-anggota.index')
-                ->with('success', $exAnggota ? 'Anggota berhasil diaktifkan kembali' : 'Anggota berhasil ditambahkan');
+                ->with('success', $exAnggota ? 'Anggota berhasil diaktifkan kembali.' : 'Anggota baru berhasil ditambahkan.');
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -179,17 +157,16 @@ class DataAnggotaController extends Controller
 
         $member = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
             ->leftJoin('t_iuran as i', 'u.nik', '=', 'i.N_NIK')
             ->select([
                 'u.nik',
                 'u.name',
                 'u.email',
-                'k.NO_TELP',
+                'k.V_KOTA_GEDUNG',
                 DB::raw('COALESCE(i.IURAN_WAJIB, 0) as IURAN_WAJIB'),
                 DB::raw('COALESCE(i.IURAN_SUKARELA, 0) as IURAN_SUKARELA'),
-                'sp.DPW',
-                'sp.DPD',
+                'k.DPW',
+                'k.DPD',
                 'u.created_at as TANGGAL_TERDAFTAR'
             ])
             ->where('u.nik', $nik)
@@ -217,9 +194,8 @@ class DataAnggotaController extends Controller
         $validator = Validator::make($request->all(), [
             'nama' => 'required|string|max:150',
             'email' => 'required|email|unique:users,email,' . $nik . ',nik',
-            'no_telp' => 'nullable|string|max:20',
-            'dpw' => 'nullable|string|max:100',
-            'dpd' => 'nullable|string|max:100',
+            'dpw' => 'required|string|max:100',
+            'dpd' => 'required|string|max:100',
             'iuran_sukarela' => 'nullable|numeric|min:0',
         ]);
 
@@ -232,39 +208,23 @@ class DataAnggotaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Update user
             User::where('nik', $nik)->update([
                 'name' => $request->nama,
                 'email' => $request->email,
                 'updated_at' => now(),
             ]);
 
-            // Update karyawan
             Karyawan::where('N_NIK', $nik)->update([
                 'V_NAMA_KARYAWAN' => $request->nama,
-                'NO_TELP' => $request->no_telp,
+                'DPW' => $request->dpw,
+                'DPD' => $request->dpd,
             ]);
-
-            // Update or create pengurus record
-            SekarPengurus::updateOrCreate(
-                ['N_NIK' => $nik],
-                [
-                    'DPW' => $request->dpw,
-                    'DPD' => $request->dpd,
-                    'UPDATED_BY' => Auth::user()->nik,
-                    'UPDATED_AT' => now(),
-                ]
-            );
-
-            // Update or create iuran record (only iuran sukarela)
-            $existingIuran = DB::table('t_iuran')->where('N_NIK', $nik)->first();
-            DB::table('t_iuran')->updateOrInsert(
-                ['N_NIK' => $nik],
-                [
-                    'IURAN_WAJIB' => $existingIuran->IURAN_WAJIB ?? 0, // Keep existing iuran wajib
-                    'IURAN_SUKARELA' => $request->iuran_sukarela ?: 0,
-                ]
-            );
+            
+            Iuran::where('N_NIK', $nik)->update([
+                'IURAN_SUKARELA' => $request->iuran_sukarela ?: 0,
+                'UPDATE_BY' => Auth::user()->nik,
+                'UPDATED_AT' => now(),
+            ]);
 
             DB::commit();
 
@@ -289,7 +249,8 @@ class DataAnggotaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Get member data with all related information
+            // FIXED: Query now uses COALESCE to get DPW/DPD from t_karyawan first,
+            // then falls back to t_sekar_pengurus for older data.
             $member = DB::table('users as u')
                 ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
                 ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
@@ -297,8 +258,9 @@ class DataAnggotaController extends Controller
                 ->select([
                     'u.*', 
                     'k.V_NAMA_KARYAWAN', 'k.V_SHORT_POSISI', 'k.V_SHORT_DIVISI', 
-                    'k.NO_TELP', 'k.V_KOTA_GEDUNG',
-                    'sp.DPW', 'sp.DPD',
+                    'k.V_KOTA_GEDUNG',
+                    DB::raw('COALESCE(k.DPW, sp.DPW) as DPW'), // Fallback for DPW
+                    DB::raw('COALESCE(k.DPD, sp.DPD) as DPD'), // Fallback for DPD
                     DB::raw('COALESCE(i.IURAN_WAJIB, 0) as IURAN_WAJIB'),
                     DB::raw('COALESCE(i.IURAN_SUKARELA, 0) as IURAN_SUKARELA')
                 ])
@@ -310,67 +272,63 @@ class DataAnggotaController extends Controller
                     ->with('error', 'Data anggota tidak ditemukan');
             }
 
-            // Move to ex-anggota
             ExAnggota::create([
                 'N_NIK' => $member->nik,
                 'V_NAMA_KARYAWAN' => $member->name,
-                'V_SHORT_POSISI' => $member->V_SHORT_POSISI ?: 'ANGGOTA SEKAR',
-                'V_SHORT_DIVISI' => $member->V_SHORT_DIVISI ?: 'SEKAR',
-                'NO_TELP' => $member->NO_TELP,
+                'V_SHORT_POSISI' => $member->V_SHORT_POSISI,
+                'V_SHORT_DIVISI' => $member->V_SHORT_DIVISI,
                 'TGL_KELUAR' => now(),
-                'DPP' => null,
-                'DPW' => $member->DPW,
-                'DPD' => $member->DPD,
+                'DPW' => $member->DPW, // Now correctly sourced with fallback
+                'DPD' => $member->DPD, // Now correctly sourced with fallback
                 'V_KOTA_GEDUNG' => $member->V_KOTA_GEDUNG,
                 'CREATED_BY' => Auth::user()->nik,
                 'CREATED_AT' => now(),
+                'IURAN_WAJIB_TERAKHIR' => $member->IURAN_WAJIB,
+                'IURAN_SUKARELA_TERAKHIR' => $member->IURAN_SUKARELA,
             ]);
 
-            // Delete from related tables
             User::where('nik', $nik)->delete();
-            Karyawan::where('N_NIK', $nik)->delete();
             SekarPengurus::where('N_NIK', $nik)->delete();
-            DB::table('t_iuran')->where('N_NIK', $nik)->delete();
-
+            Iuran::where('N_NIK', $nik)->delete();
+            
             DB::commit();
 
             return redirect()->route('data-anggota.index')
-                ->with('success', 'Anggota berhasil dihapus dan dipindahkan ke ex-anggota');
+                ->with('success', 'Anggota berhasil dinonaktifkan dan dipindahkan ke ex-anggota.');
 
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->route('data-anggota.index')
-                ->with('error', 'Gagal menghapus anggota: ' . $e->getMessage());
+                ->with('error', 'Gagal menonaktifkan anggota: ' . $e->getMessage());
         }
     }
 
     /**
-     * Get anggota aktif data with filters - FIXED QUERY
+     * Get anggota aktif data with filters
      */
     private function getAnggotaData(Request $request)
     {
         $query = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->leftJoin('t_iuran as i', 'u.nik', '=', 'i.N_NIK')
-            ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
             ->select([
                 'u.nik as NIK',
                 'k.V_NAMA_KARYAWAN as NAMA',
-                DB::raw('COALESCE(k.NO_TELP, "-") as NO_TELP'),
-                'u.created_at as TANGGAL_TERDAFTAR', // FIXED: dari users.created_at
-                DB::raw('COALESCE(i.IURAN_WAJIB, 0) as IURAN_WAJIB'), // FIXED: dari t_iuran
-                DB::raw('COALESCE(i.IURAN_SUKARELA, 0) as IURAN_SUKARELA'), // FIXED: dari t_iuran
-                DB::raw('COALESCE(sp.DPW, "-") as DPW') // FIXED: dari t_sekar_pengurus
+                DB::raw('COALESCE(k.V_KOTA_GEDUNG, "-") as LOKASI'),
+                'u.created_at as TANGGAL_TERDAFTAR',
+                DB::raw('COALESCE(i.IURAN_WAJIB, 0) as IURAN_WAJIB'),
+                DB::raw('COALESCE(i.IURAN_SUKARELA, 0) as IURAN_SUKARELA'),
+                'k.DPW as DPW',
+                'k.DPD as DPD'
             ])
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%'); // Exclude GPTP
+            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
 
-        // Apply filters
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
-            $query->where('sp.DPW', $request->dpw);
+            $query->where('k.DPW', $request->dpw);
         }
         
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
-            $query->where('sp.DPD', $request->dpd);
+            $query->where('k.DPD', $request->dpd);
         }
 
         if ($request->filled('search')) {
@@ -394,15 +352,13 @@ class DataAnggotaController extends Controller
             ->select([
                 'k.N_NIK as NIK',
                 'k.V_NAMA_KARYAWAN as NAMA',
-                DB::raw('COALESCE(k.NO_TELP, "-") as NO_TELP'),
+                DB::raw('COALESCE(k.V_KOTA_GEDUNG, "-") as LOKASI'),
                 DB::raw('CASE WHEN u.nik IS NOT NULL THEN u.created_at ELSE NULL END as TANGGAL_TERDAFTAR'),
                 DB::raw('CASE WHEN u.nik IS NOT NULL THEN "Terdaftar" ELSE "Belum Terdaftar" END as STATUS'),
-                'k.V_SHORT_POSISI as POSISI',
-                'k.V_KOTA_GEDUNG as LOKASI'
+                'k.V_SHORT_POSISI as POSISI'
             ])
-            ->where('k.V_SHORT_POSISI', 'LIKE', '%GPTP%'); // Only GPTP
+            ->where('k.V_SHORT_POSISI', 'LIKE', '%GPTP%');
 
-        // Apply search filter
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -426,7 +382,7 @@ class DataAnggotaController extends Controller
             ->select([
                 'sp.N_NIK as NIK',
                 'k.V_NAMA_KARYAWAN as NAMA',
-                DB::raw('COALESCE(k.NO_TELP, "-") as NO_TELP'),
+                DB::raw('COALESCE(k.V_KOTA_GEDUNG, "-") as LOKASI'),
                 'sp.CREATED_AT as TANGGAL_TERDAFTAR',
                 'sp.DPW',
                 'sp.DPD',
@@ -434,7 +390,6 @@ class DataAnggotaController extends Controller
                 'sp.V_SHORT_POSISI as POSISI_SEKAR'
             ]);
 
-        // Apply filters
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('sp.DPW', $request->dpw);
         }
@@ -459,19 +414,26 @@ class DataAnggotaController extends Controller
      */
     private function getExAnggotaData(Request $request)
     {
-        $query = ExAnggota::query();
+        $query = ExAnggota::query()
+            ->select([
+                'N_NIK', 'V_NAMA_KARYAWAN', 'V_SHORT_POSISI', 'TGL_KELUAR',
+                'ALASAN_KELUAR', 'DPW', 'DPD'
+            ]);
 
-        // Apply filters
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
-            $query->byDpw($request->dpw);
+            $query->where('DPW', $request->dpw);
         }
         
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
-            $query->byDpd($request->dpd);
+            $query->where('DPD', $request->dpd);
         }
 
         if ($request->filled('search')) {
-            $query->search($request->search);
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('V_NAMA_KARYAWAN', 'LIKE', "%{$search}%")
+                  ->orWhere('N_NIK', 'LIKE', "%{$search}%");
+            });
         }
 
         return $query->orderBy('TGL_KELUAR', 'desc')->paginate(10);
@@ -482,8 +444,7 @@ class DataAnggotaController extends Controller
      */
     private function getDpwOptions()
     {
-        return DB::table('t_sekar_pengurus')
-            ->select('DPW')
+        return Karyawan::select('DPW')
             ->whereNotNull('DPW')
             ->where('DPW', '!=', '')
             ->distinct()
@@ -497,8 +458,7 @@ class DataAnggotaController extends Controller
      */
     private function getDpdOptions()
     {
-        return DB::table('t_sekar_pengurus')
-            ->select('DPD')
+        return Karyawan::select('DPD')
             ->whereNotNull('DPD')
             ->where('DPD', '!=', '')
             ->distinct()
@@ -515,22 +475,24 @@ class DataAnggotaController extends Controller
         $type = $request->get('type', 'anggota');
         $format = $request->get('format', 'csv');
         
+        $requestForExport = $request->duplicate();
+        $requestForExport->offsetUnset('page');
+
+        $data = collect();
+        $filename = 'data_' . $type . '_' . date('Y-m-d');
+
         switch ($type) {
             case 'anggota':
-                $data = $this->getAnggotaData($request);
-                $filename = 'data_anggota_' . date('Y-m-d');
+                $data = $this->getAnggotaData($requestForExport)->get();
                 break;
             case 'gptp':
-                $data = $this->getGptpData($request);
-                $filename = 'data_gptp_' . date('Y-m-d');
+                $data = $this->getGptpData($requestForExport)->get();
                 break;
             case 'pengurus':
-                $data = $this->getPengurusData($request);
-                $filename = 'data_pengurus_' . date('Y-m-d');
+                $data = $this->getPengurusData($requestForExport)->get();
                 break;
             case 'ex-anggota':
-                $data = $this->getExAnggotaData($request);
-                $filename = 'data_ex_anggota_' . date('Y-m-d');
+                $data = $this->getExAnggotaData($requestForExport)->get();
                 break;
             default:
                 return redirect()->back()->with('error', 'Tipe data tidak valid.');
@@ -556,71 +518,53 @@ class DataAnggotaController extends Controller
         $callback = function() use ($data, $type) {
             $file = fopen('php://output', 'w');
             
-            // Add BOM for UTF-8
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            // Write headers
             switch ($type) {
                 case 'anggota':
-                    fputcsv($file, ['NIK', 'Nama', 'No. Telp', 'Tanggal Terdaftar', 'Iuran Wajib', 'Iuran Sukarela', 'DPW']);
+                    fputcsv($file, ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Iuran Wajib', 'Iuran Sukarela', 'DPW', 'DPD']);
                     break;
                 case 'gptp':
-                    fputcsv($file, ['NIK', 'Nama', 'No. Telp', 'Tanggal Terdaftar', 'Status', 'Posisi', 'Lokasi']);
+                    fputcsv($file, ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Status', 'Posisi']);
                     break;
                 case 'pengurus':
-                    fputcsv($file, ['NIK', 'Nama', 'No. Telp', 'Tanggal Terdaftar', 'DPW', 'DPD', 'Role', 'Posisi SEKAR']);
+                    fputcsv($file, ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'DPW', 'DPD', 'Role', 'Posisi SEKAR']);
                     break;
                 case 'ex-anggota':
                     fputcsv($file, ['NIK', 'Nama', 'Posisi Terakhir', 'Tanggal Keluar', 'Alasan Keluar', 'DPW', 'DPD']);
                     break;
             }
             
-            // Write data
             foreach ($data as $row) {
                 switch ($type) {
                     case 'anggota':
                         fputcsv($file, [
-                            $row->NIK,
-                            $row->NAMA,
-                            $row->NO_TELP,
+                            $row->NIK, $row->NAMA, $row->LOKASI,
                             $row->TANGGAL_TERDAFTAR ? date('d-m-Y', strtotime($row->TANGGAL_TERDAFTAR)) : '',
-                            $row->IURAN_WAJIB ? 'Rp ' . number_format($row->IURAN_WAJIB, 0, ',', '.') : '',
-                            $row->IURAN_SUKARELA ? 'Rp ' . number_format($row->IURAN_SUKARELA, 0, ',', '.') : '',
-                            $row->DPW
+                            'Rp ' . number_format($row->IURAN_WAJIB, 0, ',', '.'),
+                            'Rp ' . number_format($row->IURAN_SUKARELA, 0, ',', '.'),
+                            $row->DPW, $row->DPD
                         ]);
                         break;
                     case 'gptp':
                         fputcsv($file, [
-                            $row->NIK,
-                            $row->NAMA,
-                            $row->NO_TELP,
+                            $row->NIK, $row->NAMA, $row->LOKASI,
                             $row->TANGGAL_TERDAFTAR ? date('d-m-Y', strtotime($row->TANGGAL_TERDAFTAR)) : '',
-                            $row->STATUS,
-                            $row->POSISI,
-                            $row->LOKASI
+                            $row->STATUS, $row->POSISI
                         ]);
                         break;
                     case 'pengurus':
                         fputcsv($file, [
-                            $row->NIK,
-                            $row->NAMA,
-                            $row->NO_TELP,
+                            $row->NIK, $row->NAMA, $row->LOKASI,
                             $row->TANGGAL_TERDAFTAR ? date('d-m-Y', strtotime($row->TANGGAL_TERDAFTAR)) : '',
-                            $row->DPW,
-                            $row->DPD,
-                            $row->ROLE,
-                            $row->POSISI_SEKAR
+                            $row->DPW, $row->DPD, $row->ROLE, $row->POSISI_SEKAR
                         ]);
                         break;
                     case 'ex-anggota':
                         fputcsv($file, [
-                            $row->N_NIK,
-                            $row->V_NAMA_KARYAWAN,
-                            $row->V_SHORT_POSISI,
+                            $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_SHORT_POSISI,
                             $row->TGL_KELUAR ? date('d-m-Y', strtotime($row->TGL_KELUAR)) : '',
-                            $row->ALASAN_KELUAR,
-                            $row->DPW,
-                            $row->DPD
+                            $row->ALASAN_KELUAR, $row->DPW, $row->DPD
                         ]);
                         break;
                 }
