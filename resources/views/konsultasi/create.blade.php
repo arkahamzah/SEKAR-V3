@@ -232,34 +232,12 @@
 </div>
 
 <script>
-// Data from backend
+// [MODIFIED] Data from backend, now more accurate
 const availableTargets = @json($availableTargets);
 const dpwOptions = @json($dpwOptions);
 const dpdOptions = @json($dpdOptions);
-const userLocation = @json($karyawan ? $karyawan->V_KOTA_GEDUNG : null);
-
-// Auto-mapping based on location
-function getAutoMappedTarget() {
-    if (!userLocation) {
-        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
-    }
-    
-    const location = userLocation.toUpperCase();
-    
-    if (location.includes('JAKARTA')) {
-        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
-    } else if (location.includes('BANDUNG')) {
-        return { dpw: 'DPW Jabar', dpd: 'DPD Bandung' };
-    } else if (location.includes('SURABAYA')) {
-        return { dpw: 'DPW Jatim', dpd: 'DPD Surabaya' };
-    } else if (location.includes('MEDAN')) {
-        return { dpw: 'DPW Sumut', dpd: 'DPD Medan' };
-    } else if (location.includes('MAKASSAR')) {
-        return { dpw: 'DPW Sulsel', dpd: 'DPD Makassar' };
-    } else {
-        return { dpw: 'DPW Jakarta', dpd: 'DPD Jakarta Pusat' };
-    }
-}
+const userDPW = @json($userDPW ?? null); // DPW pengguna dari t_karyawan
+const userDPD = @json($userDPD ?? null); // DPD pengguna dari t_karyawan
 
 function updateFormBasedOnJenis() {
     const selectedJenis = document.querySelector('input[name="jenis"]:checked');
@@ -334,7 +312,6 @@ function handleTujuanChange() {
     
     const target = selectedTujuan.value;
     
-    // === PERBAIKAN DI SINI ===
     // Sembunyikan 'Tujuan Spesifik' untuk GENERAL dan DPP
     if (target === 'GENERAL' || target === 'DPP') {
         tujuanSpesifikDiv.classList.add('hidden');
@@ -347,35 +324,42 @@ function handleTujuanChange() {
     tujuanSpesifikDiv.classList.remove('hidden');
     tujuanSpesifikSelect.required = true; // Jadikan wajib diisi
     
-    // Populate dropdown based on target
+    // [MODIFIED] Populate dropdown based on target using accurate user data
     let options = ['<option value="">Pilih Tujuan Spesifik</option>'];
-    let autoMapped = getAutoMappedTarget();
     
     if (target === 'DPW') {
-        // Add auto-mapped option first
-        options.push(`<option value="${autoMapped.dpw}" selected>📍 ${autoMapped.dpw} (Lokasi Anda)</option>`);
+        if (userDPW) {
+            // Add auto-mapped option first if exists
+            options.push(`<option value="${userDPW}" selected>📍 ${userDPW} (Lokasi Anda)</option>`);
+        }
         
-        // Add other DPW options
+        // Add other DPW options, excluding the user's DPW if it was already added
         dpwOptions.forEach(dpw => {
-            if (dpw !== autoMapped.dpw) {
+            if (dpw.toUpperCase() !== (userDPW || '').toUpperCase()) {
                 options.push(`<option value="${dpw}">${dpw}</option>`);
             }
         });
         
-        tujuanSpesifikHint.textContent = `Auto-mapped ke ${autoMapped.dpw} berdasarkan lokasi kerja Anda, atau pilih manual`;
+        tujuanSpesifikHint.textContent = userDPW 
+            ? `Otomatis terpilih ${userDPW} berdasarkan data lokasi Anda, atau pilih manual`
+            : `Pilih DPW tujuan Anda`;
         
     } else if (target === 'DPD') {
-        // Add auto-mapped option first
-        options.push(`<option value="${autoMapped.dpd}" selected>📍 ${autoMapped.dpd} (Lokasi Anda)</option>`);
+        if (userDPD) {
+            // Add auto-mapped option first if exists
+            options.push(`<option value="${userDPD}" selected>📍 ${userDPD} (Lokasi Anda)</option>`);
+        }
         
-        // Add other DPD options
+        // Add other DPD options, excluding the user's DPD if it was already added
         dpdOptions.forEach(dpd => {
-            if (dpd !== autoMapped.dpd) {
+            if (dpd.toUpperCase() !== (userDPD || '').toUpperCase()) {
                 options.push(`<option value="${dpd}">${dpd}</option>`);
             }
         });
         
-        tujuanSpesifikHint.textContent = `Auto-mapped ke ${autoMapped.dpd} berdasarkan lokasi kerja Anda, atau pilih manual`;
+        tujuanSpesifikHint.textContent = userDPD
+            ? `Otomatis terpilih ${userDPD} berdasarkan data lokasi Anda, atau pilih manual`
+            : `Pilih DPD tujuan Anda`;
     }
     
     tujuanSpesifikSelect.innerHTML = options.join('');
@@ -383,9 +367,10 @@ function handleTujuanChange() {
 
 // Initialize form on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if there's an old jenis value
+    // Check if there's an old jenis value from a failed validation
     const oldJenis = '{{ old("jenis") }}';
     const oldTujuan = '{{ old("tujuan") }}';
+    const oldTujuanSpesifik = '{{ old("tujuan_spesifik") }}';
     
     if (oldJenis) {
         const jenisRadio = document.querySelector(`input[name="jenis"][value="${oldJenis}"]`);
@@ -394,13 +379,22 @@ document.addEventListener('DOMContentLoaded', function() {
             updateFormBasedOnJenis();
             
             if (oldTujuan) {
+                // Use a small timeout to ensure the target options are rendered first
                 setTimeout(() => {
                     const tujuanRadio = document.querySelector(`input[name="tujuan"][value="${oldTujuan}"]`);
                     if (tujuanRadio) {
                         tujuanRadio.checked = true;
                         handleTujuanChange();
+                        
+                        if(oldTujuanSpesifik) {
+                            // Another timeout to ensure the specific dropdown is populated
+                            setTimeout(() => {
+                                const tujuanSpesifikSelect = document.getElementById('tujuanSpesifikSelect');
+                                tujuanSpesifikSelect.value = oldTujuanSpesifik;
+                            }, 50);
+                        }
                     }
-                }, 100);
+                }, 50);
             }
         }
     }

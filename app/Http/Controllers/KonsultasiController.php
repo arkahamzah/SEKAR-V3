@@ -80,8 +80,14 @@ class KonsultasiController extends Controller
         $user = Auth::user();
         $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
         
+        // [MODIFIED] Mengambil data DPD dan DPW langsung dari tabel karyawan
+        $userDPD = $karyawan->DPD ?? null;
+        $userDPW = $karyawan->DPW ?? null;
+        
         return view('konsultasi.create', [
             'karyawan' => $karyawan,
+            'userDPD' => $userDPD, // [ADDED] Mengirim data DPD pengguna
+            'userDPW' => $userDPW, // [ADDED] Mengirim data DPW pengguna
             'availableTargets' => $this->getAvailableTargets(),
             'kategoriAdvokasi' => $this->getKategoriAdvokasi(),
             'dpwOptions' => $this->getDropdownOptions('DPW'),
@@ -601,10 +607,12 @@ class KonsultasiController extends Controller
     
     /**
      * Get dropdown options (DPW/DPD)
+     * [MODIFIED] to use the new mapping_dpd table for more accurate and complete data
      */
     private function getDropdownOptions(string $type): array
     {
-        return DB::table('t_sekar_pengurus')
+        // Menggunakan tabel mapping_dpd sebagai sumber data yang lebih valid dan lengkap
+        return DB::table('mapping_dpd')
             ->whereNotNull($type)
             ->where($type, '!=', '')
             ->distinct()
