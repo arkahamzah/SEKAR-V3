@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
-// Tambahkan model Jajaran dan SekarJajaran
 use App\Models\Jajaran;
 use App\Models\SekarJajaran;
 use Illuminate\Http\Request;
