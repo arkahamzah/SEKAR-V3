@@ -26,11 +26,11 @@ class DataAnggotaController extends Controller
         }
 
         $activeTab = $request->get('tab', 'anggota');
-        
+
         $data = [
             'activeTab' => $activeTab,
             'dpwOptions' => $this->getDpwOptions(),
-            'dpdOptions' => $this->getDpdOptions(),
+            'dpdOptions' => $this->getDpdOptions($request), // DIUBAH: Mengirim request untuk filter DPD
         ];
 
         switch ($activeTab) {
@@ -43,7 +43,7 @@ class DataAnggotaController extends Controller
             case 'pengurus':
                 $data['pengurus'] = $this->getPengurusData($request);
                 break;
-            
+
             case 'ex-anggota':
                 $data['ex_anggota'] = $this->getExAnggotaData($request);
                 break;
@@ -58,10 +58,10 @@ class DataAnggotaController extends Controller
     public function create()
     {
         $this->checkSuperAdminAccess();
-        
+
         return view('data-anggota.create', [
             'dpwList' => $this->getDpwOptions()->filter(function($dpw) { return $dpw !== 'Semua DPW'; }),
-            'dpdList' => $this->getDpdOptions()->filter(function($dpd) { return $dpd !== 'Semua DPD'; }),
+            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }), // DIUBAH
         ]);
     }
 
@@ -180,7 +180,7 @@ class DataAnggotaController extends Controller
         return view('data-anggota.edit', [
             'member' => $member,
             'dpwList' => $this->getDpwOptions()->filter(function($dpw) { return $dpw !== 'Semua DPW'; }),
-            'dpdList' => $this->getDpdOptions()->filter(function($dpd) { return $dpd !== 'Semua DPD'; }),
+            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }), // DIUBAH
         ]);
     }
 
@@ -219,7 +219,7 @@ class DataAnggotaController extends Controller
                 'DPW' => $request->dpw,
                 'DPD' => $request->dpd,
             ]);
-            
+
             Iuran::where('N_NIK', $nik)->update([
                 'IURAN_SUKARELA' => $request->iuran_sukarela ?: 0,
                 'UPDATE_BY' => Auth::user()->nik,
@@ -249,18 +249,16 @@ class DataAnggotaController extends Controller
         try {
             DB::beginTransaction();
 
-            // FIXED: Query now uses COALESCE to get DPW/DPD from t_karyawan first,
-            // then falls back to t_sekar_pengurus for older data.
             $member = DB::table('users as u')
                 ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
                 ->leftJoin('t_sekar_pengurus as sp', 'u.nik', '=', 'sp.N_NIK')
                 ->leftJoin('t_iuran as i', 'u.nik', '=', 'i.N_NIK')
                 ->select([
-                    'u.*', 
-                    'k.V_NAMA_KARYAWAN', 'k.V_SHORT_POSISI', 'k.V_SHORT_DIVISI', 
+                    'u.*',
+                    'k.V_NAMA_KARYAWAN', 'k.V_SHORT_POSISI', 'k.V_SHORT_DIVISI',
                     'k.V_KOTA_GEDUNG',
-                    DB::raw('COALESCE(k.DPW, sp.DPW) as DPW'), // Fallback for DPW
-                    DB::raw('COALESCE(k.DPD, sp.DPD) as DPD'), // Fallback for DPD
+                    DB::raw('COALESCE(k.DPW, sp.DPW) as DPW'),
+                    DB::raw('COALESCE(k.DPD, sp.DPD) as DPD'),
                     DB::raw('COALESCE(i.IURAN_WAJIB, 0) as IURAN_WAJIB'),
                     DB::raw('COALESCE(i.IURAN_SUKARELA, 0) as IURAN_SUKARELA')
                 ])
@@ -278,8 +276,8 @@ class DataAnggotaController extends Controller
                 'V_SHORT_POSISI' => $member->V_SHORT_POSISI,
                 'V_SHORT_DIVISI' => $member->V_SHORT_DIVISI,
                 'TGL_KELUAR' => now(),
-                'DPW' => $member->DPW, // Now correctly sourced with fallback
-                'DPD' => $member->DPD, // Now correctly sourced with fallback
+                'DPW' => $member->DPW,
+                'DPD' => $member->DPD,
                 'V_KOTA_GEDUNG' => $member->V_KOTA_GEDUNG,
                 'CREATED_BY' => Auth::user()->nik,
                 'CREATED_AT' => now(),
@@ -290,7 +288,7 @@ class DataAnggotaController extends Controller
             User::where('nik', $nik)->delete();
             SekarPengurus::where('N_NIK', $nik)->delete();
             Iuran::where('N_NIK', $nik)->delete();
-            
+
             DB::commit();
 
             return redirect()->route('data-anggota.index')
@@ -323,10 +321,18 @@ class DataAnggotaController extends Controller
             ])
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
 
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        // Jika user adalah admin DPW, filter otomatis berdasarkan DPW user tersebut
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('k.DPW', $adminDpw);
+        }
+        // --- PERUBAHAN SELESAI ---
+
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('k.DPW', $request->dpw);
         }
-        
+
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
             $query->where('k.DPD', $request->dpd);
         }
@@ -339,8 +345,6 @@ class DataAnggotaController extends Controller
             });
         }
 
-        // --- PERUBAHAN DI SINI ---
-        // Mengurutkan 7 NIK spesifik di awal, sisanya diacak
         return $query->orderByRaw("
             CASE
                 WHEN u.nik = '401031' THEN 1
@@ -368,9 +372,18 @@ class DataAnggotaController extends Controller
                 DB::raw('COALESCE(k.V_KOTA_GEDUNG, "-") as LOKASI'),
                 DB::raw('CASE WHEN u.nik IS NOT NULL THEN u.created_at ELSE NULL END as TANGGAL_TERDAFTAR'),
                 DB::raw('CASE WHEN u.nik IS NOT NULL THEN "Terdaftar" ELSE "Belum Terdaftar" END as STATUS'),
-                'k.V_SHORT_POSISI as POSISI'
+                'k.V_SHORT_POSISI as POSISI',
+                'k.DPW',
+                'k.DPD'
             ])
             ->where('k.V_SHORT_POSISI', 'LIKE', '%GPTP%');
+
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('k.DPW', $adminDpw);
+        }
+        // --- PERUBAHAN SELESAI ---
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -403,6 +416,13 @@ class DataAnggotaController extends Controller
                 'sp.V_SHORT_POSISI as POSISI_SEKAR'
             ]);
 
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('sp.DPW', $adminDpw);
+        }
+        // --- PERUBAHAN SELESAI ---
+
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('sp.DPW', $request->dpw);
         }
@@ -433,10 +453,17 @@ class DataAnggotaController extends Controller
                 'ALASAN_KELUAR', 'DPW', 'DPD'
             ]);
 
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('DPW', $adminDpw);
+        }
+        // --- PERUBAHAN SELESAI ---
+
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('DPW', $request->dpw);
         }
-        
+
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
             $query->where('DPD', $request->dpd);
         }
@@ -457,27 +484,48 @@ class DataAnggotaController extends Controller
      */
     private function getDpwOptions()
     {
-        return Karyawan::select('DPW')
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        $query = Karyawan::select('DPW')
             ->whereNotNull('DPW')
             ->where('DPW', '!=', '')
-            ->distinct()
-            ->orderBy('DPW')
-            ->pluck('DPW')
-            ->prepend('Semua DPW');
+            ->distinct();
+
+        // Jika user adalah admin DPW, hanya tampilkan DPW miliknya
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('DPW', $adminDpw);
+            // Untuk admin DPW, tidak perlu ada opsi "Semua DPW"
+            return $query->orderBy('DPW')->pluck('DPW');
+        }
+
+        // Untuk Super Admin, tampilkan semua DPW dengan opsi "Semua DPW"
+        return $query->orderBy('DPW')->pluck('DPW')->prepend('Semua DPW');
+        // --- PERUBAHAN SELESAI ---
     }
 
     /**
      * Get DPD options for filter
      */
-    private function getDpdOptions()
+    private function getDpdOptions(Request $request)
     {
-        return Karyawan::select('DPD')
+        // --- PERUBAHAN DIMULAI ---
+        $user = Auth::user();
+        $query = Karyawan::select('DPD')
             ->whereNotNull('DPD')
             ->where('DPD', '!=', '')
-            ->distinct()
-            ->orderBy('DPD')
-            ->pluck('DPD')
-            ->prepend('Semua DPD');
+            ->distinct();
+
+        // Jika user adalah admin DPW, filter DPD berdasarkan DPW miliknya
+        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+            $query->where('DPW', $adminDpw);
+        }
+        // Jika user adalah Super Admin dan sedang memfilter berdasarkan DPW tertentu
+        elseif ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
+            $query->where('DPW', $request->dpw);
+        }
+
+        return $query->orderBy('DPD')->pluck('DPD')->prepend('Semua DPD');
+        // --- PERUBAHAN SELESAI ---
     }
 
     /**
@@ -487,7 +535,7 @@ class DataAnggotaController extends Controller
     {
         $type = $request->get('type', 'anggota');
         $format = $request->get('format', 'csv');
-        
+
         $requestForExport = $request->duplicate();
         $requestForExport->offsetUnset('page');
 
@@ -530,9 +578,9 @@ class DataAnggotaController extends Controller
 
         $callback = function() use ($data, $type) {
             $file = fopen('php://output', 'w');
-            
+
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             switch ($type) {
                 case 'anggota':
                     fputcsv($file, ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Iuran Wajib', 'Iuran Sukarela', 'DPW', 'DPD']);
@@ -547,7 +595,7 @@ class DataAnggotaController extends Controller
                     fputcsv($file, ['NIK', 'Nama', 'Posisi Terakhir', 'Tanggal Keluar', 'Alasan Keluar', 'DPW', 'DPD']);
                     break;
             }
-            
+
             foreach ($data as $row) {
                 switch ($type) {
                     case 'anggota':
@@ -582,7 +630,7 @@ class DataAnggotaController extends Controller
                         break;
                 }
             }
-            
+
             fclose($file);
         };
 
@@ -593,7 +641,7 @@ class DataAnggotaController extends Controller
     private function checkSuperAdminAccess()
     {
         $user = Auth::user();
-        
+
         $isSuperAdmin = DB::table('t_sekar_pengurus as sp')
             ->join('t_sekar_roles as sr', 'sp.ID_ROLES', '=', 'sr.ID')
             ->where('sp.N_NIK', $user->nik)
