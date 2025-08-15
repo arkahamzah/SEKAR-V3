@@ -86,9 +86,9 @@
                     </div>
                 </div>
 
-                  
+
                     @if($isCurrentUserActiveHandler && $konsultasi->STATUS !== 'CLOSED')
-                        
+
                         @if($konsultasi->JENIS === 'ADVOKASI' && !empty($escalationOptions))
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                             <div class="flex">
@@ -110,10 +110,10 @@
                                 <h3 class="text-lg font-semibold text-gray-900">Aksi Admin</h3>
                                 <p class="mt-1 text-sm text-gray-600">Pilih tindakan yang ingin dilakukan untuk konsultasi ini</p>
                             </div>
-                            
+
                             <div class="p-6">
                                 <div class="flex flex-col sm:flex-row gap-3">
-                                    
+
                                     @if($konsultasi->JENIS === 'ADVOKASI' && !empty($escalationOptions))
                                     <button onclick="openEscalationModal()"
                                             class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
@@ -131,7 +131,7 @@
                                         </svg>
                                         Tutup Konsultasi
                                     </button>
-                                    
+
                                 </div>
 
                                 @if($konsultasi->JENIS === 'ADVOKASI' && !empty($escalationOptions))
@@ -142,7 +142,7 @@
                                         $userDPW = auth()->user()->pengurus->DPW ?? null;
                                         $userDPD = auth()->user()->pengurus->DPD ?? null;
                                     @endphp
-                                    
+
                                     @if($userRole === 'ADMIN_DPW')
                                     <div class="space-y-1 text-xs">
                                         <p><strong>Sebagai Admin DPW ({{ $userDPW }}):</strong></p>
@@ -157,7 +157,7 @@
                                         <p>• Dapat eskalasi ke DPW ({{ $userDPW }})</p>
                                     </div>
                                     @endif
-                                    
+
                                     <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                                         <p class="font-medium text-blue-800">Hierarki Eskalasi:</p>
                                         <p class="text-blue-700">DPD → DPW → DPP</p>
@@ -546,39 +546,50 @@
         const specificSelect = document.getElementById('escalate_to_specific');
 
         if (!escalateToSelect || !specificDiv || !specificSelect) {
-            console.error('Required elements not found');
+            console.error('Required elements for escalation modal not found');
             return;
         }
 
         const selectedOption = escalateToSelect.options[escalateToSelect.selectedIndex];
+        const escalateToValue = selectedOption.value;
 
-        if (selectedOption && selectedOption.value) {
+        // Reset state first
+        specificDiv.classList.add('hidden');
+        specificSelect.required = false;
+        specificSelect.innerHTML = '<option value="">-- Pilih Tujuan Spesifik --</option>';
+
+        if (selectedOption && escalateToValue) {
             const options = JSON.parse(selectedOption.getAttribute('data-options') || '{}');
 
-            // Clear existing options
-            specificSelect.innerHTML = '<option value="">-- Pilih Tujuan Spesifik --</option>';
+            // Special handling for DPP: auto-fill and hide
+            if (escalateToValue === 'DPP') {
+                // The controller provides {'DPP': 'DPP Pusat'}
+                // We just need to ensure a value is set for form submission.
+                // The div remains hidden.
+                const dppValue = Object.keys(options).length > 0 ? Object.keys(options)[0] : 'DPP';
+                const dppLabel = Object.values(options).length > 0 ? Object.values(options)[0] : 'Dewan Pengurus Pusat';
 
-            // Add new options
-            Object.entries(options).forEach(([value, label]) => {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = label;
-                specificSelect.appendChild(option);
-            });
+                specificSelect.innerHTML = `<option value="${dppValue}" selected>${dppLabel}</option>`;
+                // `required` remains false because the field is not user-interactive.
+                // The value is set and will be submitted with the form.
+            }
+            // For other options like DPD or DPW that have specific choices
+            else if (Object.keys(options).length > 0) {
+                Object.entries(options).forEach(([value, label]) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    specificSelect.appendChild(option);
+                });
 
-            // Show/hide specific selection based on whether there are options
-            if (Object.keys(options).length > 0) {
+                // Show the dropdown and make it required
                 specificDiv.classList.remove('hidden');
                 specificSelect.required = true;
-            } else {
-                specificDiv.classList.add('hidden');
-                specificSelect.required = false;
             }
-        } else {
-            specificDiv.classList.add('hidden');
-            specificSelect.required = false;
+            // If there are no specific options (edge case), the div remains hidden as per reset state.
         }
     }
+
 
     // Close Confirmation Modal Functions
     function showCloseConfirmModal(konsultasiId, judulKonsultasi) {
