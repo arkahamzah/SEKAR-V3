@@ -46,9 +46,9 @@ class KonsultasiController extends Controller
                 $konsultasiQuery->where(function ($query) use ($adminRole, $userDPW, $userDPD, $user) {
                     $query->where(function ($q) use ($adminRole, $userDPW, $userDPD) {
                         if ($adminRole === 'ADMIN_DPD') {
-                            $q->where('TUJUAN', 'DPD')->where('TUJUAN_SPESIFIK', $userDPD);
+                            $q->where('TUJUAN', 'DPD')->whereRaw('UPPER(TUJUAN_SPESIFIK) = ?', [strtoupper($userDPD)]);
                         } elseif ($adminRole === 'ADMIN_DPW') {
-                            $q->where('TUJUAN', 'DPW')->where('TUJUAN_SPESIFIK', $userDPW);
+                            $q->where('TUJUAN', 'DPW')->whereRaw('UPPER(TUJUAN_SPESIFIK) = ?', [strtoupper($userDPW)]);
                         } elseif ($adminRole === 'ADMIN_DPP') {
                             $q->where('TUJUAN', 'DPP');
                         }
@@ -61,7 +61,6 @@ class KonsultasiController extends Controller
             }
 
         } else {
-            // Jika bukan admin, hanya lihat konsultasi milik sendiri
             $konsultasiQuery->where('N_NIK', $user->nik);
         }
 
@@ -80,14 +79,13 @@ class KonsultasiController extends Controller
         $user = Auth::user();
         $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
         
-        // [MODIFIED] Mengambil data DPD dan DPW langsung dari tabel karyawan
         $userDPD = $karyawan->DPD ?? null;
         $userDPW = $karyawan->DPW ?? null;
         
         return view('konsultasi.create', [
             'karyawan' => $karyawan,
-            'userDPD' => $userDPD, // [ADDED] Mengirim data DPD pengguna
-            'userDPW' => $userDPW, // [ADDED] Mengirim data DPW pengguna
+            'userDPD' => $userDPD,
+            'userDPW' => $userDPW,
             'availableTargets' => $this->getAvailableTargets(),
             'kategoriAdvokasi' => $this->getKategoriAdvokasi(),
             'dpwOptions' => $this->getDropdownOptions('DPW'),
@@ -118,21 +116,16 @@ class KonsultasiController extends Controller
             
             $this->sendNotifications($konsultasi, 'new');
 
-         
             if ($validated['jenis'] === 'ASPIRASI' && $validated['tujuan'] === 'DPP') {
-                
-              
                 $dppAdmins = \App\Models\User::whereHas('pengurus.role', function ($query) {
                     $query->whereIn('NAME', ['ADMIN_DPP', 'ADM']);
                 })->get();
 
                 foreach ($dppAdmins as $admin) {
-               
                     $existingNotification = \App\Models\Notification::where('notifiable_id', $admin->nik)
-                        ->where('type', 'new') // Cari tipe 'new'
+                        ->where('type', 'new')
                         ->whereJsonContains('data->konsultasi_id', $konsultasi->ID)
                         ->first();
-
             
                     if (!$existingNotification) {
                         \App\Models\Notification::create([
@@ -176,25 +169,14 @@ class KonsultasiController extends Controller
         }])->findOrFail($id);
 
         $user = Auth::user();
-        $isAdmin = $user->pengurus && $user->pengurus->role && 
-                  in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
+        $isAdmin = $this->isAdmin($user);
                   
         if (!$isAdmin && $konsultasi->N_NIK !== $user->nik) {
             abort(403, 'Anda tidak memiliki akses untuk melihat konsultasi ini.');
         }
-        $escalationOptions = $this->getSmartEscalationOptions($konsultasi, $user);
         
-        $isCurrentUserActiveHandler = false;
-        if ($isAdmin) {
-            $adminRole = $user->pengurus->role->NAME;
-            $userDPW = $user->pengurus->DPW ?? null;
-            $userDPD = $user->pengurus->DPD ?? null;
-
-            if ($adminRole === 'ADM' && in_array($konsultasi->TUJUAN, ['DPP', 'GENERAL'])) $isCurrentUserActiveHandler = true;
-            if ($adminRole === 'ADMIN_DPP' && $konsultasi->TUJUAN === 'DPP') $isCurrentUserActiveHandler = true;
-            if ($adminRole === 'ADMIN_DPW' && $konsultasi->TUJUAN === 'DPW' && $konsultasi->TUJUAN_SPESIFIK === $userDPW) $isCurrentUserActiveHandler = true;
-            if ($adminRole === 'ADMIN_DPD' && $konsultasi->TUJUAN === 'DPD' && $konsultasi->TUJUAN_SPESIFIK === $userDPD) $isCurrentUserActiveHandler = true;
-        }
+        $escalationOptions = $this->getSmartEscalationOptions($konsultasi, $user);
+        $isCurrentUserActiveHandler = $this->isTicketHandler($user, $konsultasi);
         
         return view('konsultasi.show', compact('konsultasi', 'escalationOptions', 'isCurrentUserActiveHandler'));
     }
@@ -220,7 +202,6 @@ class KonsultasiController extends Controller
                 $jenisKomentar = $this->isAdmin($user) ? 'ADMIN' : 'USER';
                 $this->createKomentar($id, $user->nik, $validated['komentar'], $jenisKomentar);
                 
-                // Update status if admin responds
                 if ($jenisKomentar === 'ADMIN' && $konsultasi->STATUS === 'OPEN') {
                     $konsultasi->update([
                         'STATUS' => 'IN_PROGRESS',
@@ -230,7 +211,6 @@ class KonsultasiController extends Controller
                 }
             });
             
-            // Send notifications (non-blocking)
             $this->sendNotifications($konsultasi, 'comment', [
                 'is_admin_comment' => $this->isAdmin($user),
                 'comment_by' => $this->getCommentByData($user)
@@ -253,16 +233,15 @@ class KonsultasiController extends Controller
      */
     public function close($id)
     {
-        if (!$this->isAdmin(Auth::user())) {
-            return redirect()->back()->with('error', 'Akses ditolak. Hanya admin yang dapat menutup konsultasi.');
+        $user = Auth::user();
+        $konsultasi = Konsultasi::findOrFail($id);
+
+        if (!$this->isTicketHandler($user, $konsultasi)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak untuk menutup konsultasi ini.');
         }
         
-        $user = Auth::user();
-        
         try {
-            $konsultasi = DB::transaction(function () use ($id, $user) {
-                $konsultasi = Konsultasi::findOrFail($id);
-                
+            DB::transaction(function () use ($id, $user, $konsultasi) {
                 $konsultasi->update([
                     'STATUS' => 'CLOSED',
                     'CLOSED_BY' => $user->nik,
@@ -272,11 +251,8 @@ class KonsultasiController extends Controller
                 ]);
                 
                 $this->createKomentar($id, $user->nik, 'Konsultasi telah ditutup dan diselesaikan.', 'ADMIN');
-                
-                return $konsultasi;
             });
             
-            // Send notifications (non-blocking)
             $this->sendNotifications($konsultasi, 'closed');
             
             return redirect()->back()->with('success', 'Konsultasi berhasil ditutup.');
@@ -296,6 +272,14 @@ class KonsultasiController extends Controller
      */
     public function escalate(Request $request, $id)
     {
+        $user = Auth::user();
+        $konsultasi = Konsultasi::findOrFail($id);
+
+        // Otorisasi dipindahkan ke middleware, namun pengecekan di sini tetap baik sebagai garda kedua.
+        if (!$this->isTicketHandler($user, $konsultasi)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak untuk melakukan eskalasi pada konsultasi ini.');
+        }
+
         $validator = Validator::make($request->all(), [
             'escalate_to' => 'required|string',
             'escalate_to_specific' => 'nullable|string',
@@ -311,11 +295,7 @@ class KonsultasiController extends Controller
                 ->withErrors($validator)
                 ->withInput();
         }
-
-        $konsultasi = Konsultasi::findOrFail($id);
-        $user = Auth::user();
         
-        // Validate escalation permission using smart rules
         $validationResult = $this->validateSmartEscalation($konsultasi, $user, $request->escalate_to, $request->escalate_to_specific);
         
         if (!$validationResult['allowed']) {
@@ -327,11 +307,9 @@ class KonsultasiController extends Controller
         try {
             DB::beginTransaction();
 
-            // Store old values for notification context
             $oldTarget = $konsultasi->TUJUAN;
             $oldSpecific = $konsultasi->TUJUAN_SPESIFIK;
 
-            // Update konsultasi
             $konsultasi->update([
                 'TUJUAN' => $request->escalate_to,
                 'TUJUAN_SPESIFIK' => $request->escalate_to_specific,
@@ -340,7 +318,6 @@ class KonsultasiController extends Controller
                 'UPDATED_AT' => now()
             ]);
 
-            // Add escalation comment
             KonsultasiKomentar::create([
                 'ID_KONSULTASI' => $konsultasi->ID,
                 'N_NIK' => $user->nik,
@@ -352,7 +329,6 @@ class KonsultasiController extends Controller
 
             DB::commit();
 
-            // Send notifications with proper context
             $this->sendEscalationNotifications($konsultasi, $user, [
                 'old_target' => $oldTarget,
                 'old_specific' => $oldSpecific,
@@ -404,9 +380,30 @@ class KonsultasiController extends Controller
     // PRIVATE HELPER METHODS
     // =====================================================
 
-    /**
-     * Apply filters to query
-     */
+    private function isTicketHandler($user, $konsultasi): bool
+    {
+        if (!$this->isAdmin($user)) {
+            return false;
+        }
+
+        $adminRole = $user->pengurus->role->NAME;
+        $userDPW = $user->pengurus->DPW ?? null;
+        $userDPD = $user->pengurus->DPD ?? null;
+
+        if ($adminRole === 'ADM') return true;
+        if ($adminRole === 'ADMIN_DPP' && $konsultasi->TUJUAN === 'DPP') return true;
+        
+        if ($adminRole === 'ADMIN_DPW' && $konsultasi->TUJUAN === 'DPW') {
+            return strcasecmp($konsultasi->TUJUAN_SPESIFIK, $userDPW) === 0;
+        }
+        
+        if ($adminRole === 'ADMIN_DPD' && $konsultasi->TUJUAN === 'DPD') {
+            return strcasecmp($konsultasi->TUJUAN_SPESIFIK, $userDPD) === 0;
+        }
+
+        return false;
+    }
+
     private function applyFilters($query, Request $request)
     {
         if ($request->filled('search')) {
@@ -425,15 +422,11 @@ class KonsultasiController extends Controller
         }
     }
 
-    /**
-     * Send notifications (consolidated method)
-     */
     private function sendNotifications($konsultasi, string $type, array $context = [])
     {
         try {
             $konsultasi->load('karyawan');
             
-            // Web notification
             switch ($type) {
                 case 'new':
                     $this->notificationService->notifyNewKonsultasi($konsultasi);
@@ -453,7 +446,6 @@ class KonsultasiController extends Controller
                     break;
             }
             
-            // Email notification (async)
             $this->sendEmailNotification($konsultasi, $type);
             
         } catch (\Exception $e) {
@@ -475,16 +467,8 @@ class KonsultasiController extends Controller
                 'context' => $context
             ]);
 
-            // 1. Notify the original submitter about escalation
             $this->notifyOriginalSubmitter($konsultasi, $context);
-
-            // 2. Notify new target admins about the escalated konsultasi
             $this->notifyNewTargetAdmins($konsultasi, $context);
-
-            /*
-            // 3. Send email notifications
-            $this->sendEscalationEmailNotifications($konsultasi, $context);
-            */
             
         } catch (\Exception $e) {
             Log::error('Failed to send escalation notifications', [
@@ -498,7 +482,6 @@ class KonsultasiController extends Controller
     private function notifyOriginalSubmitter($konsultasi, $context)
     {
         try {
-            // Create in-app notification for the original submitter
             if ($this->notificationService) {
                 $this->notificationService->notifyEscalation($konsultasi, [
                     'type' => 'escalation_to_submitter',
@@ -506,73 +489,27 @@ class KonsultasiController extends Controller
                     'escalation_reason' => $context['escalation_comment'] ?? 'Konsultasi dieskalasi'
                 ]);
             }
-
-            Log::info('Notified original submitter', [
-                'konsultasi_id' => $konsultasi->ID,
-                'submitter_nik' => $konsultasi->N_NIK
-            ]);
         } catch (\Exception $e) {
-            Log::error('Failed to notify original submitter', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Failed to notify original submitter', ['konsultasi_id' => $konsultasi->ID, 'error' => $e->getMessage()]);
         }
     }
 
     private function notifyNewTargetAdmins($konsultasi, $context)
     {
         try {
-            // Create notification for new target admins
             if ($this->notificationService) {
                 $this->notificationService->notifyEscalation($konsultasi, [
                     'type' => 'escalation_to_admins',
-                    'escalated_from' => $this->getEscalationLabel(
-                        $context['old_target'] ?? 'Unknown', 
-                        $context['old_specific'] ?? null
-                    ),
+                    'escalated_from' => $this->getEscalationLabel($context['old_target'] ?? 'Unknown', $context['old_specific'] ?? null),
                     'escalated_to' => $this->getEscalationLabel($konsultasi->TUJUAN, $konsultasi->TUJUAN_SPESIFIK),
                     'escalation_reason' => $context['escalation_comment'] ?? 'Konsultasi dieskalasi'
                 ]);
             }
-
-            Log::info('Notified new target admins', [
-                'konsultasi_id' => $konsultasi->ID,
-                'new_target' => $konsultasi->TUJUAN,
-                'new_specific' => $konsultasi->TUJUAN_SPESIFIK
-            ]);
         } catch (\Exception $e) {
-            Log::error('Failed to notify new target admins', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('Failed to notify new target admins', ['konsultasi_id' => $konsultasi->ID, 'error' => $e->getMessage()]);
         }
     }
 
-    /*
-    private function sendEscalationEmailNotifications($konsultasi, $context)
-    {
-        try {
-            // Send email to original submitter
-            $this->sendEmailNotification($konsultasi, 'escalation_to_submitter');
-
-            // Send email to new target admins  
-            $this->sendEmailNotification($konsultasi, 'escalation_to_admin');
-
-            Log::info('Escalation email notifications dispatched', [
-                'konsultasi_id' => $konsultasi->ID
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to send escalation email notifications', [
-                'konsultasi_id' => $konsultasi->ID,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-    */
-
-    /**
-     * Get available targets
-     */
     private function getAvailableTargets(): array
     {
         return [
@@ -588,9 +525,6 @@ class KonsultasiController extends Controller
         ];
     }
     
-    /**
-     * Get kategori advokasi options
-     */
     private function getKategoriAdvokasi(): array
     {
         return [
@@ -605,13 +539,8 @@ class KonsultasiController extends Controller
         ];
     }
     
-    /**
-     * Get dropdown options (DPW/DPD)
-     * [MODIFIED] to use the new mapping_dpd table for more accurate and complete data
-     */
     private function getDropdownOptions(string $type): array
     {
-        // Menggunakan tabel mapping_dpd sebagai sumber data yang lebih valid dan lengkap
         return DB::table('mapping_dpd')
             ->whereNotNull($type)
             ->where($type, '!=', '')
@@ -622,9 +551,6 @@ class KonsultasiController extends Controller
             ->toArray();
     }
     
-    /**
-     * Get valid escalation targets
-     */
     private function getSmartEscalationOptions($konsultasi, $user): array
     {
         if (!$user->pengurus || !$user->pengurus->role) {
@@ -632,268 +558,81 @@ class KonsultasiController extends Controller
         }
 
         $userRole = $user->pengurus->role->NAME;
-        $userDPW = $user->pengurus->DPW ?? null;
-        $userDPD = $user->pengurus->DPD ?? null;
-        $currentLevel = $konsultasi->TUJUAN;
-        $currentSpecific = $konsultasi->TUJUAN_SPESIFIK;
-
         $options = [];
 
         switch ($userRole) {
             case 'ADMIN_DPD':
-                $options = $this->getDPDEscalationOptions($konsultasi, $userDPW, $userDPD);
+                $options = $this->getDPDEscalationOptions($user);
                 break;
                 
             case 'ADMIN_DPW':
-                $options = $this->getDPWEscalationOptions($konsultasi, $userDPW);
+                $options = $this->getDPWEscalationOptions($user);
                 break;
         }
 
         return $options;
     }
 
-    /**
-     * Get escalation options for DPD Admin
-     */
-     private function getDPDEscalationOptions($konsultasi, $userDPW, $userDPD): array
+    private function getDPDEscalationOptions($user): array
     {
-        $currentLevel = $konsultasi->TUJUAN;
-        $currentSpecific = $konsultasi->TUJUAN_SPESIFIK;
-        
-        if ($currentLevel !== 'DPD') {
-            return []; // DPD admin can only escalate from DPD level
+        $userDPW = $user->pengurus->DPW ?? null;
+        if (!$userDPW) {
+            return [];
         }
 
-        $options = [];
-        if ($userDPW && $currentSpecific === $userDPD) {
-            $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
-            $otherDPDs = array_diff($dpdInSameDPW, [$userDPD]); // Exclude current user's DPD
-            
-            if (!empty($otherDPDs)) {
-                $dpdOptions = [];
-                foreach ($otherDPDs as $dpd) {
-                    $dpdOptions[$dpd] = $dpd;
-                }
-                $options['DPD'] = [
-                    'label' => 'DPD Lain di Wilayah yang Sama',
-                    'specific_options' => $dpdOptions
-                ];
-            }
-        }
-
-        // 2. Eskalasi ke DPW mereka sendiri (step up)
-        if ($userDPW) {
-            $options['DPW'] = [
+        return [
+            'DPW' => [
                 'label' => 'DPW (Dewan Pengurus Wilayah)',
                 'specific_options' => [$userDPW => $userDPW]
+            ]
+        ];
+    }
+
+    private function getDPWEscalationOptions($user): array
+    {
+        $userDPW = $user->pengurus->DPW ?? null;
+        if (!$userDPW) {
+            return [];
+        }
+    
+        $options = [];
+    
+        $allDPWs = $this->getDropdownOptions('DPW');
+        $otherDPWs = array_diff($allDPWs, [$userDPW]);
+        if (!empty($otherDPWs)) {
+            $dpwOptions = [];
+            foreach ($otherDPWs as $dpw) {
+                $dpwOptions[$dpw] = $dpw;
+            }
+            $options['DPW'] = [
+                'label' => 'DPW Lain',
+                'specific_options' => $dpwOptions
             ];
         }
-
-        // TIDAK BISA LANGSUNG KE DPP ATAU GENERAL
-        // Harus melalui DPW dulu
-
+    
+        $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
+        if (!empty($dpdInSameDPW)) {
+            $dpdOptions = [];
+            foreach ($dpdInSameDPW as $dpd) {
+                $dpdOptions[$dpd] = $dpd;
+            }
+            $options['DPD'] = [
+                'label' => 'DPD di Wilayah Sendiri',
+                'specific_options' => $dpdOptions
+            ];
+        }
+    
+        $options['DPP'] = [
+            'label' => 'DPP (Dewan Pengurus Pusat)',
+            'specific_options' => ['DPP' => 'DPP Pusat']
+        ];
+    
         return $options;
     }
 
-    /**
-     * Get escalation options for DPW Admin with smart rules
-     */
-    private function getDPWEscalationOptions($konsultasi, $userDPW): array
-    {
-        $currentLevel = $konsultasi->TUJUAN;
-        $currentSpecific = $konsultasi->TUJUAN_SPESIFIK;
-        
-        $options = [];
-
-        switch ($currentLevel) {
-            case 'DPD':
-                // DPW bisa eskalasi DPD yang ada di wilayahnya
-                $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
-                if (in_array($currentSpecific, $dpdInSameDPW)) {
-                    // 1. Eskalasi ke DPD lain di DPW yang sama (lateral)
-                    $otherDPDs = array_diff($dpdInSameDPW, [$currentSpecific]);
-                    if (!empty($otherDPDs)) {
-                        $dpdOptions = [];
-                        foreach ($otherDPDs as $dpd) {
-                            $dpdOptions[$dpd] = $dpd;
-                        }
-                        $options['DPD'] = [
-                            'label' => 'DPD Lain di Wilayah yang Sama',
-                            'specific_options' => $dpdOptions
-                        ];
-                    }
-
-                    // 2. Eskalasi ke DPW sendiri (step up to own level)
-                    $options['DPW'] = [
-                        'label' => 'DPW (Dewan Pengurus Wilayah)',
-                        'specific_options' => [$userDPW => $userDPW]
-                    ];
-                }
-                break;
-
-            case 'DPW':
-                // DPW hanya bisa eskalasi dari DPW sendiri
-                if ($currentSpecific === $userDPW) {
-                    // 1. Eskalasi ke DPW lain (lateral)
-                    $otherDPWs = $this->getOtherDPWs($userDPW);
-                    if (!empty($otherDPWs)) {
-                        $dpwOptions = [];
-                        foreach ($otherDPWs as $dpw) {
-                            $dpwOptions[$dpw] = $dpw;
-                        }
-                        $options['DPW'] = [
-                            'label' => 'DPW Lain',
-                            'specific_options' => $dpwOptions
-                        ];
-                    }
-
-                    // 2. Eskalasi ke DPP (step up)
-                    $options['DPP'] = [
-                        'label' => 'DPP (Dewan Pengurus Pusat)',
-                        'specific_options' => ['DPP' => 'DPP Pusat']
-                    ];
-
-                    // 3. Bisa juga ke DPD di wilayah sendiri (step down)
-                    $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
-                    if (!empty($dpdInSameDPW)) {
-                        $dpdOptions = [];
-                        foreach ($dpdInSameDPW as $dpd) {
-                            $dpdOptions[$dpd] = $dpd;
-                        }
-                        $options['DPD'] = [
-                            'label' => 'DPD di Wilayah Sendiri',
-                            'specific_options' => $dpdOptions
-                        ];
-                    }
-                }
-                break;
-
-            case 'DPP':
-                // DPW bisa handle escalation dari DPP jika diperlukan
-                // Tapi biasanya DPP tidak dieskalasi ke DPW
-                // Hanya untuk kasus khusus
-                break;
-        }
-
-        return $options;
-    }
-
-    /*
-     * Get escalation options for DPP Admin
-     
-    private function getDPPEscalationOptions($konsultasi): array
-    {
-        $currentLevel = $konsultasi->TUJUAN;
-        
-        if ($currentLevel === 'GENERAL') {
-            return []; // Already at highest level
-        }
-
-        $options = [];
-
-        switch ($currentLevel) {
-            case 'DPD':
-            case 'DPW':
-            case 'DPP':
-                // DPP bisa eskalasi ke GENERAL (SEKAR Pusat)
-                $options['GENERAL'] = [
-                    'label' => 'SEKAR Pusat',
-                    'specific_options' => ['SEKAR Pusat' => 'SEKAR Pusat']
-                ];
-                break;
-        }
-
-        return $options;
-    }
-
-    /**
-     * Validate smart escalation rules
-     */
     private function validateSmartEscalation($konsultasi, $user, $escalateTo, $escalateToSpecific): array
     {
-        $userRole = $user->pengurus->role->NAME;
-        $userDPW = $user->pengurus->DPW ?? null;
-        $userDPD = $user->pengurus->DPD ?? null;
-        $currentLevel = $konsultasi->TUJUAN;
-        $currentSpecific = $konsultasi->TUJUAN_SPESIFIK;
-
-        // Validation for step-by-step escalation
-        
-        if ($userRole === 'ADMIN_DPD') {
-            if ($currentLevel !== 'DPD' || $currentSpecific !== $userDPD) {
-                return [
-                    'allowed' => false,
-                    'message' => 'Anda hanya dapat mengeskalasi konsultasi yang ditujukan ke DPD Anda sendiri.'
-                ];
-            }
-
-            // DPD hanya bisa ke DPD lain atau DPW sendiri
-            if (!in_array($escalateTo, ['DPD', 'DPW'])) {
-                return [
-                    'allowed' => false,
-                    'message' => 'DPD hanya dapat mengeskalasi ke DPD lain di wilayah yang sama atau ke DPW sendiri. Untuk eskalasi ke DPP/SEKAR Pusat, harus melalui DPW terlebih dahulu.'
-                ];
-            }
-
-            if ($escalateTo === 'DPD') {
-                $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
-                if (!in_array($escalateToSpecific, $dpdInSameDPW)) {
-                    return [
-                        'allowed' => false,
-                        'message' => 'DPD hanya dapat mengeskalasi ke DPD lain yang berada di wilayah DPW yang sama.'
-                    ];
-                }
-                if ($escalateToSpecific === $userDPD) {
-                    return [
-                        'allowed' => false,
-                        'message' => 'Tidak dapat mengeskalasi ke DPD sendiri.'
-                    ];
-                }
-            }
-
-            // Validasi DPD → DPW
-            if ($escalateTo === 'DPW' && $escalateToSpecific !== $userDPW) {
-                return [
-                    'allowed' => false,
-                    'message' => 'DPD hanya dapat mengeskalasi ke DPW sendiri.'
-                ];
-            }
-        }
-
-        if ($userRole === 'ADMIN_DPW') {
-            if ($currentLevel === 'DPD') {
-                $dpdInSameDPW = $this->getDPDInSameDPW($userDPW);
-                if (!in_array($currentSpecific, $dpdInSameDPW)) {
-                    return [
-                        'allowed' => false,
-                        'message' => 'Anda hanya dapat mengeskalasi konsultasi DPD yang berada di wilayah DPW Anda.'
-                    ];
-                }
-            } elseif ($currentLevel === 'DPW' && $currentSpecific !== $userDPW) {
-                return [
-                    'allowed' => false,
-                    'message' => 'Anda hanya dapat mengeskalasi konsultasi yang ditujukan ke DPW Anda sendiri.'
-                ];
-            }
-
-            if ($currentLevel === 'DPD' && $escalateTo === 'GENERAL') {
-                return [
-                    'allowed' => false,
-                    'message' => 'Untuk eskalasi ke SEKAR Pusat dari DPD, harus melalui DPP terlebih dahulu.'
-                ];
-            }
-
-            if ($escalateTo === 'DPD') {
-                $targetDPDsInSameDPW = $this->getDPDInSameDPW($userDPW);
-                if (!in_array($escalateToSpecific, $targetDPDsInSameDPW)) {
-                    return [
-                        'allowed' => false,
-                        'message' => 'DPW tidak dapat mengeskalasi ke DPD yang berada di wilayah DPW lain.'
-                    ];
-                }
-            }
-        }
-        if ($escalateTo === $currentLevel && $escalateToSpecific === $currentSpecific) {
+        if (strcasecmp($escalateTo, $konsultasi->TUJUAN) === 0 && strcasecmp($escalateToSpecific, $konsultasi->TUJUAN_SPESIFIK) === 0) {
             return [
                 'allowed' => false,
                 'message' => 'Tidak dapat mengeskalasi ke tujuan yang sama.'
@@ -903,14 +642,11 @@ class KonsultasiController extends Controller
         return ['allowed' => true, 'message' => ''];
     }
 
-    /**
-     * Get DPDs that are in the same DPW
-     */
     private function getDPDInSameDPW($dpw): array
     {
         if (!$dpw) return [];
 
-        return DB::table('t_sekar_pengurus')
+        return DB::table('mapping_dpd')
             ->where('DPW', $dpw)
             ->whereNotNull('DPD')
             ->where('DPD', '!=', '')
@@ -919,26 +655,6 @@ class KonsultasiController extends Controller
             ->toArray();
     }
 
-    /**
-     * Get other DPWs (excluding current user's DPW)
-     */
-    private function getOtherDPWs($currentDPW): array
-    {
-        $query = DB::table('t_sekar_pengurus')
-            ->whereNotNull('DPW')
-            ->where('DPW', '!=', '')
-            ->distinct();
-
-        if ($currentDPW) {
-            $query->where('DPW', '!=', $currentDPW);
-        }
-
-        return $query->pluck('DPW')->toArray();
-    }
-
-    /**
-     * Get escalation label for display
-     */
     private function getEscalationLabel($level, $specific): string
     {
         $labels = [
@@ -957,23 +673,6 @@ class KonsultasiController extends Controller
         return $label;
     }
 
-    /**
-     * Get target label
-     */
-    private function getTargetLabel($target): string
-    {
-        return match ($target) {
-            'DPD' => 'DPD (Dewan Pengurus Daerah)',
-            'DPW' => 'DPW (Dewan Pengurus Wilayah)', 
-            'DPP' => 'DPP (Dewan Pengurus Pusat)',
-            'GENERAL' => 'Admin SEKAR',
-            default => 'Admin SEKAR'
-        };
-    }
-    
-    /**
-     * Send email notification
-     */
     private function sendEmailNotification($konsultasi, string $actionType)
     {
         try {
@@ -993,9 +692,6 @@ class KonsultasiController extends Controller
         }
     }
     
-    /**
-     * Get admin email by target level
-     */
     private function getAdminEmailByTarget(string $target): ?string
     {
         return match ($target) {
@@ -1007,48 +703,10 @@ class KonsultasiController extends Controller
         };
     }
 
-    // =====================================================
-    // ACCESS CONTROL METHODS
-    // =====================================================
-    
     private function isAdmin($user): bool
     {
         return $user->pengurus?->role && 
                in_array($user->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']);
-    }
-    
-    private function getAdminLevel($user): int
-    {
-        if (!$user->pengurus?->role) return 0;
-        
-        return match ($user->pengurus->role->NAME) {
-            'ADM' => 4,
-            'ADMIN_DPP' => 3,
-            'ADMIN_DPW' => 2,
-            'ADMIN_DPD' => 1,
-            default => 0
-        };
-    }
-    
-    private function filterByAdminLevel($query, int $adminLevel)
-    {
-        $allowedTargets = match ($adminLevel) {
-            4 => null, // ADM can see all
-            3 => ['DPP', 'GENERAL'],
-            2 => ['DPW', 'DPP', 'GENERAL'],
-            1 => ['DPD', 'DPW', 'DPP', 'GENERAL'],
-            default => []
-        };
-        
-        if ($allowedTargets === null) return $query;
-        if (empty($allowedTargets)) return $query->where('ID', 0);
-        
-        return $query->whereIn('TUJUAN', $allowedTargets);
-    }
-    
-    private function canAccessKonsultasi($user, $konsultasi): bool
-    {
-        return $konsultasi->N_NIK === $user->nik || $this->isAdmin($user);
     }
     
     private function canCommentOnKonsultasi($user, $konsultasi): bool
@@ -1056,10 +714,6 @@ class KonsultasiController extends Controller
         if ($konsultasi->STATUS === 'CLOSED') return false;
         return $konsultasi->N_NIK === $user->nik || $this->isAdmin($user);
     }
-
-    // =====================================================
-    // DATABASE OPERATIONS
-    // =====================================================
     
     private function createKonsultasi($user, array $validated): Konsultasi
     {

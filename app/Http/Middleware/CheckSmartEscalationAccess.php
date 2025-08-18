@@ -3,11 +3,13 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Models\Konsultasi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+
 
 class CheckSmartEscalationAccess
 {
@@ -18,41 +20,35 @@ class CheckSmartEscalationAccess
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
         $user = Auth::user();
-        
-        // Check if user is admin (should be handled by CheckAdmin middleware first)
+        $konsultasiId = $request->route('id');
+        $konsultasi = Konsultasi::find($konsultasiId);
+
         if (!$user || !$user->pengurus || !$user->pengurus->role) {
-            Log::warning('Non-admin user attempted escalation', [
-                'user_id' => $user?->id,
-                'ip' => $request->ip(),
-                'url' => $request->fullUrl()
-            ]);
-            
-            return redirect()->route('konsultasi.index')
-                ->with('error', 'Anda tidak memiliki akses untuk melakukan eskalasi.');
+            return redirect()->route('konsultasi.index')->with('error', 'Anda tidak memiliki hak akses.');
         }
-
-        $userRole = $user->pengurus->role->NAME;
         
-        if (!in_array($userRole, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD'])) {
-            Log::warning('Non-admin role attempted escalation', [
-                'user_id' => $user->id,
-                'user_role' => $userRole,
-                'ip' => $request->ip()
-            ]);
-            
-            return redirect()->route('konsultasi.index')
-                ->with('error', 'Hanya admin yang dapat melakukan eskalasi.');
+        $userRole = $user->pengurus->role->NAME;
+        $userDPW = $user->pengurus->DPW;
+        $userDPD = $user->pengurus->DPD;
+
+        if ($userRole === 'ADM' || $userRole === 'ADMIN_DPP') {
+            return $next($request);
         }
 
-        // For escalation requests, validate specific smart rules
-        if ($request->isMethod('post') && $request->route()->getName() === 'konsultasi.escalate') {
-            return $this->validateEscalationRequest($request, $next, $user);
+        if ($konsultasi) {
+            // Menggunakan strcasecmp untuk perbandingan case-insensitive
+            if ($userRole === 'ADMIN_DPW' && $konsultasi->TUJUAN === 'DPW' && strcasecmp($konsultasi->TUJUAN_SPESIFIK, $userDPW) === 0) {
+                return $next($request);
+            }
+            if ($userRole === 'ADMIN_DPD' && $konsultasi->TUJUAN === 'DPD' && strcasecmp($konsultasi->TUJUAN_SPESIFIK, $userDPD) === 0) {
+                return $next($request);
+            }
         }
-
-        return $next($request);
+        
+        return redirect()->route('konsultasi.show', $konsultasiId)->with('error', 'Anda tidak memiliki otorisasi untuk melakukan eskalasi pada konsultasi ini.');
     }
 
     /**

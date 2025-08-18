@@ -1,4 +1,5 @@
 <?php
+
 // routes/web.php
 
 use App\Http\Controllers\AuthController;
@@ -21,22 +22,13 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
     Route::get('/login', [AuthController::class, 'showLogin']);
-
     Route::post('/', [AuthController::class, 'login']);
-
-    // SSO Login Routes
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
     Route::get('/sso/popup/{token}', [AuthController::class, 'showSSOPopup'])->name('sso.popup');
     Route::post('/sso/auth', [AuthController::class, 'processSSOAuth'])->name('sso.auth');
-
-    // SSO Register Routes
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-
-    // API Routes for Register
     Route::post('/api/karyawan-data', [AuthController::class, 'getKaryawanData'])->name('api.karyawan-data');
-
-    // Password Reset Routes (for non-authenticated users)
     Route::prefix('password')->name('password.')->group(function () {
         Route::get('/reset', [PasswordResetController::class, 'showRequestForm'])->name('request');
         Route::post('/email', [PasswordResetController::class, 'sendResetLink'])->name('email');
@@ -46,14 +38,11 @@ Route::middleware('guest')->group(function () {
     });
 });
 
-
-
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware('auth')->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
-    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Profile Routes
@@ -97,6 +86,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/{id}/close', [KonsultasiController::class, 'close'])->name('close');
         });
 
+        // INI BAGIAN YANG DIPERBAIKI
+        // Middleware yang benar adalah CheckSmartEscalationAccess::class
         Route::middleware([CheckAdmin::class, CheckSmartEscalationAccess::class])->group(function () {
             Route::post('/{id}/escalate', [KonsultasiController::class, 'escalate'])->name('escalate');
         });
@@ -114,7 +105,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/sertifikat', [SertifikatController::class, 'show'])->name('sertifikat.show');
     Route::get('/sertifikat/download', [SertifikatController::class, 'download'])->name('sertifikat.download');
 
-    // DIUBAH: Rute dokumen menjadi dinamis
     Route::get('/dokumen/{filename}', [DocumentController::class, 'show'])->name('dokumen.show');
     Route::get('/dokumen/download/{filename}', [DocumentController::class, 'download'])->name('dokumen.download');
 
@@ -122,7 +112,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware([CheckAdmin::class])->group(function () {
         Route::get('/setting', [SettingController::class, 'index'])->name('setting.index');
         Route::post('/setting', [SettingController::class, 'update'])->name('setting.update');
-        // DIUBAH: Rute spesifik untuk unggah dan hapus dokumen
         Route::post('/setting/document/upload', [SettingController::class, 'uploadDocument'])->name('setting.document.upload');
         Route::delete('/setting/document/delete/{filename}', [SettingController::class, 'deleteDocument'])->name('setting.document.delete');
     });
@@ -135,7 +124,6 @@ Route::middleware('auth')->group(function () {
 
     // API-style routes
     Route::prefix('api')->name('api.')->group(function () {
-        // BARU: Rute API untuk mengambil daftar dokumen
         Route::get('/documents', [DocumentController::class, 'listDocuments'])->name('documents.list');
     });
 });
