@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
-use App\Models\User; // Ditambahkan untuk relasi follower
 
 class Konsultasi extends Model
 {
@@ -60,10 +59,29 @@ class Konsultasi extends Model
         static::updating(function ($konsultasi) {
             $konsultasi->UPDATED_AT = now();
         });
+
+        // Clear cache when konsultasi is modified
+        static::saved(function ($konsultasi) {
+            Cache::forget('konsultasi_stats');
+            Cache::forget('konsultasi_stats_user_' . $konsultasi->N_NIK);
+        });
+
+        static::deleted(function ($konsultasi) {
+            Cache::forget('konsultasi_stats');
+            Cache::forget('konsultasi_stats_user_' . $konsultasi->N_NIK);
+        });
     }
 
     /**
-     * Relationship to Karyawan (submitter)
+     * Relationship to User
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'N_NIK', 'nik');
+    }
+
+    /**
+     * Relationship to Karyawan
      */
     public function karyawan(): BelongsTo
     {
@@ -71,65 +89,280 @@ class Konsultasi extends Model
     }
 
     /**
-     * Relationship to KonsultasiKomentar
+     * Relationship to Comments (menggunakan nama tabel yang benar)
      */
     public function komentar(): HasMany
     {
-        return $this->hasMany(KonsultasiKomentar::class, 'ID_KONSULTASI', 'ID');
+        return $this->hasMany(KonsultasiKomentar::class, 'ID_KONSULTASI', 'ID')
+                    ->orderBy('CREATED_AT', 'asc');
     }
 
     /**
-     * [BARU] Relationship to KonsultasiFollower
-     * Mendapatkan daftar user yang mengikuti konsultasi ini.
+     * Relationship to latest comment
      */
-    public function followers(): HasMany
+    public function latestComment(): HasMany
     {
-        return $this->hasMany(KonsultasiFollower::class, 'konsultasi_id', 'ID');
+        return $this->hasMany(KonsultasiKomentar::class, 'ID_KONSULTASI', 'ID')
+                    ->orderBy('CREATED_AT', 'desc')
+                    ->limit(1);
     }
 
     /**
-     * [BARU] Helper function to check if a user is a follower.
-     *
-     * @param User $user
-     * @return boolean
+     * Relationship to admin comments only
      */
-    public function isFollowedBy(User $user): bool
+    public function adminComments(): HasMany
     {
-        // Cek apakah ada record follower dengan user_nik yang sesuai
-        return $this->followers()->where('user_nik', $user->nik)->exists();
+        return $this->hasMany(KonsultasiKomentar::class, 'ID_KONSULTASI', 'ID')
+                    ->where('PENGIRIM_ROLE', 'ADMIN')
+                    ->orderBy('CREATED_AT', 'desc');
     }
 
+    /**
+     * Relationship to user who closed the konsultasi
+     */
+    public function closedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'CLOSED_BY', 'nik');
+    }
 
     /**
-     * Get statistics for konsultasi
+     * Scope for filtering by status
      */
-    public static function getStats($nik = null): array
+    public function scopeByStatus($query, $status)
     {
-        return Cache::remember('konsultasi_stats_' . ($nik ?? 'all'), 60, function () use ($nik) {
-            $query = self::query();
+        return $query->where('STATUS', $status);
+    }
 
-            if ($nik) {
-                $query->where('N_NIK', $nik);
-            }
+    /**
+     * Scope for filtering by jenis
+     */
+    public function scopeByJenis($query, $jenis)
+    {
+        return $query->where('JENIS', $jenis);
+    }
 
-            $total = (clone $query)->count();
-            $open = (clone $query)->where('STATUS', 'OPEN')->count();
-            $in_progress = (clone $query)->where('STATUS', 'IN_PROGRESS')->count();
-            $closed = (clone $query)->where('STATUS', 'CLOSED')->count();
+    /**
+     * Scope for filtering by tujuan
+     */
+    public function scopeByTujuan($query, $tujuan)
+    {
+        return $query->where('TUJUAN', $tujuan);
+    }
 
-            return compact('total', 'open', 'in_progress', 'closed');
+    /**
+     * Scope for filtering by NIK
+     */
+    public function scopeByNik($query, $nik)
+    {
+        return $query->where('N_NIK', $nik);
+    }
+
+    /**
+     * Scope for search
+     */
+    public function scopeSearch($query, $keywords)
+    {
+        return $query->where(function ($q) use ($keywords) {
+            $q->where('JUDUL', 'LIKE', "%{$keywords}%")
+              ->orWhere('DESKRIPSI', 'LIKE', "%{$keywords}%")
+              ->orWhere('KATEGORI_ADVOKASI', 'LIKE', "%{$keywords}%");
         });
     }
 
     /**
-     * Get valid escalation targets based on current level
+     * Scope for admin access based on target
      */
-    public static function getValidEscalationTargets(string $currentLevel): array
+    public function scopeForAdminLevel($query, $adminLevel)
     {
-        switch($currentLevel) {
+        switch($adminLevel) {
+            case 4: // ADM - can see all
+                break;
+            case 3: // ADMIN_DPP - can see DPP and GENERAL
+                $query->whereIn('TUJUAN', ['DPP', 'GENERAL']);
+                break;
+            case 2: // ADMIN_DPW - can see DPW, DPP, and GENERAL
+                $query->whereIn('TUJUAN', ['DPW', 'DPP', 'GENERAL']);
+                break;
+            case 1: // ADMIN_DPD - can see DPD, DPW, DPP, and GENERAL
+                $query->whereIn('TUJUAN', ['DPD', 'DPW', 'DPP', 'GENERAL']);
+                break;
+            default:
+                // No admin access, return empty
+                $query->where('ID', 0);
+        }
+        
+        return $query;
+    }
+
+    /**
+     * Get open konsultasi count for user
+     */
+    public static function getOpenCountForUser(string $nik): int
+    {
+        return static::where('N_NIK', $nik)
+                    ->where('STATUS', 'OPEN')
+                    ->count();
+    }
+
+    /**
+     * Get all konsultasi for admin with filters
+     */
+    public static function getForAdmin(int $adminLevel, array $filters = []): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = static::with(['karyawan', 'komentar'])
+                      ->forAdminLevel($adminLevel);
+
+        // Apply filters
+        if (!empty($filters['status'])) {
+            $query->byStatus($filters['status']);
+        }
+
+        if (!empty($filters['jenis'])) {
+            $query->byJenis($filters['jenis']);
+        }
+
+        if (!empty($filters['tujuan'])) {
+            $query->byTujuan($filters['tujuan']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->search($filters['search']);
+        }
+
+        return $query->orderBy('CREATED_AT', 'desc');
+    }
+
+    /**
+     * Get konsultasi statistics
+     */
+    public static function getStats(string $nik = null): array
+    {
+        $cacheKey = $nik ? "konsultasi_stats_user_{$nik}" : 'konsultasi_stats';
+        
+        return Cache::remember($cacheKey, 300, function () use ($nik) {
+            $query = static::query();
+            
+            if ($nik) {
+                $query->where('N_NIK', $nik);
+            }
+            
+            $stats = [
+                'total' => $query->count(),
+                'open' => (clone $query)->where('STATUS', 'OPEN')->count(),
+                'in_progress' => (clone $query)->where('STATUS', 'IN_PROGRESS')->count(),
+                'closed' => (clone $query)->where('STATUS', 'CLOSED')->count(),
+                'resolved' => (clone $query)->where('STATUS', 'RESOLVED')->count(),
+                'advokasi' => (clone $query)->where('JENIS', 'ADVOKASI')->count(),
+                'aspirasi' => (clone $query)->where('JENIS', 'ASPIRASI')->count(),
+            ];
+            
+            $stats['pending'] = $stats['open'] + $stats['in_progress'];
+            
+            return $stats;
+        });
+    }
+
+    /**
+     * Get recent konsultasi for user
+     */
+    public static function getRecentForUser(string $nik, int $limit = 5): \Illuminate\Database\Eloquent\Collection
+    {
+        return static::where('N_NIK', $nik)
+                    ->with(['karyawan', 'komentar'])
+                    ->orderBy('CREATED_AT', 'desc')
+                    ->limit($limit)
+                    ->get();
+    }
+
+    /**
+     * Get all konsultasi for admin dashboard
+     */
+    public static function getAllForAdmin(int $adminLevel, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return static::with(['karyawan', 'komentar'])
+                    ->forAdminLevel($adminLevel)
+                    ->orderBy('CREATED_AT', 'desc')
+                    ->limit($limit)
+                    ->get();
+    }
+
+    /**
+     * Search konsultasi by keywords
+     */
+    public static function searchKonsultasi(string $keywords, string $nik = null): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = static::search($keywords);
+
+        if ($nik) {
+            $query->byNik($nik);
+        }
+
+        return $query->with(['karyawan', 'komentar'])
+                    ->orderBy('CREATED_AT', 'desc')
+                    ->get();
+    }
+
+    /**
+     * Close konsultasi
+     */
+    public function close(string $closedBy): bool
+    {
+        return $this->update([
+            'STATUS' => 'CLOSED',
+            'CLOSED_BY' => $closedBy,
+            'CLOSED_AT' => now(),
+            'UPDATED_BY' => $closedBy,
+            'UPDATED_AT' => now()
+        ]);
+    }
+
+    /**
+     * Escalate konsultasi to higher level
+     */
+    public function escalate(string $newTarget, string $escalatedBy): bool
+    {
+        return $this->update([
+            'TUJUAN' => $newTarget,
+            'STATUS' => 'OPEN', // Reset to open for higher level
+            'UPDATED_BY' => $escalatedBy,
+            'UPDATED_AT' => now()
+        ]);
+    }
+
+    /**
+     * Mark as in progress
+     */
+    public function markInProgress(string $updatedBy): bool
+    {
+        if ($this->STATUS === 'OPEN') {
+            return $this->update([
+                'STATUS' => 'IN_PROGRESS',
+                'UPDATED_BY' => $updatedBy,
+                'UPDATED_AT' => now()
+            ]);
+        }
+        return false;
+    }
+
+    /**
+     * Check if konsultasi can be escalated
+     */
+    public function canBeEscalated(): bool
+    {
+        return $this->STATUS !== 'CLOSED' && $this->TUJUAN !== 'GENERAL';
+    }
+
+    /**
+     * Get available escalation targets
+     */
+    public function getEscalationTargets(): array
+    {
+        switch($this->TUJUAN) {
             case 'DPD':
                 return [
-                    'DPW' => 'DPW (Dewan Pengurus Wilayah)'
+                    'DPW' => 'DPW (Dewan Pengurus Wilayah)',
+                    'DPP' => 'DPP (Dewan Pengurus Pusat)',
+                    'GENERAL' => 'SEKAR Pusat'
                 ];
             case 'DPW':
                 return [
@@ -184,17 +417,11 @@ class Konsultasi extends Model
     {
         $labels = [
             'DPD' => 'DPD (Dewan Pengurus Daerah)',
-            'DPW' => 'DPW (Dewan Pengurus Wilayah)',
+            'DPW' => 'DPW (Dewan Pengurus Wilayah)', 
             'DPP' => 'DPP (Dewan Pengurus Pusat)',
             'GENERAL' => 'SEKAR Pusat'
         ];
-
-        $label = $labels[$this->TUJUAN] ?? $this->TUJUAN;
-
-        if ($this->TUJUAN_SPESIFIK && $this->TUJUAN !== 'DPP' && $this->TUJUAN !== 'GENERAL') {
-            $label .= " ({$this->TUJUAN_SPESIFIK})";
-        }
-
-        return $label;
+        
+        return $labels[$this->TUJUAN] ?? $this->TUJUAN;
     }
 }
