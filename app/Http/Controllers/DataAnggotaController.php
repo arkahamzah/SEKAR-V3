@@ -30,22 +30,22 @@ class DataAnggotaController extends Controller
         $data = [
             'activeTab' => $activeTab,
             'dpwOptions' => $this->getDpwOptions(),
-            'dpdOptions' => $this->getDpdOptions($request), // DIUBAH: Mengirim request untuk filter DPD
+            'dpdOptions' => $this->getDpdOptions($request),
         ];
 
+        // DIPERBARUI: Query builder diambil dulu, baru dipaginasi di sini.
         switch ($activeTab) {
             case 'anggota':
-                $data['anggota'] = $this->getAnggotaData($request);
+                $data['anggota'] = $this->getAnggotaData($request)->paginate(10);
                 break;
             case 'gptp':
-                $data['gptp'] = $this->getGptpData($request);
+                $data['gptp'] = $this->getGptpData($request)->paginate(10);
                 break;
             case 'pengurus':
-                $data['pengurus'] = $this->getPengurusData($request);
+                $data['pengurus'] = $this->getPengurusData($request)->paginate(10);
                 break;
-
             case 'ex-anggota':
-                $data['ex_anggota'] = $this->getExAnggotaData($request);
+                $data['ex_anggota'] = $this->getExAnggotaData($request)->paginate(10);
                 break;
         }
 
@@ -61,7 +61,7 @@ class DataAnggotaController extends Controller
 
         return view('data-anggota.create', [
             'dpwList' => $this->getDpwOptions()->filter(function($dpw) { return $dpw !== 'Semua DPW'; }),
-            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }), // DIUBAH
+            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }),
         ]);
     }
 
@@ -180,7 +180,7 @@ class DataAnggotaController extends Controller
         return view('data-anggota.edit', [
             'member' => $member,
             'dpwList' => $this->getDpwOptions()->filter(function($dpw) { return $dpw !== 'Semua DPW'; }),
-            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }), // DIUBAH
+            'dpdList' => $this->getDpdOptions(new Request())->filter(function($dpd) { return $dpd !== 'Semua DPD'; }),
         ]);
     }
 
@@ -321,13 +321,10 @@ class DataAnggotaController extends Controller
             ])
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
 
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
-        // Jika user adalah admin DPW, filter otomatis berdasarkan DPW user tersebut
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('k.DPW', $adminDpw);
         }
-        // --- PERUBAHAN SELESAI ---
 
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('k.DPW', $request->dpw);
@@ -345,6 +342,7 @@ class DataAnggotaController extends Controller
             });
         }
 
+        // DIPERBARUI: Hapus paginate() dari sini
         return $query->orderByRaw("
             CASE
                 WHEN u.nik = '401031' THEN 1
@@ -356,7 +354,7 @@ class DataAnggotaController extends Controller
                 WHEN u.nik = '501032' THEN 7
                 ELSE 8
             END, RAND()
-        ")->paginate(10);
+        ");
     }
 
     /**
@@ -378,12 +376,10 @@ class DataAnggotaController extends Controller
             ])
             ->where('k.V_SHORT_POSISI', 'LIKE', '%GPTP%');
 
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('k.DPW', $adminDpw);
         }
-        // --- PERUBAHAN SELESAI ---
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -393,7 +389,8 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc')->paginate(10);
+        // DIPERBARUI: Hapus paginate() dari sini
+        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc');
     }
 
     /**
@@ -416,12 +413,10 @@ class DataAnggotaController extends Controller
                 'sp.V_SHORT_POSISI as POSISI_SEKAR'
             ]);
 
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('sp.DPW', $adminDpw);
         }
-        // --- PERUBAHAN SELESAI ---
 
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('sp.DPW', $request->dpw);
@@ -439,7 +434,8 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc')->paginate(10);
+        // DIPERBARUI: Hapus paginate() dari sini
+        return $query->orderBy('k.V_NAMA_KARYAWAN', 'asc');
     }
 
     /**
@@ -453,12 +449,10 @@ class DataAnggotaController extends Controller
                 'ALASAN_KELUAR', 'DPW', 'DPD'
             ]);
 
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
         }
-        // --- PERUBAHAN SELESAI ---
 
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('DPW', $request->dpw);
@@ -476,7 +470,8 @@ class DataAnggotaController extends Controller
             });
         }
 
-        return $query->orderBy('TGL_KELUAR', 'desc')->paginate(10);
+        // DIPERBARUI: Hapus paginate() dari sini
+        return $query->orderBy('TGL_KELUAR', 'desc');
     }
 
     /**
@@ -484,23 +479,18 @@ class DataAnggotaController extends Controller
      */
     private function getDpwOptions()
     {
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
         $query = Karyawan::select('DPW')
             ->whereNotNull('DPW')
             ->where('DPW', '!=', '')
             ->distinct();
 
-        // Jika user adalah admin DPW, hanya tampilkan DPW miliknya
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
-            // Untuk admin DPW, tidak perlu ada opsi "Semua DPW"
             return $query->orderBy('DPW')->pluck('DPW');
         }
 
-        // Untuk Super Admin, tampilkan semua DPW dengan opsi "Semua DPW"
         return $query->orderBy('DPW')->pluck('DPW')->prepend('Semua DPW');
-        // --- PERUBAHAN SELESAI ---
     }
 
     /**
@@ -508,24 +498,20 @@ class DataAnggotaController extends Controller
      */
     private function getDpdOptions(Request $request)
     {
-        // --- PERUBAHAN DIMULAI ---
         $user = Auth::user();
         $query = Karyawan::select('DPD')
             ->whereNotNull('DPD')
             ->where('DPD', '!=', '')
             ->distinct();
 
-        // Jika user adalah admin DPW, filter DPD berdasarkan DPW miliknya
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
         }
-        // Jika user adalah Super Admin dan sedang memfilter berdasarkan DPW tertentu
         elseif ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('DPW', $request->dpw);
         }
 
         return $query->orderBy('DPD')->pluck('DPD')->prepend('Semua DPD');
-        // --- PERUBAHAN SELESAI ---
     }
 
     /**
@@ -542,6 +528,7 @@ class DataAnggotaController extends Controller
         $data = collect();
         $filename = 'data_' . $type . '_' . date('Y-m-d');
 
+        // DIPERBARUI: Panggil ->get() pada query builder yang dikembalikan
         switch ($type) {
             case 'anggota':
                 $data = $this->getAnggotaData($requestForExport)->get();
@@ -622,6 +609,7 @@ class DataAnggotaController extends Controller
                         ]);
                         break;
                     case 'ex-anggota':
+                        // DIPERBARUI: Menyesuaikan nama properti dengan yang ada di model ExAnggota
                         fputcsv($file, [
                             $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_SHORT_POSISI,
                             $row->TGL_KELUAR ? date('d-m-Y', strtotime($row->TGL_KELUAR)) : '',

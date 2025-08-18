@@ -32,20 +32,20 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div class="border-b border-gray-200">
                 <nav class="flex space-x-8 px-6" aria-label="Tabs">
-                    <a href="{{ route('data-anggota.index', ['tab' => 'anggota']) }}" 
+                    <a href="{{ route('data-anggota.index', ['tab' => 'anggota']) }}"
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'anggota' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Anggota
                     </a>
-                    <a href="{{ route('data-anggota.index', ['tab' => 'gptp']) }}" 
+                    <a href="{{ route('data-anggota.index', ['tab' => 'gptp']) }}"
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'gptp' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Anggota GPTP
                     </a>
-                    <a href="{{ route('data-anggota.index', ['tab' => 'pengurus']) }}" 
+                    <a href="{{ route('data-anggota.index', ['tab' => 'pengurus']) }}"
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'pengurus' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Pengurus
                     </a>
                     @if(Auth::user()->hasRole('ADM'))
-                     <a href="{{ route('data-anggota.index', ['tab' => 'ex-anggota']) }}" 
+                     <a href="{{ route('data-anggota.index', ['tab' => 'ex-anggota']) }}"
                         class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'ex-anggota' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                          Ex Anggota
                      </a>
@@ -54,9 +54,9 @@
             </div>
 
             <div class="p-6 border-b border-gray-200">
-                <form method="GET" action="{{ route('data-anggota.index') }}" class="space-y-4">
+                <form id="filterForm" method="GET" action="{{ route('data-anggota.index') }}" class="space-y-4">
                     <input type="hidden" name="tab" value="{{ $activeTab }}">
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         @if(in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']))
                         <div>
@@ -84,8 +84,8 @@
 
                         <div class="{{ in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']) ? 'md:col-span-1' : 'md:col-span-3' }}">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Cari berdasarkan nama</label>
-                            <input type="text" name="search" value="{{ request('search') }}" 
-                                   placeholder="Masukkan nama atau NIK" 
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                   placeholder="Masukkan nama atau NIK"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         </div>
 
@@ -109,7 +109,7 @@
                                 • DPD: {{ request('dpd') }}
                             @endif
                         </div>
-                        <a href="{{ route('data-anggota.index', ['tab' => $activeTab]) }}" 
+                        <a href="{{ route('data-anggota.index', ['tab' => $activeTab]) }}"
                            class="text-blue-600 hover:text-blue-800 text-sm">
                             Reset Filter
                         </a>
@@ -136,13 +136,14 @@
 <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Export Data</h3>
-        
+
         <form id="exportForm" action="{{ route('data-anggota.export') }}" method="GET">
+            {{-- Input ini akan diisi secara dinamis oleh JavaScript --}}
             <input type="hidden" name="tab" value="{{ $activeTab }}">
-            <input type="hidden" name="dpw" value="{{ request('dpw') }}">
-            <input type="hidden" name="dpd" value="{{ request('dpd') }}">
-            <input type="hidden" name="search" value="{{ request('search') }}">
-            
+            <input type="hidden" name="dpw">
+            <input type="hidden" name="dpd">
+            <input type="hidden" name="search">
+
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Data</label>
                 <select name="type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -152,14 +153,14 @@
                     <option value="ex-anggota" {{ $activeTab === 'ex-anggota' ? 'selected' : '' }}>Ex Anggota</option>
                 </select>
             </div>
-            
+
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Format</label>
                 <select name="format" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="csv">CSV</option>
                 </select>
             </div>
-            
+
             <div class="flex space-x-3">
                 <button type="button" id="cancelExportBtn" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">
                     Batal
@@ -177,15 +178,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportBtn = document.getElementById('exportBtn');
     const exportModal = document.getElementById('exportModal');
     const cancelExportBtn = document.getElementById('cancelExportBtn');
-    
+    const exportForm = document.getElementById('exportForm');
+    const filterForm = document.getElementById('filterForm');
+
     exportBtn.addEventListener('click', function() {
+        // PERBAIKAN: Ambil nilai filter terkini dari form utama saat modal dibuka
+        const dpwSelect = filterForm.querySelector('select[name="dpw"]');
+        const dpdSelect = filterForm.querySelector('select[name="dpd"]');
+        const searchInput = filterForm.querySelector('input[name="search"]');
+
+        exportForm.querySelector('input[name="dpw"]').value = dpwSelect ? dpwSelect.value : '';
+        exportForm.querySelector('input[name="dpd"]').value = dpdSelect ? dpdSelect.value : '';
+        exportForm.querySelector('input[name="search"]').value = searchInput ? searchInput.value : '';
+
         exportModal.classList.remove('hidden');
     });
-    
+
     cancelExportBtn.addEventListener('click', function() {
         exportModal.classList.add('hidden');
     });
-    
+
     exportModal.addEventListener('click', function(e) {
         if (e.target === exportModal) {
             exportModal.classList.add('hidden');
