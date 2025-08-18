@@ -269,36 +269,11 @@ class NotificationService
             })
             ->with(['pengurus.role']);
             
-            // Jika tidak ada hasil dengan target spesifik, ambil semua admin dari level tersebut
+            // ======================= PERUBAHAN DIMULAI DI SINI =======================
+            // Logika fallback yang menyebabkan bug dihapus.
+            // Jika tidak ada admin spesifik yang ditemukan, $users akan kosong dan tidak ada notifikasi yang terkirim ke target yang salah.
             $users = $query->get();
-            
-            if ($users->isEmpty() && $targetSpecific) {
-                Log::warning('No specific admin found, falling back to general level admins', [
-                    'target' => $target,
-                    'target_specific' => $targetSpecific
-                ]);
-                
-                $users = User::whereHas('pengurus', function($query) use ($target) {
-                    $query->whereHas('role', function($roleQuery) use ($target) {
-                        switch($target) {
-                            case 'DPD':
-                                $roleQuery->where('NAME', 'ADMIN_DPD');
-                                break;
-                            case 'DPW':
-                                $roleQuery->where('NAME', 'ADMIN_DPW');
-                                break;
-                            case 'DPP':
-                                $roleQuery->where('NAME', 'ADMIN_DPP');
-                                break;
-                            case 'GENERAL':
-                            default:
-                                $roleQuery->whereIn('NAME', ['ADM', 'ADMIN_DPP']);
-                        }
-                    });
-                })
-                ->with(['pengurus.role'])
-                ->get();
-            }
+            // ======================= PERUBAHAN SELESAI DI SINI =======================
             
             Log::info('Admin users found', [
                 'target' => $target,
