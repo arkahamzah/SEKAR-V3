@@ -35,34 +35,48 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        // 2. Coba lakukan proses login menggunakan data yang diberikan
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
+        try {
+            // 2. Cari pengguna berdasarkan NIK
+            $user = User::where('nik', $credentials['nik'])->first();
 
-            // ## PERUBAHAN DIMULAI DI SINI ##
-            // 3. Cek apakah user adalah anggota GPTP Pre-order
-            if ($user->is_gptp_preorder) {
-                // Jika ya, langsung logout dan kembalikan ke halaman login
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+            // 3. Jika pengguna ditemukan DAN password cocok (menggunakan Hash::check untuk verifikasi Bcrypt)
+            if ($user && Hash::check($credentials['password'], $user->password)) {
                 
-                // Kembalikan dengan pesan error khusus untuk GPTP
-                return back()->withErrors([
-                    'nik' => 'Akun Anda terdaftar sebagai GPTP dan belum dapat mengakses sistem. Silakan hubungi administrator untuk informasi lebih lanjut.',
-                ])->onlyInput('nik');
+                // Cek apakah user adalah anggota GPTP Pre-order yang belum aktif
+                if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
+                    // Kembalikan dengan pesan error khusus untuk GPTP
+                    return back()->withErrors([
+                        'nik' => 'Akun Anda terdaftar sebagai GPTP dan belum dapat mengakses sistem. Silakan hubungi administrator.',
+                    ])->onlyInput('nik');
+                }
+
+                // 4. Jika verifikasi berhasil dan bukan GPTP pending, loginkan pengguna
+                Auth::login($user);
+                $request->session()->regenerate();
+
+                // Mengambil data karyawan untuk disimpan di session
+                $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
+                if($karyawan) {
+                    $this->setDetailedSession($karyawan);
+                }
+
+                Log::info('Login successful', ['NIK' => $user->nik, 'method' => 'manual_bcrypt_check']);
+                
+                // 5. Arahkan ke halaman home/dashboard
+                return redirect()->intended('/home');
             }
-            // ## PERUBAHAN SELESAI DI SINI ##
 
-            // 4. Jika bukan GPTP, buat sesi baru dan arahkan ke dashboard
-            $request->session()->regenerate();
-            return redirect()->intended('/home');
+            // 6. Jika pengguna tidak ditemukan atau password salah
+            return back()->withErrors([
+                'nik' => 'NIK atau Password yang Anda masukkan salah.',
+            ])->onlyInput('nik');
+
+        } catch (\Exception $e) {
+            Log::error('Login failed', ['NIK' => $credentials['nik'], 'error' => $e->getMessage()]);
+            return back()->withErrors([
+                'nik' => 'Terjadi kesalahan pada sistem saat mencoba login.',
+            ])->onlyInput('nik');
         }
-
-        // 5. Jika kredensial salah, kembali ke halaman login dengan pesan error
-        return back()->withErrors([
-            'nik' => 'NIK atau Password yang Anda masukkan salah.',
-        ])->onlyInput('nik');
     }
 
     // Fungsi-fungsi di bawah ini tidak diubah dan dibiarkan apa adanya
@@ -274,21 +288,21 @@ class AuthController extends Controller
     }
 
     private function createUserFromKaryawan(Karyawan $karyawan, string $password): User
-{
-    $isGPTP = $this->isGPTPEmployee($karyawan);
+    {
+        $isGPTP = $this->isGPTPEmployee($karyawan);
 
-    // ## PERUBAHAN DIMULAI DI SINI ##
-    // Logika masa aktif 1 tahun dan status 'pending' dihilangkan
-    return User::create([
-        'nik' => $karyawan->N_NIK,
-        'name' => $karyawan->V_NAMA_KARYAWAN,
-        'email' => $karyawan->N_NIK . '@sekar.local',
-        'password' => Hash::make($password),
-        'membership_status' => 'active', 
-        'membership_active_date' => null, 
-        'is_gptp_preorder' => $isGPTP, 
-    ]);
-}
+        // ## PERUBAHAN DIMULAI DI SINI ##
+        // Logika masa aktif 1 tahun dan status 'pending' dihilangkan
+        return User::create([
+            'nik' => $karyawan->N_NIK,
+            'name' => $karyawan->V_NAMA_KARYAWAN,
+            'email' => $karyawan->N_NIK . '@sekar.local',
+            'password' => Hash::make($password),
+            'membership_status' => 'active', 
+            'membership_active_date' => null, 
+            'is_gptp_preorder' => $isGPTP, 
+        ]);
+    }
 
     private function setDetailedSession(Karyawan $karyawan): void
     {
@@ -299,6 +313,8 @@ class AuthController extends Controller
             'unit' => $karyawan->V_SHORT_UNIT,
             'divisi' => $karyawan->V_SHORT_DIVISI,
             'location' => $karyawan->V_KOTA_GEDUNG,
+            'dpw' => $karyawan->DPW,
+            'dpd' => $karyawan->DPD,
             'pa' => $karyawan->C_PERSONNEL_AREA,
             'psa' => $karyawan->C_PERSONNEL_SUB_AREA,
             'kodeDivisi' => $karyawan->C_KODE_DIVISI,
@@ -354,6 +370,8 @@ class AuthController extends Controller
             'unit' => $karyawan->V_SHORT_UNIT ?: 'TELKOM',
             'divisi' => $karyawan->V_SHORT_DIVISI ?: 'DIVISI TIDAK DIKETAHUI',
             'location' => $karyawan->V_KOTA_GEDUNG ?: 'LOKASI TIDAK DIKETAHUI',
+            'dpw' => $karyawan->DPW ?: 'DPW TIDAK DIKETAHUI',
+            'dpd' => $karyawan->DPD ?: 'DPD TIDAK DIKETAHUI',
             'is_gptp' => $this->isGPTPEmployee($karyawan),
             'email' => $karyawan->N_NIK . '@sekar.local'
         ];

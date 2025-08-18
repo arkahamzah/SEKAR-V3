@@ -71,7 +71,6 @@
 </style>
 
 <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-    <!-- Center - Register Form -->
     <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
         <div class="text-center mb-6">
             <div class="flex justify-center mb-4">
@@ -80,11 +79,9 @@
             <h2 class="text-xl font-bold text-gray-900">Daftar SEKAR</h2>
         </div>
 
-        <!-- Form -->
         <form id="registerForm" class="space-y-4">
             @csrf
             
-            <!-- Error/Success Messages -->
             <div id="alertContainer" class="hidden"></div>
             
             @if ($errors->any())
@@ -95,7 +92,6 @@
                 </div>
             @endif
 
-            <!-- NIK Input -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
                     NIK <span class="text-red-500">*</span>
@@ -111,7 +107,6 @@
                 >
             </div>
 
-            <!-- Loading State -->
             <div id="loadingState" class="hidden text-center py-3">
                 <div class="inline-flex items-center">
                     <svg class="loading-spinner -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -122,7 +117,6 @@
                 </div>
             </div>
 
-            <!-- Nama Input (Auto-filled) -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
                     Nama Lengkap <span class="text-red-500">*</span>
@@ -139,7 +133,6 @@
                 >
             </div>
 
-            <!-- Employee Info Display -->
             <div id="employeeInfo" class="hidden employee-info rounded-lg p-3">
                 <h4 class="font-medium text-blue-900 text-sm mb-2">Informasi Karyawan:</h4>
                 <div class="space-y-1 text-xs text-blue-800">
@@ -147,10 +140,11 @@
                     <p><span class="font-medium">Unit:</span> <span id="employeeUnit"></span></p>
                     <p><span class="font-medium">Divisi:</span> <span id="employeeDivisi"></span></p>
                     <p><span class="font-medium">Lokasi:</span> <span id="employeeLocation"></span></p>
+                    <p><span class="font-medium">DPW:</span> <span id="employeeDPW"></span></p>
+                    <p><span class="font-medium">DPD:</span> <span id="employeeDPD"></span></p>
                 </div>
             </div>
 
-            <!-- GPTP Notice -->
             <div id="gptpNotice" class="hidden gptp-notice rounded-lg p-3">
                 <div class="flex items-start">
                     <svg class="w-5 h-5 text-orange-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -163,7 +157,6 @@
                 </div>
             </div>
 
-            <!-- Iuran Information Panel -->
             <div id="iuranInfoPanel" class="hidden iuran-info-panel rounded-lg p-4">
                 <h3 class="text-lg font-semibold text-blue-800 mb-3">Informasi Iuran Keanggotaan</h3>
                 
@@ -191,7 +184,6 @@
                 </div>
             </div>
 
-            <!-- Iuran Sukarela -->
             <div>
                 <label class="block text-gray-700 text-sm font-medium mb-1">
                     Iuran Sukarela (kelipatan Rp 5.000)
@@ -213,7 +205,6 @@
                 <div id="iuranError" class="hidden text-red-500 text-xs mt-1"></div>
             </div>
 
-            <!-- Registration Agreement -->
             <div id="agreementSection" class="hidden agreement-section rounded-lg p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Pernyataan Keanggotaan</h3>
                 
@@ -258,7 +249,6 @@
                 </div>
             </div>
 
-            <!-- Register Button -->
             <button 
                 type="button" 
                 id="registerBtn"
@@ -268,7 +258,6 @@
                 Daftar Sekarang
             </button>
 
-            <!-- Back to Login -->
             <div class="text-center text-xs text-gray-600 mt-4">
                 <span>Sudah punya akun? </span>
                 <a href="{{ route('login') }}" class="text-blue-600 hover:underline font-medium text-xs">Login</a>
@@ -277,7 +266,6 @@
     </div>
 </div>
 
-<!-- SSO Popup Modal -->
 <div id="ssoModal" class="fixed inset-0 modal-overlay flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
         <div class="text-center mb-6">
@@ -289,7 +277,6 @@
 
         </div>
 
-        <!-- User Info -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div class="flex items-center">
                 <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -305,7 +292,6 @@
         <form id="ssoForm" class="space-y-6">
             @csrf
             
-            <!-- Error Display -->
             <div id="ssoErrorContainer" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -315,12 +301,10 @@
                 </div>
             </div>
 
-            <!-- Hidden inputs for form data -->
             <input type="hidden" id="hiddenNik" name="nik">
             <input type="hidden" id="hiddenName" name="name">
             <input type="hidden" id="hiddenIuran" name="iuran_sukarela">
 
-            <!-- Password Input -->
             <div>
                 <label for="sso_password" class="block text-sm font-medium text-gray-700 mb-2">
                     Password Portal
@@ -348,7 +332,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex space-x-3">
                 <button 
                     type="button" 
@@ -366,7 +349,6 @@
             </div>
         </form>
 
-        <!-- Loading State -->
         <div id="ssoLoadingState" class="hidden text-center py-8">
             <div class="inline-flex items-center">
                 <svg class="loading-spinner -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -407,6 +389,8 @@ class CleanRegistration {
             employeeUnit: document.getElementById('employeeUnit'),
             employeeDivisi: document.getElementById('employeeDivisi'),
             employeeLocation: document.getElementById('employeeLocation'),
+            employeeDPW: document.getElementById('employeeDPW'),
+            employeeDPD: document.getElementById('employeeDPD'),
             
             iuranWajibDisplay: document.getElementById('iuran-wajib-display'),
             iuranSukarelaDisplay: document.getElementById('iuran-sukarela-display'),
@@ -487,6 +471,8 @@ class CleanRegistration {
         this.elements.employeeUnit.textContent = employee.unit;
         this.elements.employeeDivisi.textContent = employee.divisi;
         this.elements.employeeLocation.textContent = employee.location;
+        this.elements.employeeDPW.textContent = employee.dpw;
+        this.elements.employeeDPD.textContent = employee.dpd;
         
         this.elements.employeeInfo.classList.remove('hidden');
         this.elements.iuranInfoPanel.classList.remove('hidden');
