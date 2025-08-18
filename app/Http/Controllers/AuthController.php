@@ -26,7 +26,6 @@ class AuthController extends Controller
         return view('auth.register');
     }
     
-    // INILAH FUNGSI YANG SUDAH DIPERBAIKI
     public function login(Request $request)
     {
         // 1. Validasi input NIK dan password dari form
@@ -43,7 +42,7 @@ class AuthController extends Controller
             if ($user && Hash::check($credentials['password'], $user->password)) {
                 
                 // Cek apakah user adalah anggota GPTP Pre-order yang belum aktif
-                if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
+                if ($user->is_gptp_preorder) {
                     // Kembalikan dengan pesan error khusus untuk GPTP
                     return back()->withErrors([
                         'nik' => 'Akun Anda terdaftar sebagai GPTP dan belum dapat mengakses sistem. Silakan hubungi administrator.',
@@ -298,8 +297,6 @@ class AuthController extends Controller
             'name' => $karyawan->V_NAMA_KARYAWAN,
             'email' => $karyawan->N_NIK . '@sekar.local',
             'password' => Hash::make($password),
-            'membership_status' => 'active', 
-            'membership_active_date' => null, 
             'is_gptp_preorder' => $isGPTP, 
         ]);
     }
