@@ -72,8 +72,15 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * ## FUNGSI INI TELAH DIPERBARUI ##
+     * Menambahkan logika untuk menghitung pertumbuhan bulanan untuk setiap metrik.
+     * Asumsi: tabel 'users', 't_sekar_pengurus', dan 't_ex_anggota'
+     * memiliki kolom timestamp 'created_at'.
+     */
     private function getStatistics(): array
     {
+        // --- TOTAL DATA (LOGIC ASLI) ---
         $anggotaAktif = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
@@ -88,13 +95,44 @@ class DashboardController extends Controller
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
 
+        // --- PERTUMBUHAN BULANAN (LOGIC BARU) ---
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        // Pertumbuhan Anggota Aktif (member baru bulan ini)
+        $pertumbuhanAnggotaAktif = DB::table('users as u')
+            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
+            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->whereBetween('u.created_at', [$startOfMonth, $endOfMonth])
+            ->count();
+
+        // Pertumbuhan Pengurus (pengurus baru bulan ini)
+        $pertumbuhanPengurus = DB::table('t_sekar_pengurus as sp')
+            ->whereBetween('sp.created_at', [$startOfMonth, $endOfMonth])
+            ->count();
+        
+        // Pertumbuhan Anggota Keluar (yang keluar bulan ini)
+        $pertumbuhanAnggotaKeluar = ExAnggota::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->count();
+        
+        // ## DIHAPUS ##
+        // Logika untuk pertumbuhan non-anggota dihapus sesuai permintaan
+        // $pertumbuhanNonAnggota = $pertumbuhanAnggotaKeluar;
+
         return [
+            // Data total
             'anggotaAktif' => $anggotaAktif,
             'totalPengurus' => $totalPengurus,
             'anggotaKeluar' => $anggotaKeluar,
             'nonAnggota' => $nonAnggota,
+            // Data pertumbuhan bulanan
+            'pertumbuhanAnggotaAktif' => $pertumbuhanAnggotaAktif,
+            'pertumbuhanPengurus' => $pertumbuhanPengurus,
+            'pertumbuhanAnggotaKeluar' => $pertumbuhanAnggotaKeluar,
+            // 'pertumbuhanNonAnggota' => $pertumbuhanNonAnggota, // DIHAPUS
         ];
     }
+
 
     private function getDpwMappingWithStats()
     {
@@ -120,11 +158,8 @@ class DashboardController extends Controller
         });
     }
     
-    // ## THIS FUNCTION HAS BEEN CORRECTED ##
     private function enrichMappingWithStats($mapping)
     {
-        // FIXED: Changed property access from lowercase (e.g., $mapping->dpw)
-        // to uppercase (e.g., $mapping->DPW) to match the database query result.
         return (object)[
             'dpw' => $mapping->DPW,
             'dpd' => $mapping->DPD,
