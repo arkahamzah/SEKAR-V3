@@ -39,44 +39,68 @@
             <p class="text-gray-600 text-sm mt-1">Ringkasan data keanggotaan dan pengurus SEKAR</p>
         </div>
         
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {{-- Card Anggota Aktif --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Aktif</p>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaAktif) }}</p>
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Aktif</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaAktif) }}</p>
+                    @if($pertumbuhanAnggotaAktif > 0)
+                        <p class="flex items-center text-xs text-green-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanAnggotaAktif) }} bulan ini</span>
+                        </p>
+                    @else
                         <p class="text-xs text-gray-500 mt-1">Anggota terdaftar</p>
-                    </div>
+                    @endif
                 </div>
             </div>
 
+            {{-- Card Pengurus --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Pengurus</p>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($totalPengurus) }}</p>
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Pengurus</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($totalPengurus) }}</p>
+                    @if($pertumbuhanPengurus > 0)
+                        <p class="flex items-center text-xs text-green-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanPengurus) }} bulan ini</span>
+                        </p>
+                    @else
                         <p class="text-xs text-gray-500 mt-1">Total pengurus aktif</p>
-                    </div>
+                    @endif
                 </div>
             </div>
 
+            {{-- Card Anggota Keluar --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Keluar</p>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaKeluar) }}</p>
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Keluar</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaKeluar) }}</p>
+                    @if($pertumbuhanAnggotaKeluar > 0 && $anggotaKeluar >= $pertumbuhanAnggotaKeluar)
+                        <p class="flex items-center text-xs text-red-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanAnggotaKeluar) }} bulan ini</span>
+                        </p>
+                    @else
                         <p class="text-xs text-gray-500 mt-1">Total keluar</p>
-                    </div>
+                    @endif
                 </div>
             </div>
 
+            {{-- ## Card Non Anggota (DIUBAH) ## --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Non Anggota</p>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($nonAnggota) }}</p>
-                        <p class="text-xs text-gray-500 mt-1">Karyawan non-anggota</p>
-                    </div>
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Non Anggota</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($nonAnggota) }}</p>
+                    {{-- Indikator pertumbuhan dihapus sesuai permintaan --}}
+                    <p class="text-xs text-gray-500 mt-1">Karyawan non-anggota</p>
                 </div>
             </div>
         </div>
@@ -186,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const rowDPD = row.dataset.dpd.toLowerCase();
             
             const dpwMatch = !dpwValue || rowDPW.includes(dpwValue);
-            const dpdMatch = !dpdValue || rowDPD.includes(dpdValue);
+            const dpdMatch = !d'pdValue || rowDPD.includes(dpdValue);
             
             if (dpwMatch && dpdMatch) {
                 row.style.display = '';
