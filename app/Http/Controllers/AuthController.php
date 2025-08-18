@@ -297,8 +297,6 @@ class AuthController extends Controller
             'name' => $karyawan->V_NAMA_KARYAWAN,
             'email' => $karyawan->N_NIK . '@sekar.local',
             'password' => Hash::make($password),
-            'membership_status' => 'active', 
-            'membership_active_date' => null, 
             'is_gptp_preorder' => $isGPTP, 
         ]);
     }
