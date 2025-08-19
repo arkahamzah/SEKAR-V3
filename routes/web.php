@@ -72,6 +72,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/data-anggota', [DataAnggotaController::class, 'store'])->name('data-anggota.store');
         Route::get('/data-anggota/{nik}/edit', [DataAnggotaController::class, 'edit'])->name('data-anggota.edit');
         Route::put('/data-anggota/{nik}', [DataAnggotaController::class, 'update'])->name('data-anggota.update');
+        Route::get('/data-anggota/create-pengurus', [DataAnggotaController::class, 'createPengurus'])->name('data-anggota.createPengurus');
+        Route::post('/data-anggota/store-pengurus', [DataAnggotaController::class, 'storePengurus'])->name('data-anggota.storePengurus');
+        Route::get('/data-anggota/get-karyawan/{nik}', [DataAnggotaController::class, 'getKaryawanInfo'])->name('data-anggota.getKaryawanInfo');
+
     });
 
     // Advokasi & Aspirasi Routes
