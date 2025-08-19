@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Karyawan;
 use App\Models\Setting;
+use App\Models\SertifikatSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,29 +18,24 @@ class SertifikatController extends Controller
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
+        $joinDate = $user->created_at; // Tanggal anggota bergabung
 
         if (!$karyawan) {
             return redirect()->route('profile.index')
                            ->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        // Check if signature period is active
-        $isSignaturePeriodActive = $this->isSignaturePeriodActive();
+        // AMBIL TANDA TANGAN BERDASARKAN PERIODE BERGABUNG ANGGOTA
+        $signatures = SertifikatSignature::where('start_date', '<=', $joinDate)
+                                          ->where('end_date', '>=', $joinDate)
+                                          ->get();
 
-        // Mengambil nama pejabat dari tabel settings untuk membuatnya dinamis
-        $settings = Setting::getValues(['ketum_name', 'sekjen_name']);
-
-        $certificateData = [
+        return view('sertifikat.show', [
             'user' => $user,
             'karyawan' => $karyawan,
-            'joinDate' => $user->created_at,
-            'isSignaturePeriodActive' => $isSignaturePeriodActive,
-            'signatures' => $this->getSignatures(),
-            'periode' => $this->getSignaturePeriode(),
-            'settings' => $settings // <-- Menambahkan nama pejabat ke data view
-        ];
-
-        return view('sertifikat.show', $certificateData);
+            'joinDate' => $joinDate,
+            'signatures' => $signatures, // Kirim data tanda tangan yang relevan ke view
+        ]);
     }
 
     /**

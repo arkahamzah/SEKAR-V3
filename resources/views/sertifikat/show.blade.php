@@ -131,23 +131,16 @@
     text-align: center;
     display: inline-block;
 }
-
-/* ==============================================
-    PRINT STYLES - Perubahan utama ada di sini
-==============================================
 */
 @media print {
-    /* Sembunyikan semua elemen secara default */
     body * {
         visibility: hidden;
     }
 
-    /* Tampilkan hanya area cetak dan isinya */
     .printable-area, .printable-area * {
         visibility: visible;
     }
 
-    /* Posisikan area cetak ke ujung halaman */
     .printable-area {
         position: absolute;
         left: 0;
@@ -193,7 +186,6 @@
         opacity: 0.07 !important;
     }
 
-    /* 👇 ATURAN BARU UNTUK MENGURANGI TINGGI ELEMEN 👇 */
 
     .certificate-declaration,
     .certificate-purpose,
@@ -213,11 +205,11 @@
     }
 
     .signature-title {
-        margin-bottom: 40px !important; /* Mengurangi jarak antara jabatan dan garis ttd */
+        margin-bottom: 40px !important; 
     }
 
     .signature-image {
-        height: 50px !important; /* Mengurangi tinggi area gambar ttd */
+        height: 50px !important; 
     }
 }
 
@@ -263,26 +255,7 @@
                 </div>
             </div>
         </div>
-
-        @if(!$isSignaturePeriodActive)
-        <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6 no-print">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                <div>
-                    <p class="text-sm font-medium text-yellow-800">Sertifikat Belum Berlaku</p>
-                    <p class="text-xs text-yellow-700">
-                        Sertifikat akan berlaku pada periode:
-                        @if($periode['start'] && $periode['end'])
-                            {{ \Carbon\Carbon::parse($periode['start'])->format('d M Y') }} - {{ \Carbon\Carbon::parse($periode['end'])->format('d M Y') }}
-                        @else
-                            Belum ditentukan
-                        @endif
-                    </p>
-                </div>
-            </div>
-        </div>
-        @endif
-
+        
         <div class="printable-area">
             <div class="certificate-container" id="certificate">
                 <div class="certificate-header">
@@ -319,53 +292,36 @@
                         <div class="certificate-date">
                             Bandung, {{ $joinDate->format('d-M-Y') }}
                         </div>
-
-                        @if($isSignaturePeriodActive)
+                        
                         <div class="certificate-signatures">
-                            <div class="signature-section">
-                                <div class="signature-title">Ketua Umum Sekar</div>
-                                <div class="signature-image">
-                                    {{-- DIUBAH: Menggunakan kunci 'ketum' --}}
-                                    @if(!empty($signatures['ketum']))
-                                        <img src="{{ $signatures['ketum'] }}" alt="Tanda Tangan Ketua Umum">
-                                    @endif
+                            @if($signatures->isNotEmpty())
+                                @foreach($signatures as $signature)
+                                    <div class="signature-section">
+                                        <div class="signature-title">{{ $signature->jabatan }}</div>
+                                        <div class="signature-image">
+                                            @if($signature->signature_file)
+                                                <img src="{{ asset('storage/signatures/' . $signature->signature_file) }}" alt="Tanda Tangan {{ $signature->jabatan }}">
+                                            @endif
+                                        </div>
+                                        <div class="signature-name">
+                                            {{ $signature->nama_pejabat }}
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="signature-section">
+                                    <div class="signature-title">Ketua Umum Sekar</div>
+                                    <div class="signature-image"></div>
+                                    <div class="signature-name">___________________</div>
+                                    <p class="text-xs text-red-500 mt-2 no-print">Tanda tangan tidak ditemukan untuk periode ini.</p>
                                 </div>
-                                <div class="signature-name">
-                                    {{-- DIUBAH: Mengambil nama dari settings, dengan fallback --}}
-                                    {{ $settings['ketum_name'] ?? 'ASEP MULYANA' }}
+                                <div class="signature-section">
+                                    <div class="signature-title">Sekjen Sekar</div>
+                                    <div class="signature-image"></div>
+                                    <div class="signature-name">___________________</div>
                                 </div>
-                            </div>
-                            <div class="signature-section">
-                                <div class="signature-title">Sekjen Sekar</div>
-                                <div class="signature-image">
-                                    @if(!empty($signatures['sekjen']))
-                                        <img src="{{ $signatures['sekjen'] }}" alt="Tanda Tangan Sekjen">
-                                    @endif
-                                </div>
-                                <div class="signature-name">
-                                    {{-- DIUBAH: Mengambil nama dari settings, dengan fallback --}}
-                                    {{ $settings['sekjen_name'] ?? 'ABDUL KARIM' }}
-                                </div>
-                            </div>
+                            @endif
                         </div>
-                        @else
-                        <div class="certificate-signatures">
-                            <div class="signature-section">
-                                <div class="signature-title">Ketua Umum Sekar</div>
-                                <div class="signature-image"></div>
-                                <div class="signature-name">
-                                    ___________________
-                                </div>
-                            </div>
-                            <div class="signature-section">
-                                <div class="signature-title">Sekjen Sekar</div>
-                                <div class="signature-image"></div>
-                                <div class="signature-name">
-                                    ___________________
-                                </div>
-                            </div>
-                        </div>
-                        @endif
                     </div>
                 </div>
             </div>
