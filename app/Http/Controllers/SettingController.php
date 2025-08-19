@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Setting;
 use App\Models\Jajaran;
 use App\Models\SekarJajaran;
+use App\Models\SertifikatSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -17,37 +18,23 @@ class SettingController extends Controller
     /**
      * Menampilkan halaman pengaturan.
      */
-    public function index()
+     public function index()
     {
         if (!$this->isAdmin()) {
-            return redirect()->route('dashboard')
-                           ->with('error', 'Akses ditolak. Fitur ini hanya untuk admin.');
+            return redirect()->route('dashboard')->with('error', 'Akses ditolak.');
         }
 
-        $settings = $this->getAllSettings();
-        
         $documentsJson = Setting::getValue('site_documents', '[]');
-        $settings['documents'] = json_decode($documentsJson, true) ?: [];
+        $documents = json_decode($documentsJson, true) ?: [];
 
-        // BARU: Mengambil data jajaran untuk ditampilkan di view
-        $jajaran = DB::table('t_sekar_jajaran as tj')
-            ->join('m_jajaran as mj', 'tj.ID_JAJARAN', '=', 'mj.ID')
-            ->select('tj.V_NAMA_KARYAWAN as nama', 'mj.NAMA_JAJARAN as posisi')
-            ->where('tj.IS_AKTIF', '1')
-            ->get()
-            ->map(function ($item) use ($settings) {
-                // Mencocokkan jajaran dengan file tanda tangan dari settings
-                if (str_contains(strtoupper($item->posisi), 'KETUA UMUM')) {
-                    $item->signature_file = $settings['ketum_signature'] ?? null;
-                } elseif (str_contains(strtoupper($item->posisi), 'SEKRETARIS JENDRAL')) {
-                    $item->signature_file = $settings['sekjen_signature'] ?? null;
-                } else {
-                    $item->signature_file = null;
-                }
-                return $item;
-            });
+        $signatures = SertifikatSignature::orderBy('start_date', 'desc')->get();
 
-        return view('setting.index', compact('settings', 'jajaran'));
+        // Mengambil data pejabat aktif untuk form
+        $jajaran = SekarJajaran::where('IS_AKTIF', '1')
+            ->with('jajaran') // Eager load relasi jajaran
+            ->get();
+
+        return view('setting.index', compact('documents', 'signatures', 'jajaran'));
     }
 
     /**
@@ -198,15 +185,46 @@ class SettingController extends Controller
         return array_merge($defaultSettings, $settings);
     }
 
-    private function updateSignature(string $key, $file): void
+    public function updateSignature(Request $request, SertifikatSignature $signature)
     {
-        $oldSetting = Setting::where('SETTING_KEY', $key)->first();
-        if ($oldSetting && $oldSetting->SETTING_VALUE) {
-            Storage::disk('public')->delete('signatures/' . $oldSetting->SETTING_VALUE);
+        if (!Auth::user()->hasRole('ADM')) {
+            return redirect()->back()->with('error', 'Hanya Super Admin yang dapat mengubah data.');
         }
-        $filename = time() . '_' . $key . '.' . $file->getClientOriginalExtension();
-        $file->storeAs('signatures', $filename, 'public');
-        $this->updateSetting($key, $filename);
+
+        $validated = $request->validate([
+            'nama_pejabat' => 'required|string|max:100',
+            'jabatan' => 'required|string|max:100',
+            'signature_file' => 'nullable|image|mimes:png|max:2048', // File tidak wajib diisi saat update
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        try {
+            if ($request->hasFile('signature_file')) {
+                // Hapus file lama jika ada
+                if ($signature->signature_file && Storage::disk('public')->exists('signatures/' . $signature->signature_file)) {
+                    Storage::disk('public')->delete('signatures/' . $signature->signature_file);
+                }
+                
+                // Simpan file baru
+                $file = $request->file('signature_file');
+                $filename = time() . '_' . Str::slug($validated['jabatan']) . '.png';
+                $file->storeAs('signatures', $filename, 'public');
+                $signature->signature_file = $filename;
+            }
+
+            $signature->nama_pejabat = $validated['nama_pejabat'];
+            $signature->jabatan = $validated['jabatan'];
+            $signature->start_date = $validated['start_date'];
+            $signature->end_date = $validated['end_date'];
+            $signature->save();
+
+            return redirect()->route('setting.index')->with('success', 'Data tanda tangan berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            Log::error('Gagal memperbarui tanda tangan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memperbarui tanda tangan: ' . $e->getMessage())->withInput();
+        }
     }
 
     private function updateSetting(string $key, string $value): void
@@ -219,5 +237,110 @@ class SettingController extends Controller
                 'UPDATED_AT' => now()
             ]
         );
+    }
+
+      public function storeSignature(Request $request)
+    {
+        if (!Auth::user()->hasRole('ADM')) {
+            return redirect()->back()->with('error', 'Hanya Super Admin yang dapat menambahkan data tanda tangan.');
+        }
+
+        $validated = $request->validate([
+            'jajaran_id' => 'required|exists:t_sekar_jajaran,ID', // Validasi ID pejabat
+            'signature_file' => 'required|image|mimes:png|max:2048',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        try {
+            // Ambil data pejabat dari database
+            $pejabat = SekarJajaran::with('jajaran')->findOrFail($validated['jajaran_id']);
+            $namaPejabat = $pejabat->V_NAMA_KARYAWAN;
+            $jabatan = $pejabat->jajaran->NAMA_JAJARAN;
+
+            $file = $request->file('signature_file');
+            $filename = time() . '_' . Str::slug($jabatan) . '.png';
+            $file->storeAs('signatures', $filename, 'public');
+
+            SertifikatSignature::create([
+                'nama_pejabat' => $namaPejabat,
+                'jabatan' => $jabatan,
+                'signature_file' => $filename,
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'created_by' => Auth::user()->nik,
+            ]);
+
+            return redirect()->route('setting.index')->with('success', 'Tanda tangan baru berhasil ditambahkan ke riwayat.');
+
+        } catch (\Exception $e) {
+            Log::error('Gagal menyimpan tanda tangan baru: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan tanda tangan: ' . $e->getMessage())->withInput();
+        }
+    }
+
+     public function getSignaturesHistory(Request $request)
+    {
+        if (!$this->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $history = SertifikatSignature::orderBy('start_date', 'desc')->paginate(10);
+        return response()->json(['success' => true, 'data' => $history]);
+    }
+
+    public function destroySignature(SertifikatSignature $signature)
+    {
+        if (!Auth::user()->hasRole('ADM')) {
+            return redirect()->back()->with('error', 'Hanya Super Admin yang dapat menghapus data.');
+        }
+
+        try {
+            // Hapus file dari storage
+            if ($signature->signature_file && Storage::disk('public')->exists('signatures/' . $signature->signature_file)) {
+                Storage::disk('public')->delete('signatures/' . $signature->signature_file);
+            }
+            
+            // Hapus record dari database
+            $signature->delete();
+
+            return redirect()->route('setting.index')->with('success', 'Data tanda tangan berhasil dihapus.');
+
+        } catch (\Exception $e) {
+            Log::error('Gagal menghapus tanda tangan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menghapus tanda tangan: ' . $e->getMessage());
+        }
+    }
+
+    public function editSignature(SertifikatSignature $signature)
+    {
+        if (!Auth::user()->hasRole('ADM')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        return response()->json($signature);
+    }
+
+    public function searchJajaran(Request $request)
+    {
+        if (!$this->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = $request->get('q');
+        
+        $jajaran = SekarJajaran::where('IS_AKTIF', '1')
+            ->where('V_NAMA_KARYAWAN', 'LIKE', "%{$query}%")
+            ->with('jajaran')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->ID,
+                    'text' => $item->V_NAMA_KARYAWAN,
+                    'jabatan' => $item->jajaran->NAMA_JAJARAN ?? 'Tidak diketahui'
+                ];
+            });
+
+        return response()->json($jajaran);
     }
 }

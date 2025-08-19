@@ -12,7 +12,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SertifikatController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\DocumentController; 
+use App\Http\Controllers\DocumentController;
 use App\Http\Middleware\CheckAdmin;
 use App\Http\Middleware\CheckSmartEscalationAccess;
 use App\Http\Controllers\HomeController;
@@ -90,8 +90,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/{id}/close', [KonsultasiController::class, 'close'])->name('close');
         });
 
-        // INI BAGIAN YANG DIPERBAIKI
-        // Middleware yang benar adalah CheckSmartEscalationAccess::class
         Route::middleware([CheckAdmin::class, CheckSmartEscalationAccess::class])->group(function () {
             Route::post('/{id}/escalate', [KonsultasiController::class, 'escalate'])->name('escalate');
         });
@@ -115,9 +113,16 @@ Route::middleware('auth')->group(function () {
     // Setting Routes - Admin only
     Route::middleware([CheckAdmin::class])->group(function () {
         Route::get('/setting', [SettingController::class, 'index'])->name('setting.index');
-        Route::post('/setting', [SettingController::class, 'update'])->name('setting.update');
+        // Route::post('/setting', [SettingController::class, 'update'])->name('setting.update'); // DIHAPUS
         Route::post('/setting/document/upload', [SettingController::class, 'uploadDocument'])->name('setting.document.upload');
         Route::delete('/setting/document/delete/{filename}', [SettingController::class, 'deleteDocument'])->name('setting.document.delete');
+        
+        Route::post('/setting/signature', [SettingController::class, 'storeSignature'])->name('setting.signature.store');
+        Route::get('/setting/signatures/history', [SettingController::class, 'getSignaturesHistory'])->name('setting.signatures.history');
+        Route::get('/setting/signature/{signature}/edit', [SettingController::class, 'editSignature'])->name('setting.signature.edit');
+        Route::post('/setting/signature/{signature}', [SettingController::class, 'updateSignature'])->name('setting.signature.update');
+        Route::delete('/setting/signature/{signature}', [SettingController::class, 'destroySignature'])->name('setting.signature.destroy');
+        Route::get('/setting/jajaran/search', [SettingController::class, 'searchJajaran'])->name('setting.jajaran.search');
     });
 
     // Notification routes

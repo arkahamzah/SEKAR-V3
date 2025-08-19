@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Karyawan;
 use App\Models\Setting;
+use App\Models\SertifikatSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,33 +14,37 @@ class SertifikatController extends Controller
     /**
      * Display user certificate/ID card
      */
-    public function show()
+   public function show()
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
+        $joinDate = $user->created_at;
 
         if (!$karyawan) {
             return redirect()->route('profile.index')
                            ->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        // Check if signature period is active
-        $isSignaturePeriodActive = $this->isSignaturePeriodActive();
+        // Cari Ketua Umum yang aktif pada periode joinDate
+        $ketuaUmum = SertifikatSignature::where('jabatan', 'LIKE', '%Ketua Umum%')
+                                        ->where('start_date', '<=', $joinDate)
+                                        ->where('end_date', '>=', $joinDate)
+                                        ->first();
 
-        // Mengambil nama pejabat dari tabel settings untuk membuatnya dinamis
-        $settings = Setting::getValues(['ketum_name', 'sekjen_name']);
+        // Cari Sekjen yang aktif pada periode joinDate
+        $sekjen = SertifikatSignature::where('jabatan', 'LIKE', '%Sekjen%')
+                                     ->orWhere('jabatan', 'LIKE', '%Sekretaris Jendral%')
+                                     ->where('start_date', '<=', $joinDate)
+                                     ->where('end_date', '>=', $joinDate)
+                                     ->first();
 
-        $certificateData = [
+        return view('sertifikat.show', [
             'user' => $user,
             'karyawan' => $karyawan,
-            'joinDate' => $user->created_at,
-            'isSignaturePeriodActive' => $isSignaturePeriodActive,
-            'signatures' => $this->getSignatures(),
-            'periode' => $this->getSignaturePeriode(),
-            'settings' => $settings // <-- Menambahkan nama pejabat ke data view
-        ];
-
-        return view('sertifikat.show', $certificateData);
+            'joinDate' => $joinDate,
+            'ketuaUmum' => $ketuaUmum, 
+            'sekjen' => $sekjen,       
+        ]);
     }
 
     /**

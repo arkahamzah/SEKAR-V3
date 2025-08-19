@@ -16,7 +16,6 @@ class NotificationService
     public function notifyNewKonsultasi(Konsultasi $konsultasi): void
     {
         try {
-            // Get admin users based on konsultasi target
             $adminUsers = $this->getAdminUsersByTarget($konsultasi->TUJUAN, $konsultasi->TUJUAN_SPESIFIK);
             
             Log::info('Found admin users for notification', [
@@ -61,11 +60,11 @@ class NotificationService
     public function notifyNewComment(Konsultasi $konsultasi, $commentBy, $isAdminComment = false): void
     {
         try {
-            // Safe way to get commenter name
+            
             $commenterName = $this->getCommenterName($commentBy);
             
             if ($isAdminComment) {
-                // Notify original user about admin response
+                
                 $user = User::where('nik', $konsultasi->N_NIK)->first();
                 if ($user) {
                     Notification::create([
@@ -82,7 +81,7 @@ class NotificationService
                     ]);
                 }
             } else {
-                // Notify admin about user response - TARGET SPECIFIC ADMINS
+                
                 $adminUsers = $this->getAdminUsersByTarget($konsultasi->TUJUAN, $konsultasi->TUJUAN_SPESIFIK);
                 
                 foreach ($adminUsers as $admin) {
@@ -125,11 +124,11 @@ class NotificationService
                 'escalation_data' => $escalationData
             ]);
 
-            // Extract data from escalation context
+           
             $escalationType = $escalationData['type'] ?? 'general';
             
             if ($escalationType === 'escalation_to_submitter') {
-                // Notify original submitter about escalation
+              
                 $user = User::where('nik', $konsultasi->N_NIK)->first();
                 if ($user) {
                     Notification::create([
@@ -151,7 +150,7 @@ class NotificationService
                     ]);
                 }
             } else {
-                // Notify new target admins about the escalated konsultasi
+               
                 $newAdminUsers = $this->getAdminUsersByTarget($konsultasi->TUJUAN, $konsultasi->TUJUAN_SPESIFIK);
                 $fromUser = $this->getSafeFromUser($konsultasi);
                 
@@ -190,7 +189,7 @@ class NotificationService
     }
 
     /**
-     * Create notification for closed konsultasi - UPDATED VERSION
+     * Create notification for closed konsultasi
      */
     public function notifyKonsultasiClosed(Konsultasi $konsultasi): void
     {
@@ -224,7 +223,7 @@ class NotificationService
     }
 
     /**
-     * Get admin users by target level - FIXED TO HANDLE SPECIFIC TARGETS
+     * Get admin users by target level 
      */
     private function getAdminUsersByTarget($target, $targetSpecific = null): array
     {
@@ -269,11 +268,7 @@ class NotificationService
             })
             ->with(['pengurus.role']);
             
-            // ======================= PERUBAHAN DIMULAI DI SINI =======================
-            // Logika fallback yang menyebabkan bug dihapus.
-            // Jika tidak ada admin spesifik yang ditemukan, $users akan kosong dan tidak ada notifikasi yang terkirim ke target yang salah.
             $users = $query->get();
-            // ======================= PERUBAHAN SELESAI DI SINI =======================
             
             Log::info('Admin users found', [
                 'target' => $target,
@@ -282,7 +277,7 @@ class NotificationService
                 'users' => $users->pluck('nik')->toArray()
             ]);
             
-            // Return as array of User objects (not ->toArray())
+        
             return $users->all();
             
         } catch (\Exception $e) {
@@ -293,7 +288,7 @@ class NotificationService
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Return fallback admin if available
+        
             $fallbackAdmin = User::whereHas('pengurus.role', function($query) {
                 $query->where('NAME', 'ADM');
             })->first();
