@@ -294,39 +294,45 @@
                         </div>
                         
                         <div class="certificate-signatures">
-                            @if($signatures->isNotEmpty())
-                                @foreach($signatures as $signature)
-                                    <div class="signature-section">
-                                        <div class="signature-title">{{ $signature->jabatan }}</div>
-                                        <div class="signature-image">
-                                            @if($signature->signature_file)
-                                                <img src="{{ asset('storage/signatures/' . $signature->signature_file) }}" alt="Tanda Tangan {{ $signature->jabatan }}">
-                                            @endif
-                                        </div>
-                                        <div class="signature-name">
-                                            {{ $signature->nama_pejabat }}
-                                        </div>
+                            {{-- Bagian Ketua Umum (Kiri) --}}
+                            <div class="signature-section">
+                                <div class="signature-title">Ketua Umum Sekar</div>
+                                @if($ketuaUmum)
+                                    <div class="signature-image">
+                                        <img src="{{ asset('storage/signatures/' . $ketuaUmum->signature_file) }}" alt="Tanda Tangan Ketua Umum">
                                     </div>
-                                @endforeach
-                            @else
-                                <div class="signature-section">
-                                    <div class="signature-title">Ketua Umum Sekar</div>
+                                    <div class="signature-name">
+                                        {{ $ketuaUmum->nama_pejabat }}
+                                    </div>
+                                @else
                                     <div class="signature-image"></div>
                                     <div class="signature-name">___________________</div>
                                     <p class="text-xs text-red-500 mt-2 no-print">Tanda tangan tidak ditemukan untuk periode ini.</p>
-                                </div>
-                                <div class="signature-section">
-                                    <div class="signature-title">Sekjen Sekar</div>
+                                @endif
+                            </div>
+
+                            {{-- Bagian Sekjen (Kanan) --}}
+                            <div class="signature-section">
+                                <div class="signature-title">Sekjen Sekar</div>
+                                @if($sekjen)
+                                    <div class="signature-image">
+                                        <img src="{{ asset('storage/signatures/' . $sekjen->signature_file) }}" alt="Tanda Tangan Sekjen">
+                                    </div>
+                                    <div class="signature-name">
+                                        {{ $sekjen->nama_pejabat }}
+                                    </div>
+                                @else
                                     <div class="signature-image"></div>
                                     <div class="signature-name">___________________</div>
-                                </div>
-                            @endif
+                                    <p class="text-xs text-red-500 mt-2 no-print">Tanda tangan tidak ditemukan untuk periode ini.</p>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
+    </div>
 </div>
 
 @endsection

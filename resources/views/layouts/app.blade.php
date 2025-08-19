@@ -8,6 +8,9 @@
     <link rel="icon" type="image/png" href="{{ asset('asset/icon.png') }}">
     <script src="{{ asset('js/tailwindcss.js') }}"></script>
     <link href="{{ asset('css/fontawesome-all.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/select2.min.css') }}" rel="stylesheet" />
+    <script src="{{ asset('js/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ asset('js/select2.min.js') }}"></script>
     <style>
         /* Custom styles for better match with design */
         .form-input:focus {

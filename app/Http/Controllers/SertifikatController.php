@@ -14,27 +14,36 @@ class SertifikatController extends Controller
     /**
      * Display user certificate/ID card
      */
-    public function show()
+   public function show()
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
-        $joinDate = $user->created_at; // Tanggal anggota bergabung
+        $joinDate = $user->created_at;
 
         if (!$karyawan) {
             return redirect()->route('profile.index')
                            ->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        // AMBIL TANDA TANGAN BERDASARKAN PERIODE BERGABUNG ANGGOTA
-        $signatures = SertifikatSignature::where('start_date', '<=', $joinDate)
-                                          ->where('end_date', '>=', $joinDate)
-                                          ->get();
+        // Cari Ketua Umum yang aktif pada periode joinDate
+        $ketuaUmum = SertifikatSignature::where('jabatan', 'LIKE', '%Ketua Umum%')
+                                        ->where('start_date', '<=', $joinDate)
+                                        ->where('end_date', '>=', $joinDate)
+                                        ->first();
+
+        // Cari Sekjen yang aktif pada periode joinDate
+        $sekjen = SertifikatSignature::where('jabatan', 'LIKE', '%Sekjen%')
+                                     ->orWhere('jabatan', 'LIKE', '%Sekretaris Jendral%')
+                                     ->where('start_date', '<=', $joinDate)
+                                     ->where('end_date', '>=', $joinDate)
+                                     ->first();
 
         return view('sertifikat.show', [
             'user' => $user,
             'karyawan' => $karyawan,
             'joinDate' => $joinDate,
-            'signatures' => $signatures, // Kirim data tanda tangan yang relevan ke view
+            'ketuaUmum' => $ketuaUmum, 
+            'sekjen' => $sekjen,       
         ]);
     }
 

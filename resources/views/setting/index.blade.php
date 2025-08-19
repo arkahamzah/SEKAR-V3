@@ -3,6 +3,31 @@
 @section('title', 'Pengaturan - SEKAR')
 
 @section('content')
+<style>
+    .select2-container--default .select2-selection--single {
+        background-color: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        height: 42px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #111827;
+        line-height: 42px;
+        padding-left: 12px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px;
+        right: 8px;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #3b82f6;
+    }
+    .select2-dropdown {
+        border-radius: 0.5rem;
+        border: 1px solid #d1d5db;
+    }
+</style>
+
 <div class="min-h-screen bg-gray-50">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {{-- Alert Messages --}}
@@ -42,12 +67,14 @@
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label for="nama_pejabat" class="block text-sm font-medium text-gray-700 mb-2">Nama Pejabat</label>
-                        <input type="text" name="nama_pejabat" value="{{ old('nama_pejabat') }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                        <label for="jajaran_id" class="block text-sm font-medium text-gray-700 mb-2">Pilih Pejabat</label>
+                        {{-- Dropdown pencarian pejabat --}}
+                        <select id="jajaran_id" name="jajaran_id" class="w-full" required></select>
+                        <p class="text-xs text-gray-500 mt-1">Cari berdasarkan nama pejabat yang aktif.</p>
                     </div>
                     <div>
-                        <label for="jabatan" class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
-                        <input type="text" name="jabatan" value="{{ old('jabatan') }}" placeholder="Contoh: Ketua Umum" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan</label>
+                        <input type="text" id="jabatan_display" placeholder="Jabatan akan terisi otomatis" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" readonly>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -201,7 +228,6 @@
         </div>
         <form id="editForm" method="POST" enctype="multipart/form-data">
             @csrf
-            {{-- Method spoofing akan ditambahkan via JS --}}
             <div class="space-y-4">
                 <div>
                     <label for="edit_nama_pejabat" class="block text-sm font-medium text-gray-700">Nama Pejabat</label>
@@ -250,6 +276,28 @@
 </div>
 
 <script>
+    $(document).ready(function() {
+        $('#jajaran_id').select2({
+            placeholder: 'Ketik untuk mencari nama pejabat...',
+            ajax: {
+                url: '{{ route("setting.jajaran.search") }}',
+                dataType: 'json',
+                delay: 250,
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                },
+                cache: true
+            }
+        });
+
+        $('#jajaran_id').on('select2:select', function (e) {
+            var data = e.params.data;
+            $('#jabatan_display').val(data.jabatan);
+        });
+    });
+
     function openEditModal(id) {
         fetch(`/setting/signature/${id}/edit`)
             .then(response => {

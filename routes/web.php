@@ -118,6 +118,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/setting/signature/{signature}/edit', [SettingController::class, 'editSignature'])->name('setting.signature.edit');
         Route::post('/setting/signature/{signature}', [SettingController::class, 'updateSignature'])->name('setting.signature.update');
         Route::delete('/setting/signature/{signature}', [SettingController::class, 'destroySignature'])->name('setting.signature.destroy');
+        Route::get('/setting/jajaran/search', [SettingController::class, 'searchJajaran'])->name('setting.jajaran.search');
     });
 
     // Notification routes

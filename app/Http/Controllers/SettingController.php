@@ -24,20 +24,15 @@ class SettingController extends Controller
             return redirect()->route('dashboard')->with('error', 'Akses ditolak.');
         }
 
-        // Mengambil dokumen dari setting
         $documentsJson = Setting::getValue('site_documents', '[]');
         $documents = json_decode($documentsJson, true) ?: [];
 
-        // Mengambil riwayat tanda tangan dari tabel baru
         $signatures = SertifikatSignature::orderBy('start_date', 'desc')->get();
 
-        // Mengambil jajaran aktif untuk ditampilkan (opsional, bisa dipertahankan jika masih perlu)
-        $jajaran = DB::table('t_sekar_jajaran as tj')
-            ->join('m_jajaran as mj', 'tj.ID_JAJARAN', '=', 'mj.ID')
-            ->select('tj.V_NAMA_KARYAWAN as nama', 'mj.NAMA_JAJARAN as posisi')
-            ->where('tj.IS_AKTIF', '1')
+        // Mengambil data pejabat aktif untuk form
+        $jajaran = SekarJajaran::where('IS_AKTIF', '1')
+            ->with('jajaran') // Eager load relasi jajaran
             ->get();
-
 
         return view('setting.index', compact('documents', 'signatures', 'jajaran'));
     }
@@ -199,7 +194,7 @@ class SettingController extends Controller
         $validated = $request->validate([
             'nama_pejabat' => 'required|string|max:100',
             'jabatan' => 'required|string|max:100',
-            'signature_file' => 'nullable|image|mimes:png|max:2048',
+            'signature_file' => 'nullable|image|mimes:png|max:2048', // File tidak wajib diisi saat update
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
@@ -244,28 +239,32 @@ class SettingController extends Controller
         );
     }
 
-     public function storeSignature(Request $request)
+      public function storeSignature(Request $request)
     {
         if (!Auth::user()->hasRole('ADM')) {
             return redirect()->back()->with('error', 'Hanya Super Admin yang dapat menambahkan data tanda tangan.');
         }
 
         $validated = $request->validate([
-            'nama_pejabat' => 'required|string|max:100',
-            'jabatan' => 'required|string|max:100',
-            'signature_file' => 'required|image|mimes:png|max:2048', 
+            'jajaran_id' => 'required|exists:t_sekar_jajaran,ID', // Validasi ID pejabat
+            'signature_file' => 'required|image|mimes:png|max:2048',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
         try {
+            // Ambil data pejabat dari database
+            $pejabat = SekarJajaran::with('jajaran')->findOrFail($validated['jajaran_id']);
+            $namaPejabat = $pejabat->V_NAMA_KARYAWAN;
+            $jabatan = $pejabat->jajaran->NAMA_JAJARAN;
+
             $file = $request->file('signature_file');
-            $filename = time() . '_' . Str::slug($validated['jabatan']) . '.png';
+            $filename = time() . '_' . Str::slug($jabatan) . '.png';
             $file->storeAs('signatures', $filename, 'public');
 
             SertifikatSignature::create([
-                'nama_pejabat' => $validated['nama_pejabat'],
-                'jabatan' => $validated['jabatan'],
+                'nama_pejabat' => $namaPejabat,
+                'jabatan' => $jabatan,
                 'signature_file' => $filename,
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
@@ -319,5 +318,29 @@ class SettingController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         return response()->json($signature);
+    }
+
+    public function searchJajaran(Request $request)
+    {
+        if (!$this->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = $request->get('q');
+        
+        $jajaran = SekarJajaran::where('IS_AKTIF', '1')
+            ->where('V_NAMA_KARYAWAN', 'LIKE', "%{$query}%")
+            ->with('jajaran')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->ID,
+                    'text' => $item->V_NAMA_KARYAWAN,
+                    'jabatan' => $item->jajaran->NAMA_JAJARAN ?? 'Tidak diketahui'
+                ];
+            });
+
+        return response()->json($jajaran);
     }
 }
