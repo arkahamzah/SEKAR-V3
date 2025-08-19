@@ -309,7 +309,7 @@
                                         <span>Sertifikat</span>
                                     </a>
                                 </div>
-                                    @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM', 'ADMIN_DPP', 'ADMIN_DPW', 'ADMIN_DPD']))
+                                    @if(auth()->user()->pengurus && auth()->user()->pengurus->role && in_array(auth()->user()->pengurus->role->NAME, ['ADM']))
                                     <div class="border-t border-gray-100 mt-1 pt-1">
                                         <div class="px-4 py-2">
                                             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Panel Admin</span>
