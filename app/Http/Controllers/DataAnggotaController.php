@@ -322,7 +322,9 @@ class DataAnggotaController extends Controller
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
 
         $user = Auth::user();
-        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+        if ($user->hasRole('ADMIN_DPD') && ($adminDpd = $user->getDPD())) {
+            $query->where('k.DPD', $adminDpd);
+        } elseif ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('k.DPW', $adminDpw);
         }
 
@@ -377,7 +379,9 @@ class DataAnggotaController extends Controller
             ->where('k.V_SHORT_POSISI', 'LIKE', '%GPTP%');
 
         $user = Auth::user();
-        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+        if ($user->hasRole('ADMIN_DPD') && ($adminDpd = $user->getDPD())) {
+            $query->where('k.DPD', $adminDpd);
+        } elseif ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('k.DPW', $adminDpw);
         }
 
@@ -414,7 +418,9 @@ class DataAnggotaController extends Controller
             ]);
 
         $user = Auth::user();
-        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+        if ($user->hasRole('ADMIN_DPD') && ($adminDpd = $user->getDPD())) {
+            $query->where('sp.DPD', $adminDpd);
+        } elseif ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('sp.DPW', $adminDpw);
         }
 
@@ -450,7 +456,9 @@ class DataAnggotaController extends Controller
             ]);
 
         $user = Auth::user();
-        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+        if ($user->hasRole('ADMIN_DPD') && ($adminDpd = $user->getDPD())) {
+            $query->where('DPD', $adminDpd);
+        } elseif ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
         }
 
@@ -485,7 +493,9 @@ class DataAnggotaController extends Controller
             ->where('DPW', '!=', '')
             ->distinct();
 
-        if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
+        // An Admin DPD should be restricted to their DPW as well
+        $adminDpw = $user->getDPW();
+        if (($user->hasRole('ADMIN_DPW') || $user->hasRole('ADMIN_DPD')) && $adminDpw) {
             $query->where('DPW', $adminDpw);
             return $query->orderBy('DPW')->pluck('DPW');
         }
@@ -504,9 +514,17 @@ class DataAnggotaController extends Controller
             ->where('DPD', '!=', '')
             ->distinct();
 
+        // Admin DPD is the most specific, only show their DPD
+        if ($user->hasRole('ADMIN_DPD') && ($adminDpd = $user->getDPD())) {
+            $query->where('DPD', $adminDpd);
+            return $query->orderBy('DPD')->pluck('DPD');
+        }
+
+        // Admin DPW sees all DPDs within their DPW
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
         }
+        // Super Admin can filter DPDs by the selected DPW
         elseif ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $query->where('DPW', $request->dpw);
         }
