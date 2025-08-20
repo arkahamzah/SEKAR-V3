@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\Jajaran;
 use App\Models\SekarJajaran;
 use App\Models\SertifikatSignature;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -24,15 +25,11 @@ class SettingController extends Controller
             return redirect()->route('dashboard')->with('error', 'Akses ditolak.');
         }
 
-        $documentsJson = Setting::getValue('site_documents', '[]');
-        $documents = json_decode($documentsJson, true) ?: [];
+        // Mengambil semua dokumen, termasuk yang nonaktif (trashed)
+        $documents = Document::withTrashed()->orderBy('created_at', 'desc')->get();
 
         $signatures = SertifikatSignature::orderBy('start_date', 'desc')->get();
-
-        // Mengambil data pejabat aktif untuk form
-        $jajaran = SekarJajaran::where('IS_AKTIF', '1')
-            ->with('jajaran') // Eager load relasi jajaran
-            ->get();
+        $jajaran = SekarJajaran::where('IS_AKTIF', '1')->with('jajaran')->get();
 
         return view('setting.index', compact('documents', 'signatures', 'jajaran'));
     }
@@ -81,82 +78,88 @@ class SettingController extends Controller
     /**
      * Mengunggah dokumen baru.
      */
+/**
+     * Mengunggah dokumen baru. (VERSI FINAL DENGAN PERBAIKAN URUTAN)
+     */
     public function uploadDocument(Request $request)
     {
         if (!Auth::user()->hasRole('ADM')) {
             return redirect()->route('setting.index')->with('error', 'Hanya Super Admin yang dapat mengunggah dokumen.');
         }
 
-        $request->validate([
-            'document_name' => 'required|string|max:100',
-            'document_file' => 'required|file|mimes:pdf|max:5120',
-        ]);
-
         try {
+            $request->validate([
+                'document_name' => 'required|string|max:100',
+                'document_file' => 'required|file|mimes:pdf|max:5120',
+            ]);
+
             $file = $request->file('document_file');
             $documentName = $request->input('document_name');
             
             $fileSize = $file->getSize();
-            $originalFilename = $file->getClientOriginalName();
-            $extension = $file->getClientOriginalExtension();
-            
+            $originalName = $file->getClientOriginalName();
             $slug = Str::slug($documentName) . '-' . time();
-            $filename = "{$slug}.{$extension}";
+            $filename = "{$slug}." . $file->getClientOriginalExtension();
 
-            $path = public_path('documents');
-            if (!file_exists($path)) {
-                mkdir($path, 0775, true);
-            }
-            $file->move($path, $filename);
+            // 2. BARU pindahkan filenya
+            $file->move(public_path('documents'), $filename);
 
-            $documentsJson = Setting::getValue('site_documents', '[]');
-            $documents = json_decode($documentsJson, true) ?: [];
-
-            $documents[] = [
-                'name' => $documentName,
-                'filename' => $filename,
-                'original_name' => $originalFilename,
-                'size' => number_format($fileSize / 1048576, 2) . ' MB',
-                'uploaded_at' => now()->format('d M Y, H:i'),
-            ];
-
-            Setting::setValue('site_documents', json_encode($documents), Auth::user()->nik);
-
+            // 3. Simpan data ke database
+            Document::create([
+                'name'          => $documentName,
+                'filename'      => $filename,
+                'original_name' => $originalName,
+                'size'          => number_format($fileSize / 1048576, 2) . ' MB',
+            ]);
+            
+    
             return redirect()->route('setting.index')->with('success', 'Dokumen berhasil diunggah.');
+
         } catch (\Exception $e) {
-            Log::error('Gagal mengunggah dokumen: ' . $e->getMessage());
-            return redirect()->route('setting.index')->with('error', 'Gagal mengunggah dokumen: ' . $e->getMessage());
+            // Log error umum untuk debugging
+            Log::error('Gagal mengunggah dokumen: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return redirect()->route('setting.index')->with('error', 'Terjadi kesalahan internal saat mengunggah dokumen. Silakan hubungi administrator.');
         }
     }
 
     /**
      * Menghapus dokumen.
      */
-    public function deleteDocument(string $filename)
+   // Ganti nama fungsinya agar lebih sesuai
+        public function deactivateDocument(Document $document)
+        {
+            if (!Auth::user()->hasRole('ADM')) {
+                return redirect()->route('setting.index')->with('error', 'Akses ditolak.');
+            }
+
+            try {
+                // Ini akan melakukan soft delete (mengisi kolom deleted_at)
+                $document->delete();
+                return redirect()->route('setting.index')->with('success', 'Dokumen berhasil dinonaktifkan.');
+            } catch (\Exception $e) {
+                Log::error('Gagal menonaktifkan dokumen: ' . $e->getMessage());
+                return redirect()->route('setting.index')->with('error', 'Gagal menonaktifkan dokumen.');
+            }
+        }
+
+     public function restoreDocument($id)
     {
         if (!Auth::user()->hasRole('ADM')) {
-            return redirect()->route('setting.index')->with('error', 'Hanya Super Admin yang dapat menghapus dokumen.');
+            return redirect()->route('setting.index')->with('error', 'Akses ditolak.');
         }
 
         try {
-            $path = public_path('documents/' . $filename);
-            if (file_exists($path)) {
-                unlink($path);
-            }
-
-            $documentsJson = Setting::getValue('site_documents', '[]');
-            $documents = json_decode($documentsJson, true) ?: [];
-            
-            $updatedDocuments = array_filter($documents, function($doc) use ($filename) {
-                return $doc['filename'] !== $filename;
-            });
-
-            Setting::setValue('site_documents', json_encode(array_values($updatedDocuments)), Auth::user()->nik);
-
-            return redirect()->route('setting.index')->with('success', 'Dokumen berhasil dihapus.');
+            // Cari dokumen termasuk yang sudah di-soft-delete
+            $document = Document::withTrashed()->findOrFail($id);
+            // Kembalikan dokumen (mengosongkan kolom deleted_at)
+            $document->restore();
+            return redirect()->route('setting.index')->with('success', 'Dokumen berhasil diaktifkan kembali.');
         } catch (\Exception $e) {
-            Log::error('Gagal menghapus dokumen: ' . $e->getMessage());
-            return redirect()->route('setting.index')->with('error', 'Gagal menghapus dokumen.');
+            Log::error('Gagal mengaktifkan dokumen: ' . $e->getMessage());
+            return redirect()->route('setting.index')->with('error', 'Gagal mengaktifkan dokumen.');
         }
     }
 

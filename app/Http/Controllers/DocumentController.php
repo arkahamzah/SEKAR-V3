@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -71,16 +72,12 @@ class DocumentController extends Controller
     public function listDocuments()
     {
         try {
-            // Mengambil data JSON dari tabel settings
-            $documentsJson = Setting::getValue('site_documents', '[]');
-            $documents = json_decode($documentsJson, true);
-
-            // Memastikan data yang dikembalikan adalah array dan mengurutkan dari yang terbaru
-            $documentList = is_array($documents) ? array_reverse($documents) : [];
+            // Ambil hanya dokumen yang aktif (deleted_at IS NULL)
+            $documents = Document::orderBy('created_at', 'desc')->get();
 
             return response()->json([
                 'success' => true,
-                'documents' => $documentList
+                'documents' => $documents
             ]);
         } catch (\Exception $e) {
             Log::error('Gagal mengambil daftar dokumen: ' . $e->getMessage());

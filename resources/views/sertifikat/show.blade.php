@@ -131,12 +131,40 @@
     text-align: center;
     display: inline-block;
 }
+
+/* ==============================================
+    PRINT STYLES - PERBAIKAN DI SINI
+==============================================
 */
 @media print {
-    body * {
-        visibility: hidden;
+    body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
     }
 
+    /* Sembunyikan semua elemen layout utama */
+    header, aside, .no-print {
+        display: none !important;
+    }
+
+    /* Reset posisi dan padding dari container utama layout */
+    .main-content {
+        margin-left: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Reset container dari halaman ini */
+    .min-h-screen.bg-gray-50, .max-w-4xl.mx-auto {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+    
     .printable-area, .printable-area * {
         visibility: visible;
     }
@@ -147,35 +175,13 @@
         top: 0;
         width: 100%;
         height: auto;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    body, html {
-        margin: 0;
-        padding: 0;
-        -webkit-print-color-adjust: exact !important;
-        color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-
-    .no-print {
-        display: none !important;
-    }
-
-    #certificate {
-        box-shadow: none !important;
-        border: none !important;
-        margin: 0 auto !important;
-        padding: 0 !important;
-        background: white !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        border-radius: 0 !important;
     }
 
     .certificate-container {
         page-break-inside: avoid;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
     }
 
     .certificate-header, .certificate-main {
@@ -185,7 +191,6 @@
     .certificate-watermark img {
         opacity: 0.07 !important;
     }
-
 
     .certificate-declaration,
     .certificate-purpose,
@@ -205,11 +210,11 @@
     }
 
     .signature-title {
-        margin-bottom: 40px !important; 
+        margin-bottom: 40px !important;
     }
 
     .signature-image {
-        height: 50px !important; 
+        height: 50px !important;
     }
 }
 

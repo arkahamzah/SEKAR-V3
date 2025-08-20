@@ -1,7 +1,5 @@
 <?php
 
-// routes/web.php
-
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
@@ -115,7 +113,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/setting', [SettingController::class, 'index'])->name('setting.index');
         // Route::post('/setting', [SettingController::class, 'update'])->name('setting.update'); // DIHAPUS
         Route::post('/setting/document/upload', [SettingController::class, 'uploadDocument'])->name('setting.document.upload');
-        Route::delete('/setting/document/delete/{filename}', [SettingController::class, 'deleteDocument'])->name('setting.document.delete');
+        // Route untuk menonaktifkan (soft delete) dokumen
+        Route::delete('/setting/document/{document}', [SettingController::class, 'deactivateDocument'])->name('setting.document.deactivate');
+
+        // Route untuk mengaktifkan kembali dokumen
+        Route::post('/setting/document/{id}/restore', [SettingController::class, 'restoreDocument'])->name('setting.document.restore');
         
         Route::post('/setting/signature', [SettingController::class, 'storeSignature'])->name('setting.signature.store');
         Route::get('/setting/signatures/history', [SettingController::class, 'getSignaturesHistory'])->name('setting.signatures.history');

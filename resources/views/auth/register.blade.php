@@ -362,312 +362,330 @@
 </div>
 
 <script>
-class CleanRegistration {
-    constructor() {
-        this.elements = this.getElements();
-        this.data = { employee: null, debounceTimer: null };
-        this.bindEvents();
-    }
-
-    getElements() {
-        return {
-            nikInput: document.getElementById('nikInput'),
-            nameInput: document.getElementById('nameInput'),
-            iuranInput: document.getElementById('iuranInput'),
-            registerBtn: document.getElementById('registerBtn'),
-            agreement: document.getElementById('agreement'),
-            
-            loadingState: document.getElementById('loadingState'),
-            employeeInfo: document.getElementById('employeeInfo'),
-            gptpNotice: document.getElementById('gptpNotice'),
-            iuranInfoPanel: document.getElementById('iuranInfoPanel'),
-            agreementSection: document.getElementById('agreementSection'),
-            alertContainer: document.getElementById('alertContainer'),
-            iuranError: document.getElementById('iuranError'),
-            
-            employeePosition: document.getElementById('employeePosition'),
-            employeeUnit: document.getElementById('employeeUnit'),
-            employeeDivisi: document.getElementById('employeeDivisi'),
-            employeeLocation: document.getElementById('employeeLocation'),
-            employeeDPW: document.getElementById('employeeDPW'),
-            employeeDPD: document.getElementById('employeeDPD'),
-            
-            iuranWajibDisplay: document.getElementById('iuran-wajib-display'),
-            iuranSukarelaDisplay: document.getElementById('iuran-sukarela-display'),
-            totalIuranDisplay: document.getElementById('total-iuran-display'),
-            agreementSukarela: document.getElementById('agreement-sukarela'),
-            agreementTotal: document.getElementById('agreement-total'),
-            
-            ssoModal: document.getElementById('ssoModal'),
-            ssoForm: document.getElementById('ssoForm'),
-            ssoPassword: document.getElementById('sso_password'),
-            ssoLoadingState: document.getElementById('ssoLoadingState'),
-            ssoErrorContainer: document.getElementById('ssoErrorContainer'),
-            ssoErrorMessage: document.getElementById('ssoErrorMessage'),
-            toggleSSOPassword: document.getElementById('toggleSSOPassword'),
-            eyeIcon: document.getElementById('eyeIcon'),
-            cancelSSOBtn: document.getElementById('cancelSSOBtn'),
-            
-            userInitials: document.getElementById('userInitials'),
-            modalUserName: document.getElementById('modalUserName'),
-            modalUserNIK: document.getElementById('modalUserNIK'),
-            hiddenNik: document.getElementById('hiddenNik'),
-            hiddenName: document.getElementById('hiddenName'),
-            hiddenIuran: document.getElementById('hiddenIuran')
-        };
-    }
-
-    bindEvents() {
-        this.elements.nikInput.addEventListener('input', (e) => this.handleNikInput(e.target.value.trim()));
-        this.elements.iuranInput.addEventListener('input', (e) => this.handleIuranInput(e.target.value));
-        this.elements.iuranInput.addEventListener('change', (e) => this.handleIuranChange(e.target.value));
-        this.elements.registerBtn.addEventListener('click', () => this.handleRegister());
-        this.elements.cancelSSOBtn.addEventListener('click', () => this.closeModal());
-        this.elements.toggleSSOPassword.addEventListener('click', () => this.togglePassword());
-        this.elements.ssoForm.addEventListener('submit', (e) => this.handleSSOSubmit(e));
-        this.elements.ssoModal.addEventListener('click', (e) => e.target === this.elements.ssoModal && this.closeModal());
-        document.addEventListener('keydown', (e) => e.key === 'Escape' && !this.elements.ssoModal.classList.contains('hidden') && this.closeModal());
-    }
-
-    handleNikInput(nik) {
-        this.resetForm();
-        clearTimeout(this.data.debounceTimer);
-        
-        if (nik.length >= 6) {
-            this.data.debounceTimer = setTimeout(() => this.fetchEmployee(nik), 800);
+    class CleanRegistration {
+        constructor() {
+            this.elements = this.getElements();
+            this.data = { employee: null, debounceTimer: null };
+            this.bindEvents();
+            // Panggil method untuk memeriksa status checkbox saat inisialisasi
+            this.checkAgreement();
         }
-    }
 
-    async fetchEmployee(nik) {
-        this.showLoading(true);
-        
-        try {
-            const response = await fetch('/api/karyawan-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value },
-                body: JSON.stringify({ nik })
-            });
+        getElements() {
+            return {
+                nikInput: document.getElementById('nikInput'),
+                nameInput: document.getElementById('nameInput'),
+                iuranInput: document.getElementById('iuranInput'),
+                registerBtn: document.getElementById('registerBtn'),
+                agreement: document.getElementById('agreement'),
+                
+                loadingState: document.getElementById('loadingState'),
+                employeeInfo: document.getElementById('employeeInfo'),
+                gptpNotice: document.getElementById('gptpNotice'),
+                iuranInfoPanel: document.getElementById('iuranInfoPanel'),
+                agreementSection: document.getElementById('agreementSection'),
+                alertContainer: document.getElementById('alertContainer'),
+                iuranError: document.getElementById('iuranError'),
+                
+                employeePosition: document.getElementById('employeePosition'),
+                employeeUnit: document.getElementById('employeeUnit'),
+                employeeDivisi: document.getElementById('employeeDivisi'),
+                employeeLocation: document.getElementById('employeeLocation'),
+                employeeDPW: document.getElementById('employeeDPW'),
+                employeeDPD: document.getElementById('employeeDPD'),
+                
+                iuranWajibDisplay: document.getElementById('iuran-wajib-display'),
+                iuranSukarelaDisplay: document.getElementById('iuran-sukarela-display'),
+                totalIuranDisplay: document.getElementById('total-iuran-display'),
+                agreementSukarela: document.getElementById('agreement-sukarela'),
+                agreementTotal: document.getElementById('agreement-total'),
+                
+                ssoModal: document.getElementById('ssoModal'),
+                ssoForm: document.getElementById('ssoForm'),
+                ssoPassword: document.getElementById('sso_password'),
+                ssoLoadingState: document.getElementById('ssoLoadingState'),
+                ssoErrorContainer: document.getElementById('ssoErrorContainer'),
+                ssoErrorMessage: document.getElementById('ssoErrorMessage'),
+                toggleSSOPassword: document.getElementById('toggleSSOPassword'),
+                eyeIcon: document.getElementById('eyeIcon'),
+                cancelSSOBtn: document.getElementById('cancelSSOBtn'),
+                
+                userInitials: document.getElementById('userInitials'),
+                modalUserName: document.getElementById('modalUserName'),
+                modalUserNIK: document.getElementById('modalUserNIK'),
+                hiddenNik: document.getElementById('hiddenNik'),
+                hiddenName: document.getElementById('hiddenName'),
+                hiddenIuran: document.getElementById('hiddenIuran')
+            };
+        }
+
+        bindEvents() {
+            this.elements.nikInput.addEventListener('input', (e) => this.handleNikInput(e.target.value.trim()));
+            this.elements.iuranInput.addEventListener('input', (e) => this.handleIuranInput(e.target.value));
+            this.elements.iuranInput.addEventListener('change', (e) => this.handleIuranChange(e.target.value));
+            this.elements.registerBtn.addEventListener('click', () => this.handleRegister());
             
-            const data = await response.json();
+            // Tambahkan event listener untuk checkbox di sini
+            this.elements.agreement.addEventListener('change', () => this.checkAgreement());
             
-            if (data.success) {
-                this.displayEmployee(data.data);
-                this.showAlert('Data karyawan ditemukan!', 'success');
-            } else {
-                this.showAlert(data.message, 'error');
+            this.elements.cancelSSOBtn.addEventListener('click', () => this.closeModal());
+            this.elements.toggleSSOPassword.addEventListener('click', () => this.togglePassword());
+            this.elements.ssoForm.addEventListener('submit', (e) => this.handleSSOSubmit(e));
+            this.elements.ssoModal.addEventListener('click', (e) => e.target === this.elements.ssoModal && this.closeModal());
+            document.addEventListener('keydown', (e) => e.key === 'Escape' && !this.elements.ssoModal.classList.contains('hidden') && this.closeModal());
+        }
+
+        // Buat method baru untuk menangani logika checkbox
+        checkAgreement() {
+            // Tombol register akan 'disabled' jika checkbox TIDAK dicentang
+            // dan jika data karyawan sudah ada
+            const isNikValid = !!this.data.employee;
+            const isAgreementChecked = this.elements.agreement.checked;
+            
+            this.elements.registerBtn.disabled = !(isNikValid && isAgreementChecked);
+        }
+
+        handleNikInput(nik) {
+            this.resetForm();
+            clearTimeout(this.data.debounceTimer);
+            
+            if (nik.length >= 6) {
+                this.data.debounceTimer = setTimeout(() => this.fetchEmployee(nik), 800);
             }
-        } catch (error) {
-            this.showAlert('Terjadi kesalahan saat memuat data karyawan', 'error');
-        } finally {
-            this.showLoading(false);
         }
-    }
 
-    displayEmployee(employee) {
-        this.data.employee = employee;
-        
-        this.elements.nameInput.value = employee.name;
-        this.elements.employeePosition.textContent = employee.position;
-        this.elements.employeeUnit.textContent = employee.unit;
-        this.elements.employeeDivisi.textContent = employee.divisi;
-        this.elements.employeeLocation.textContent = employee.location;
-        this.elements.employeeDPW.textContent = employee.dpw;
-        this.elements.employeeDPD.textContent = employee.dpd;
-        
-        this.elements.employeeInfo.classList.remove('hidden');
-        this.elements.iuranInfoPanel.classList.remove('hidden');
-        this.elements.agreementSection.classList.remove('hidden');
-        
-        if (employee.is_gptp) {
-            this.elements.gptpNotice.classList.remove('hidden');
+        async fetchEmployee(nik) {
+            this.showLoading(true);
+            
+            try {
+                const response = await fetch('/api/karyawan-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value },
+                    body: JSON.stringify({ nik })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.displayEmployee(data.data);
+                    this.showAlert('Data karyawan ditemukan!', 'success');
+                } else {
+                    this.showAlert(data.message, 'error');
+                }
+            } catch (error) {
+                this.showAlert('Terjadi kesalahan saat memuat data karyawan', 'error');
+            } finally {
+                this.showLoading(false);
+            }
         }
-        
-        this.updateIuranDisplay();
-        this.elements.registerBtn.disabled = false;
-    }
 
-    handleIuranInput(value) {
-        const amount = parseInt(value) || 0;
-        const error = this.validateIuran(amount);
-        
-        if (error) {
-            this.elements.iuranError.textContent = error;
-            this.elements.iuranError.classList.remove('hidden');
-            this.elements.iuranInput.classList.add('border-red-500');
-        } else {
-            this.elements.iuranError.classList.add('hidden');
-            this.elements.iuranInput.classList.remove('border-red-500');
+        displayEmployee(employee) {
+            this.data.employee = employee;
+            
+            this.elements.nameInput.value = employee.name;
+            this.elements.employeePosition.textContent = employee.position;
+            this.elements.employeeUnit.textContent = employee.unit;
+            this.elements.employeeDivisi.textContent = employee.divisi;
+            this.elements.employeeLocation.textContent = employee.location;
+            this.elements.employeeDPW.textContent = employee.dpw;
+            this.elements.employeeDPD.textContent = employee.dpd;
+            
+            this.elements.employeeInfo.classList.remove('hidden');
+            this.elements.iuranInfoPanel.classList.remove('hidden');
+            this.elements.agreementSection.classList.remove('hidden');
+            
+            if (employee.is_gptp) {
+                this.elements.gptpNotice.classList.remove('hidden');
+            }
+            
+            this.updateIuranDisplay();
+            
+            // Panggil checkAgreement setelah data karyawan berhasil dimuat
+            this.checkAgreement(); 
         }
-        
-        this.updateIuranDisplay();
-    }
 
-    handleIuranChange(value) {
-        let amount = parseInt(value) || 0;
-        if (amount > 0) {
-            amount = Math.round(amount / 5000) * 5000;
-            this.elements.iuranInput.value = amount;
+        handleIuranInput(value) {
+            const amount = parseInt(value) || 0;
+            const error = this.validateIuran(amount);
+            
+            if (error) {
+                this.elements.iuranError.textContent = error;
+                this.elements.iuranError.classList.remove('hidden');
+                this.elements.iuranInput.classList.add('border-red-500');
+            } else {
+                this.elements.iuranError.classList.add('hidden');
+                this.elements.iuranInput.classList.remove('border-red-500');
+            }
+            
             this.updateIuranDisplay();
         }
-    }
 
-    validateIuran(value) {
-        if (value < 0) return 'Iuran tidak boleh negatif';
-        if (value % 5000 !== 0) return 'Harus kelipatan Rp 5.000';
-        if (value > 1000000) return 'Maksimal Rp 1.000.000';
-        return null;
-    }
-
-    updateIuranDisplay() {
-        const wajib = 25000;
-        const sukarela = parseInt(this.elements.iuranInput.value) || 0;
-        const total = wajib + sukarela;
-        
-        const format = (amount) => new Intl.NumberFormat('id-ID', {
-            style: 'currency', currency: 'IDR', minimumFractionDigits: 0
-        }).format(amount);
-        
-        this.elements.iuranWajibDisplay.textContent = format(wajib);
-        this.elements.iuranSukarelaDisplay.textContent = format(sukarela);
-        this.elements.totalIuranDisplay.textContent = format(total);
-        this.elements.agreementSukarela.textContent = format(sukarela);
-        this.elements.agreementTotal.textContent = format(total);
-    }
-
-    handleRegister() {
-        if (!this.data.employee) {
-            this.showAlert('Silakan masukkan NIK yang valid terlebih dahulu', 'warning');
-            return;
+        handleIuranChange(value) {
+            let amount = parseInt(value) || 0;
+            if (amount > 0) {
+                amount = Math.round(amount / 5000) * 5000;
+                this.elements.iuranInput.value = amount;
+                this.updateIuranDisplay();
+            }
         }
 
-        if (!this.elements.agreement.checked) {
-            this.showAlert('Anda harus menyetujui pernyataan keanggotaan', 'warning');
-            return;
+        validateIuran(value) {
+            if (value < 0) return 'Iuran tidak boleh negatif';
+            if (value % 5000 !== 0) return 'Harus kelipatan Rp 5.000';
+            if (value > 1000000) return 'Maksimal Rp 1.000.000';
+            return null;
         }
 
-        const iuranValue = parseInt(this.elements.iuranInput.value) || 0;
-        const error = this.validateIuran(iuranValue);
-        if (error) {
-            this.showAlert(error, 'warning');
-            return;
-        }
-
-        this.openModal();
-    }
-
-    openModal() {
-        this.elements.userInitials.textContent = this.data.employee.name.substring(0, 2).toUpperCase();
-        this.elements.modalUserName.textContent = this.data.employee.name;
-        this.elements.modalUserNIK.textContent = 'NIK: ' + this.data.employee.nik;
-        
-        this.elements.hiddenNik.value = this.data.employee.nik;
-        this.elements.hiddenName.value = this.data.employee.name;
-        this.elements.hiddenIuran.value = this.elements.iuranInput.value || '0';
-        
-        this.elements.ssoModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        
-        setTimeout(() => this.elements.ssoPassword.focus(), 100);
-    }
-
-    closeModal() {
-        this.elements.ssoModal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-        this.elements.ssoForm.reset();
-        this.elements.ssoErrorContainer.classList.add('hidden');
-    }
-
-    togglePassword() {
-        const isPassword = this.elements.ssoPassword.type === 'password';
-        this.elements.ssoPassword.type = isPassword ? 'text' : 'password';
-        
-        this.elements.eyeIcon.innerHTML = isPassword 
-            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>'
-            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>';
-    }
-
-    async handleSSOSubmit(e) {
-        e.preventDefault();
-        
-        this.elements.ssoForm.style.display = 'none';
-        this.elements.ssoLoadingState.classList.remove('hidden');
-        
-        try {
-            const response = await fetch('{{ route("register.post") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams(new FormData(this.elements.ssoForm))
-            });
+        updateIuranDisplay() {
+            const wajib = 25000;
+            const sukarela = parseInt(this.elements.iuranInput.value) || 0;
+            const total = wajib + sukarela;
             
-            const data = await response.json();
+            const format = (amount) => new Intl.NumberFormat('id-ID', {
+                style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+            }).format(amount);
             
-            if (response.ok && data.success) {
-                window.location.href = '{{ route("dashboard") }}';
-            } else {
-                this.showSSOError(data.message || 'Password SSO tidak valid');
+            this.elements.iuranWajibDisplay.textContent = format(wajib);
+            this.elements.iuranSukarelaDisplay.textContent = format(sukarela);
+            this.elements.totalIuranDisplay.textContent = format(total);
+            this.elements.agreementSukarela.textContent = format(sukarela);
+            this.elements.agreementTotal.textContent = format(total);
+        }
+
+        handleRegister() {
+            if (this.elements.registerBtn.disabled) {
+                // Jika tombol disabled, jangan lakukan apa-apa, atau beri peringatan
+                if (!this.data.employee) {
+                    this.showAlert('Silakan masukkan NIK yang valid terlebih dahulu.', 'warning');
+                } else if (!this.elements.agreement.checked) {
+                    this.showAlert('Anda harus menyetujui pernyataan keanggotaan.', 'warning');
+                }
+                return;
+            }
+
+            const iuranValue = parseInt(this.elements.iuranInput.value) || 0;
+            const error = this.validateIuran(iuranValue);
+            if (error) {
+                this.showAlert(error, 'warning');
+                return;
+            }
+
+            this.openModal();
+        }
+
+        openModal() {
+            this.elements.userInitials.textContent = this.data.employee.name.substring(0, 2).toUpperCase();
+            this.elements.modalUserName.textContent = this.data.employee.name;
+            this.elements.modalUserNIK.textContent = 'NIK: ' + this.data.employee.nik;
+            
+            this.elements.hiddenNik.value = this.data.employee.nik;
+            this.elements.hiddenName.value = this.data.employee.name;
+            this.elements.hiddenIuran.value = this.elements.iuranInput.value || '0';
+            
+            this.elements.ssoModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            setTimeout(() => this.elements.ssoPassword.focus(), 100);
+        }
+
+        closeModal() {
+            this.elements.ssoModal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            this.elements.ssoForm.reset();
+            this.elements.ssoErrorContainer.classList.add('hidden');
+        }
+
+        togglePassword() {
+            const isPassword = this.elements.ssoPassword.type === 'password';
+            this.elements.ssoPassword.type = isPassword ? 'text' : 'password';
+            
+            this.elements.eyeIcon.innerHTML = isPassword 
+                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>';
+        }
+
+        async handleSSOSubmit(e) {
+            e.preventDefault();
+            
+            this.elements.ssoForm.style.display = 'none';
+            this.elements.ssoLoadingState.classList.remove('hidden');
+            
+            try {
+                const response = await fetch('{{ route("register.post") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(new FormData(this.elements.ssoForm))
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    window.location.href = '{{ route("dashboard") }}';
+                } else {
+                    this.showSSOError(data.message || 'Password SSO tidak valid');
+                    this.elements.ssoLoadingState.classList.add('hidden');
+                    this.elements.ssoForm.style.display = 'block';
+                    this.elements.ssoPassword.focus();
+                }
+            } catch (error) {
+                this.showSSOError('Terjadi kesalahan koneksi');
                 this.elements.ssoLoadingState.classList.add('hidden');
                 this.elements.ssoForm.style.display = 'block';
-                this.elements.ssoPassword.focus();
             }
-        } catch (error) {
-            this.showSSOError('Terjadi kesalahan koneksi');
-            this.elements.ssoLoadingState.classList.add('hidden');
-            this.elements.ssoForm.style.display = 'block';
+        }
+
+        showSSOError(message) {
+            this.elements.ssoErrorMessage.textContent = message;
+            this.elements.ssoErrorContainer.classList.remove('hidden');
+        }
+
+        resetForm() {
+            this.elements.nameInput.value = '';
+            this.elements.employeeInfo.classList.add('hidden');
+            this.elements.gptpNotice.classList.add('hidden');
+            this.elements.iuranInfoPanel.classList.add('hidden');
+            this.elements.agreementSection.classList.add('hidden');
+            this.elements.registerBtn.disabled = true; // Selalu disabled saat reset
+            this.elements.iuranError.classList.add('hidden');
+            this.data.employee = null;
+        }
+
+        showLoading(show) {
+            if (show) {
+                this.elements.loadingState.classList.remove('hidden');
+            } else {
+                this.elements.loadingState.classList.add('hidden');
+            }
+        }
+
+        showAlert(message, type = 'info') {
+            const alertClasses = {
+                'error': 'bg-red-50 border-red-200 text-red-700',
+                'success': 'bg-green-50 border-green-200 text-green-700',
+                'warning': 'bg-yellow-50 border-yellow-200 text-yellow-700',
+                'info': 'bg-blue-50 border-blue-200 text-blue-700'
+            };
+            
+            this.elements.alertContainer.innerHTML = `
+                <div class="${alertClasses[type]} px-3 py-2 rounded-lg border">
+                    <p class="text-xs">${message}</p>
+                </div>
+            `;
+            this.elements.alertContainer.classList.remove('hidden');
+            
+            setTimeout(() => {
+                this.elements.alertContainer.classList.add('hidden');
+            }, 5000);
         }
     }
 
-    showSSOError(message) {
-        this.elements.ssoErrorMessage.textContent = message;
-        this.elements.ssoErrorContainer.classList.remove('hidden');
-    }
-
-    resetForm() {
-        this.elements.nameInput.value = '';
-        this.elements.employeeInfo.classList.add('hidden');
-        this.elements.gptpNotice.classList.add('hidden');
-        this.elements.iuranInfoPanel.classList.add('hidden');
-        this.elements.agreementSection.classList.add('hidden');
-        this.elements.registerBtn.disabled = true;
-        this.elements.iuranError.classList.add('hidden');
-        this.data.employee = null;
-    }
-
-    showLoading(show) {
-        if (show) {
-            this.elements.loadingState.classList.remove('hidden');
-        } else {
-            this.elements.loadingState.classList.add('hidden');
-        }
-    }
-
-    showAlert(message, type = 'info') {
-        const alertClasses = {
-            'error': 'bg-red-50 border-red-200 text-red-700',
-            'success': 'bg-green-50 border-green-200 text-green-700',
-            'warning': 'bg-yellow-50 border-yellow-200 text-yellow-700',
-            'info': 'bg-blue-50 border-blue-200 text-blue-700'
-        };
-        
-        this.elements.alertContainer.innerHTML = `
-            <div class="${alertClasses[type]} px-3 py-2 rounded-lg border">
-                <p class="text-xs">${message}</p>
-            </div>
-        `;
-        this.elements.alertContainer.classList.remove('hidden');
-        
-        setTimeout(() => {
-            this.elements.alertContainer.classList.add('hidden');
-        }, 5000);
-    }
-}
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    new CleanRegistration();
-});
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        new CleanRegistration();
+    });
 </script>
 @endsection
