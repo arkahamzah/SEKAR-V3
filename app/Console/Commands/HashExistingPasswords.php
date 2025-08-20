@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 
 class HashExistingPasswords extends Command
 {
@@ -21,26 +20,42 @@ class HashExistingPasswords extends Command
      *
      * @var string
      */
-    protected $description = 'Find all users with plain text "Telkom" password and hash them correctly.';
+    // Deskripsi diperbarui agar lebih akurat
+    protected $description = 'Set a new hashed password ("Telkom") for all users in the database.';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Mulai proses hashing password...');
+        $this->info('Mulai proses hashing password untuk semua pengguna...');
 
-        // Proses pengguna dalam chunk untuk menghindari masalah memori
-        User::where('password', 'Telkom')->chunkById(200, function ($users) {
+        // Ambil total pengguna untuk progress bar
+        $totalUsers = User::count();
+        if ($totalUsers === 0) {
+            $this->warn('Tidak ada pengguna di dalam database untuk diproses.');
+            return 0;
+        }
+
+        $progressBar = $this->output->createProgressBar($totalUsers);
+        $progressBar->start();
+
+        // Proses SEMUA pengguna dalam chunk untuk efisiensi memori
+        User::chunkById(200, function ($users) use ($progressBar) {
             foreach ($users as $user) {
+                // Langsung hash password menjadi 'Telkom' tanpa memeriksa password lama
                 $user->password = Hash::make('Telkom');
                 $user->save();
-                $this->info("Password untuk NIK: {$user->nik} berhasil di-hash.");
+
+                // Majukan progress bar setelah setiap pengguna diproses
+                $progressBar->advance();
             }
         });
 
+        $progressBar->finish();
+        $this->info(''); // Memberi baris baru setelah progress bar selesai
         $this->info('======================================');
-        $this->info('Proses hashing password telah selesai.');
+        $this->info('Proses hashing password telah selesai untuk semua pengguna.');
         return 0;
     }
 }
