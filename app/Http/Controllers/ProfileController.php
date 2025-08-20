@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Karyawan;
+use App\Models\ViewKaryawan; // Diubah dari Karyawan
 use App\Models\Iuran;
 use App\Models\IuranHistory;
 use App\Models\IuranBulanan;
@@ -303,7 +303,7 @@ class ProfileController extends Controller
      */
     private function getKaryawanData(string $nik)
     {
-        return Karyawan::where('N_NIK', $nik)->first();
+        return ViewKaryawan::where('N_NIK', $nik)->first(); // Diubah menggunakan ViewKaryawan
     }
 
     /**
@@ -678,7 +678,7 @@ class ProfileController extends Controller
         try {
             DB::transaction(function () use ($user) {
                 
-                $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
+                $karyawan = ViewKaryawan::where('N_NIK', $user->nik)->first(); // Diubah menggunakan ViewKaryawan
                 $iuran = Iuran::where('N_NIK', $user->nik)->first();
                 $pengurus = SekarPengurus::where('N_NIK', $user->nik)->first();
 
