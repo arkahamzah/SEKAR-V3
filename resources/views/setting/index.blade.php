@@ -187,25 +187,45 @@
                     @forelse($documents as $doc)
                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between">
                         <div class="flex items-center space-x-3">
-                            <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0011.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            <svg class="w-5 h-5 {{ $doc->trashed() ? 'text-gray-400' : 'text-gray-500' }} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0011.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-800 truncate">{{ $doc['name'] }}</p>
-                                <p class="text-xs text-gray-500">
-                                    {{ $doc['size'] }} - Diunggah: {{ $doc['uploaded_at'] }}
+                                <p class="text-sm font-medium {{ $doc->trashed() ? 'text-gray-500' : 'text-gray-800' }} truncate">{{ $doc->name }}</p>
+                                <p class="text-xs {{ $doc->trashed() ? 'text-gray-400' : 'text-gray-500' }}">
+                                    {{ $doc->size }} - Diunggah: {{ $doc->created_at->format('d M Y, H:i') }}
+                                    
+                                    {{-- Tampilkan Status Nonaktif --}}
+                                    @if ($doc->trashed())
+                                        <span class="font-bold text-red-500">(Nonaktif)</span>
+                                    @endif
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
-                             <a href="{{ route('dokumen.show', $doc['filename']) }}" target="_blank" class="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100" title="Lihat">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                            </a>
-                            <form action="{{ route('setting.document.delete', $doc['filename']) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus dokumen ini?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-100" title="Hapus">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </form>
+                            {{-- Tombol Lihat hanya untuk yang aktif --}}
+                            @if (!$doc->trashed())
+                                <a href="{{ route('dokumen.show', $doc->filename) }}" target="_blank" class="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-100" title="Lihat">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                </a>
+                            @endif
+
+
+                            @if ($doc->trashed())
+                                <form action="{{ route('setting.document.restore', $doc->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali dokumen ini?')">
+                                    @csrf
+                                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold text-xs py-1 px-2 rounded" title="Aktifkan">
+                                        Aktifkan
+                                    </button>
+                                </form>
+                            @else
+                                <form action="{{ route('setting.document.deactivate', $doc->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menonaktifkan dokumen ini? Dokumen tidak akan muncul di dropdown anggota.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-100" title="Nonaktifkan">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                     @empty
