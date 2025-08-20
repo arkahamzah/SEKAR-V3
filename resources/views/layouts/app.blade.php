@@ -681,6 +681,8 @@ async function handleNotificationClick(event, notificationId, redirectUrl) {
     }
 }
 </script>
+    
+        @stack('scripts')
 
     </body>
 </html>

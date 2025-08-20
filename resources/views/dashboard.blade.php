@@ -5,7 +5,7 @@
 @section('content')
 <div class="min-h-screen bg-gray-50">
     <div class="p-6">
-        
+
         <div class="mb-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg text-white">
             <div class="p-6">
                 <div class="flex items-center justify-between">
@@ -33,12 +33,12 @@
                 @endif
             </div>
         </div>
-        
+
         <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Dashboard SEKAR</h1>
             <p class="text-gray-600 text-sm mt-1">Ringkasan data keanggotaan dan pengurus SEKAR</p>
         </div>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {{-- Card Anggota Aktif --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
@@ -104,7 +104,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-sm border border-gray-100">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-900">Pemetaan DPW - DPD</h2>
@@ -148,7 +148,7 @@
                         <tbody class="divide-y divide-gray-200">
                             @forelse($mappingWithStats as $index => $mapping)
                             <tr class="hover:bg-gray-50 mapping-row" data-dpw="{{ $mapping->dpw }}" data-dpd="{{ $mapping->dpd }}">
-                                <td class="py-3 px-4 text-xs text-gray-900">{{ $index + 1 }}</td>
+                                <td class="py-3 px-4 text-xs text-gray-900">{{ $mappingWithStats->firstItem() + $index }}</td>
                                 <td class="py-3 px-4 text-xs font-medium text-gray-900">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                         {{ $mapping->dpw }}
@@ -189,6 +189,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if($mappingWithStats->hasPages())
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        {{ $mappingWithStats->links() }}
+                    </div>
+                @endif
+
             </div>
         </div>
     </div>
@@ -200,25 +207,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterDPD = document.getElementById('filterDPD');
     const resetFilter = document.getElementById('resetFilter');
     const mappingRows = document.querySelectorAll('.mapping-row');
-    
+
     function filterTable() {
         const dpwValue = filterDPW.value.toLowerCase();
         const dpdValue = filterDPD.value.toLowerCase();
-        
+
         mappingRows.forEach(row => {
             const rowDPW = row.dataset.dpw.toLowerCase();
             const rowDPD = row.dataset.dpd.toLowerCase();
-            
+
             const dpwMatch = !dpwValue || rowDPW.includes(dpwValue);
-            const dpdMatch = !d'pdValue || rowDPD.includes(dpdValue);
-            
+            const dpdMatch = !dpdValue || rowDPD.includes(dpdValue);
+
             if (dpwMatch && dpdMatch) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
         });
-        
+
         let visibleIndex = 1;
         mappingRows.forEach(row => {
             if (row.style.display !== 'none') {
@@ -226,13 +233,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     function resetFilters() {
         filterDPW.value = '';
         filterDPD.value = '';
         filterTable();
     }
-    
+
     filterDPW.addEventListener('change', filterTable);
     filterDPD.addEventListener('input', filterTable);
     resetFilter.addEventListener('click', resetFilters);

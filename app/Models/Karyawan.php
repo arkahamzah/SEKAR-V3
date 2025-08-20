@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Karyawan extends Model
 {
+    // =================================================================
+    // KODE ORIGINAL ANDA (TETAP DIPERTAHANKAN)
+    // =================================================================
     protected $table = 't_karyawan';
     protected $primaryKey = 'ID';
     public $timestamps = false;
@@ -29,5 +32,21 @@ class Karyawan extends Model
     public function pengurus()
     {
         return $this->hasOne(SekarPengurus::class, 'N_NIK', 'N_NIK');
+    }
+
+    // =================================================================
+    // PENAMBAHAN FUNGSI RELASI KE USER (INI SOLUSINYA)
+    // =================================================================
+
+    /**
+     * Mendefinisikan relasi one-to-one ke model User.
+     * Satu Karyawan diasumsikan memiliki satu akun User.
+     */
+    public function user()
+    {
+        // Menghubungkan model Karyawan dengan User
+        // dimana kolom 'N_NIK' di tabel 't_karyawan'
+        // sama dengan kolom 'nik' di tabel 'users'.
+        return $this->hasOne(User::class, 'nik', 'N_NIK');
     }
 }

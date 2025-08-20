@@ -15,28 +15,32 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $cacheKey = 'dashboard_statistics';
-        
-        $data = Cache::remember($cacheKey, 10, function () {
-            \Log::info('getDashboardData() dipanggil pada: ' . now());
-            return $this->getDashboardData();
+        // Cache hanya statistik utama di bagian atas halaman
+        $statistics = Cache::remember('dashboard_main_statistics', 10, function () {
+            return $this->getStatistics();
         });
-        
+
+        // Ambil data pemetaan yang sudah dipaginasi secara terpisah
+        $mappingWithStats = $this->getDpwMappingWithStats();
+
         $greeting = $this->getGreetingData();
-        
-        return view('dashboard', array_merge($data, ['greeting' => $greeting]));
+
+        return view('dashboard', array_merge($statistics, [
+            'greeting' => $greeting,
+            'mappingWithStats' => $mappingWithStats
+        ]));
     }
 
     private function getGreetingData()
     {
         $user = Auth::user();
         $hour = (int) now()->format('H');
-        
+
         if ($hour >= 5 && $hour < 12) {
             $greeting = 'Selamat Pagi';
             $icon = '🌅';
         } elseif ($hour >= 12 && $hour < 15) {
-            $greeting = 'Selamat Siang';  
+            $greeting = 'Selamat Siang';
             $icon = '☀️';
         } elseif ($hour >= 15 && $hour < 19) {
             $greeting = 'Selamat Sore';
@@ -45,13 +49,13 @@ class DashboardController extends Controller
             $greeting = 'Selamat Malam';
             $icon = '🌙';
         }
-        
+
         if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
             $statusMessage = 'Membership GPTP Anda akan segera aktif. Terima kasih atas kesabaran Anda.';
         } else {
             $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
         }
-        
+
         return [
             'time_greeting' => $greeting,
             'icon' => $icon,
@@ -60,16 +64,6 @@ class DashboardController extends Controller
             'current_date' => now()->format('d M Y'),
             'current_time' => now()->format('H:i'),
         ];
-    }
-
-    private function getDashboardData(): array
-    {
-        $statistics = $this->getStatistics();
-        $mappingWithStats = $this->getDpwMappingWithStats();
-
-        return array_merge($statistics, [
-            'mappingWithStats' => $mappingWithStats
-        ]);
     }
 
     /**
@@ -110,11 +104,11 @@ class DashboardController extends Controller
         $pertumbuhanPengurus = DB::table('t_sekar_pengurus as sp')
             ->whereBetween('sp.created_at', [$startOfMonth, $endOfMonth])
             ->count();
-        
+
         // Pertumbuhan Anggota Keluar (yang keluar bulan ini)
         $pertumbuhanAnggotaKeluar = ExAnggota::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
-        
+
         // ## DIHAPUS ##
         // Logika untuk pertumbuhan non-anggota dihapus sesuai permintaan
         // $pertumbuhanNonAnggota = $pertumbuhanAnggotaKeluar;
@@ -133,31 +127,32 @@ class DashboardController extends Controller
         ];
     }
 
-
     private function getDpwMappingWithStats()
     {
+        // Query untuk mendapatkan kombinasi unik DPW dan DPD dari kedua tabel
         $karyawanMappings = DB::table('t_karyawan')
             ->select('DPW', 'DPD')
-            ->whereNotNull('DPW')
-            ->where('DPW', '!=', '')
-            ->whereNotNull('DPD')
-            ->where('DPD', '!=', '');
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->whereNotNull('DPD')->where('DPD', '!=', '');
 
-        $allMappings = DB::table('t_sekar_pengurus')
+        $paginatedMappings = DB::table('t_sekar_pengurus')
             ->select('DPW', 'DPD')
-            ->whereNotNull('DPW')
-            ->where('DPW', '!=', '')
-            ->whereNotNull('DPD')
-            ->where('DPD', '!=', '')
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->whereNotNull('DPD')->where('DPD', '!=', '')
             ->union($karyawanMappings)
-            ->distinct()
-            ->get();
-            
-        return $allMappings->map(function ($mapping) {
+            ->groupBy('DPW', 'DPD') // Menggunakan groupBy untuk mendapatkan hasil unik
+            ->orderBy('DPW')
+            ->orderBy('DPD')
+            ->paginate(10); // Menggunakan paginate di sini
+
+        // Memperkaya (enrich) data HANYA untuk item di halaman saat ini
+        $paginatedMappings->getCollection()->transform(function ($mapping) {
             return $this->enrichMappingWithStats($mapping);
         });
+
+        return $paginatedMappings;
     }
-    
+
     private function enrichMappingWithStats($mapping)
     {
         return (object)[
@@ -179,7 +174,7 @@ class DashboardController extends Controller
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
     }
-    
+
     private function getPengurusByArea($dpw, $dpd)
     {
         return DB::table('t_sekar_pengurus as sp')
@@ -187,7 +182,7 @@ class DashboardController extends Controller
             ->where('sp.DPD', $dpd)
             ->count();
     }
-    
+
     private function getAnggotaKeluarByArea($dpw, $dpd)
     {
         return DB::table('t_ex_anggota as ea')
@@ -202,9 +197,9 @@ class DashboardController extends Controller
             ->where('DPD', $dpd)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
-        
+
         $anggotaAktif = $this->getAnggotaAktifByArea($dpw, $dpd);
-        
+
         return max(0, $totalKaryawan - $anggotaAktif);
     }
 }

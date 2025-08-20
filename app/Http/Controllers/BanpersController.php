@@ -17,9 +17,13 @@ class BanpersController extends Controller
     {
         $banpersData = $this->getBanpersData();
         $isSuperAdmin = $this->isSuperAdmin();
-        
+
+        // MODIFIKASI: Ambil data banpersByWilayah yang sudah di-paginate
+        $banpersByWilayah = $this->getBanpersByWilayahSimple($banpersData['nominalBanpers']);
+
         return view('banpers.index', array_merge($banpersData, [
-            'isSuperAdmin' => $isSuperAdmin
+            'isSuperAdmin' => $isSuperAdmin,
+            'banpersByWilayah' => $banpersByWilayah // Kirim data yang sudah di-paginate ke view
         ]));
     }
 
@@ -36,9 +40,9 @@ class BanpersController extends Controller
         $params = Params::where('IS_AKTIF', '1')
                        ->where('TAHUN', date('Y'))
                        ->first();
-                       
+
         $currentNominal = $params ? (int)$params->NOMINAL_BANPERS : 20000;
-        
+
         return view('banpers.edit', [
             'currentNominal' => $currentNominal,
             'tahun' => date('Y')
@@ -77,12 +81,12 @@ class BanpersController extends Controller
 
             $tahun = date('Y');
             $currentUser = Auth::user();
-            
+
             // Get current params
             $params = Params::where('IS_AKTIF', '1')
                            ->where('TAHUN', $tahun)
                            ->first();
-            
+
             $oldNominal = $params ? $params->NOMINAL_BANPERS : '0';
             $newNominal = $request->nominal_banpers;
 
@@ -155,11 +159,11 @@ class BanpersController extends Controller
     private function isSuperAdmin(): bool
     {
         $user = Auth::user();
-        
+
         if (!$user || !$user->pengurus || !$user->pengurus->role) {
             return false;
         }
-        
+
         // Check if user is super admin (ADM role)
         return in_array($user->pengurus->role->NAME, ['ADM', 'SUPER_ADMIN']);
     }
@@ -169,66 +173,83 @@ class BanpersController extends Controller
         $params = Params::where('IS_AKTIF', '1')
                        ->where('TAHUN', date('Y'))
                        ->first();
-        
+
         $nominalBanpers = $params ? (int)$params->NOMINAL_BANPERS : 20000;
-        
+
         $totalAnggotaAktif = DB::table('users as u')
             ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
             ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
-        
+
         $totalBanpers = $totalAnggotaAktif * $nominalBanpers;
-        
-        $banpersByWilayah = $this->getBanpersByWilayahSimple($nominalBanpers);
-        
+
+        // HAPUS BARIS INI: $banpersByWilayah = $this->getBanpersByWilayahSimple($nominalBanpers);
+
         return [
             'nominalBanpers' => $nominalBanpers,
             'totalAnggotaAktif' => $totalAnggotaAktif,
             'totalBanpers' => $totalBanpers,
-            'banpersByWilayah' => $banpersByWilayah,
+            // 'banpersByWilayah' => $banpersByWilayah, // HAPUS BARIS INI
             'tahun' => date('Y')
         ];
     }
 
-    private function getBanpersByWilayahSimple(int $nominalBanpers): object
+    // MODIFIKASI: Ubah fungsi ini untuk menggunakan query builder dan paginate
+    private function getBanpersByWilayahSimple(int $nominalBanpers)
     {
-        $query = "
-            SELECT 
-                COALESCE(md.DPW, 'Belum Termapping') as dpw,
-                COALESCE(md.DPD, 'Belum Termapping') as dpd,
-                COUNT(u.id) as jumlah_anggota,
-                (COUNT(u.id) * ?) as total_banpers
-            FROM users u
-            INNER JOIN t_karyawan k ON u.nik = k.N_NIK
-            LEFT JOIN mapping_dpd md ON k.PSA_Kodlok = md.PSA_Kodlok
-            WHERE k.V_SHORT_POSISI NOT LIKE '%GPTP%'
-            GROUP BY dpw, dpd
-            ORDER BY dpw, dpd
-        ";
-        
-        return collect(DB::select($query, [$nominalBanpers]));
+        return DB::table('users as u')
+            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
+            ->leftJoin('mapping_dpd as md', 'k.PSA_Kodlok', '=', 'md.PSA_Kodlok')
+            ->select([
+                DB::raw("COALESCE(md.DPW, 'Belum Termapping') as dpw"),
+                DB::raw("COALESCE(md.DPD, 'Belum Termapping') as dpd"),
+                DB::raw('COUNT(u.id) as jumlah_anggota'),
+                DB::raw("(COUNT(u.id) * {$nominalBanpers}) as total_banpers")
+            ])
+            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->groupBy('dpw', 'dpd')
+            ->orderBy('dpw', 'asc')
+            ->orderBy('dpd', 'asc')
+            ->paginate(10); // TAMBAHKAN PAGINATE DI SINI
     }
 
     public function export(Request $request)
     {
         $banpersData = $this->getBanpersData();
-        
+
+        // MODIFIKASI: Ambil semua data untuk export tanpa pagination
+        $banpersByWilayahForExport = DB::table('users as u')
+            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
+            ->leftJoin('mapping_dpd as md', 'k.PSA_Kodlok', '=', 'md.PSA_Kodlok')
+            ->select([
+                DB::raw("COALESCE(md.DPW, 'Belum Termapping') as dpw"),
+                DB::raw("COALESCE(md.DPD, 'Belum Termapping') as dpd"),
+                DB::raw('COUNT(u.id) as jumlah_anggota'),
+                DB::raw("(COUNT(u.id) * {$banpersData['nominalBanpers']}) as total_banpers")
+            ])
+            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->groupBy('dpw', 'dpd')
+            ->orderBy('dpw', 'asc')
+            ->orderBy('dpd', 'asc')
+            ->get();
+
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="banpers_' . date('Y-m-d') . '.csv"',
         ];
 
-        $callback = function() use ($banpersData) {
+        $callback = function() use ($banpersData, $banpersByWilayahForExport) {
             $file = fopen('php://output', 'w');
-            
+
             // Add BOM for UTF-8
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             // Write headers
             fputcsv($file, ['DPW', 'DPD', 'Jumlah Anggota', 'Nominal per Orang', 'Total Banpers']);
-            
+
             // Write data
-            foreach ($banpersData['banpersByWilayah'] as $row) {
+            foreach ($banpersByWilayahForExport as $row) {
                 fputcsv($file, [
                     $row->dpw,
                     $row->dpd,
@@ -237,7 +258,7 @@ class BanpersController extends Controller
                     'Rp ' . number_format($row->total_banpers, 0, ',', '.')
                 ]);
             }
-            
+
             fputcsv($file, [
                 'TOTAL',
                 '',
@@ -245,7 +266,7 @@ class BanpersController extends Controller
                 'Rp ' . number_format($banpersData['nominalBanpers'], 0, ',', '.'),
                 'Rp ' . number_format($banpersData['totalBanpers'], 0, ',', '.')
             ]);
-            
+
             fclose($file);
         };
 
