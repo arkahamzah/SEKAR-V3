@@ -25,13 +25,11 @@ class SertifikatController extends Controller
                            ->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        // Cari Ketua Umum yang aktif pada periode joinDate
         $ketuaUmum = SertifikatSignature::where('jabatan', 'LIKE', '%Ketua Umum%')
                                         ->where('start_date', '<=', $joinDate)
                                         ->where('end_date', '>=', $joinDate)
                                         ->first();
 
-        // Cari Sekjen yang aktif pada periode joinDate
         $sekjen = SertifikatSignature::where('jabatan', 'LIKE', '%Sekjen%')
                                      ->orWhere('jabatan', 'LIKE', '%Sekretaris Jendral%')
                                      ->where('start_date', '<=', $joinDate)
@@ -52,8 +50,6 @@ class SertifikatController extends Controller
      */
     public function download()
     {
-        // TODO: Implement PDF generation
-        // This would require a PDF library like DomPDF or TCPDF
 
         return redirect()->route('sertifikat.show')
                        ->with('info', 'Fitur download PDF sedang dalam pengembangan.');
@@ -66,7 +62,6 @@ class SertifikatController extends Controller
     {
         $signatures = [
             'sekjen' => null,
-            // DIUBAH: Mengambil tanda tangan Ketua Umum
             'ketum' => null 
         ];
 
