@@ -14,7 +14,7 @@ class SertifikatController extends Controller
     /**
      * Display user certificate/ID card
      */
-   public function show()
+  public function show()
     {
         $user = Auth::user();
         $karyawan = $user->karyawan;
@@ -22,26 +22,32 @@ class SertifikatController extends Controller
 
         if (!$karyawan) {
             return redirect()->route('profile.index')
-                           ->with('error', 'Data karyawan tidak ditemukan.');
+                            ->with('error', 'Data karyawan tidak ditemukan.');
         }
+
 
         $ketuaUmum = SertifikatSignature::where('jabatan', 'LIKE', '%Ketua Umum%')
                                         ->where('start_date', '<=', $joinDate)
                                         ->where('end_date', '>=', $joinDate)
+                                        ->orderBy('start_date', 'desc') 
                                         ->first();
 
-        $sekjen = SertifikatSignature::where('jabatan', 'LIKE', '%Sekjen%')
-                                     ->orWhere('jabatan', 'LIKE', '%Sekretaris Jendral%')
-                                     ->where('start_date', '<=', $joinDate)
-                                     ->where('end_date', '>=', $joinDate)
-                                     ->first();
+        $sekjen = SertifikatSignature::where(function ($query) {
+
+                                            $query->where('jabatan', 'LIKE', '%Sekjen%')
+                                                ->orWhere('jabatan', 'LIKE', '%Sekretaris Jendral%');
+                                        })
+                                        ->where('start_date', '<=', $joinDate)
+                                        ->where('end_date', '>=', $joinDate)
+                                        ->orderBy('start_date', 'desc') 
+                                        ->first();
 
         return view('sertifikat.show', [
             'user' => $user,
             'karyawan' => $karyawan,
             'joinDate' => $joinDate,
-            'ketuaUmum' => $ketuaUmum, 
-            'sekjen' => $sekjen,       
+            'ketuaUmum' => $ketuaUmum,
+            'sekjen' => $sekjen,
         ]);
     }
 
