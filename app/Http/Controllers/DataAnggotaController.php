@@ -295,15 +295,24 @@ class DataAnggotaController extends Controller
         }
     }
 
-    private function getPengurusData(Request $request)
-    {
-        $query = SekarPengurus::query()
-            ->join('v_karyawan_base', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan_base.N_NIK')
-            ->join('t_sekar_roles', 't_sekar_pengurus.ID_ROLES', '=', 't_sekar_roles.ID')
-            ->select('t_sekar_pengurus.N_NIK', 'v_karyawan_base.V_NAMA_KARYAWAN', 'v_karyawan_base.V_KOTA_GEDUNG', 't_sekar_roles.NAME as ROLE', 'v_karyawan_base.V_SHORT_POSISI');
-        return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
-    }
+private function getPengurusData(Request $request)
+{
+    $query = SekarPengurus::query()
+        ->join('v_karyawan_base', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan_base.N_NIK')
+        ->join('t_sekar_roles', 't_sekar_pengurus.ID_ROLES', '=', 't_sekar_roles.ID')
+        ->select(
+            't_sekar_pengurus.N_NIK',
+            't_sekar_pengurus.DPW', // <-- TAMBAHKAN INI
+            't_sekar_pengurus.DPD', // <-- TAMBAHKAN INI
+            'v_karyawan_base.V_NAMA_KARYAWAN',
+            'v_karyawan_base.V_KOTA_GEDUNG',
+            't_sekar_roles.NAME as ROLE',
+            // Gunakan V_SHORT_POSISI dari tabel pengurus, sesuai data SQL
+            't_sekar_pengurus.V_SHORT_POSISI' 
+        );
 
+    return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
+}
     private function getExAnggotaData(Request $request)
     {
         return ExAnggota::query()->orderBy('TGL_KELUAR', 'desc');

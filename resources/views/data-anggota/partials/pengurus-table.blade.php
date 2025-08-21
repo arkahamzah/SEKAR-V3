@@ -20,7 +20,9 @@
                         <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">NIK</th>
                         <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">Nama</th>
                         <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">Lokasi</th>
-                        <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">DPW / DPD</th>
+                        {{-- PERBAIKAN: Memisahkan kolom DPW dan DPD --}}
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">DPW</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">DPD</th>
                         <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">Role</th>
                         <th class="text-left py-3 px-4 font-semibold text-gray-700 text-xs uppercase tracking-wider">Posisi SEKAR</th>
                     </tr>
@@ -32,7 +34,9 @@
                         <td class="py-3 px-4 text-xs text-gray-600">{{ $member->N_NIK }}</td>
                         <td class="py-3 px-4 text-xs font-medium text-gray-900">{{ $member->V_NAMA_KARYAWAN }}</td>
                         <td class="py-3 px-4 text-xs text-gray-600">{{ $member->V_KOTA_GEDUNG ?: '-' }}</td>
-                        <td class="py-3 px-4 text-xs text-gray-600">{{ $member->DPW ?: '-' }} / {{ $member->DPD ?: '-' }}</td>
+                        {{-- PERBAIKAN: Menampilkan data DPW dan DPD di kolom terpisah --}}
+                        <td class="py-3 px-4 text-xs text-gray-600">{{ $member->DPW ?: '-' }}</td>
+                        <td class="py-3 px-4 text-xs text-gray-600">{{ $member->DPD ?: '-' }}</td>
                         <td class="py-3 px-4 text-xs">
                             <span class="px-2 py-1 text-xs font-semibold rounded-full 
                                 @switch($member->ROLE)
