@@ -139,7 +139,7 @@ class DataAnggotaController extends Controller
             return redirect()->back()->with('error', 'Gagal menambahkan anggota: ' . $e->getMessage())->withInput();
         }
     }
-    
+
     /**
      * Show the form to add a new board member.
      */
@@ -152,15 +152,12 @@ class DataAnggotaController extends Controller
     /**
      * Store a new board member.
      */
-/**
-     * Store a new board member.
-     */
     public function storePengurus(Request $request)
     {
         $this->checkSuperAdminAccess();
 
         $validator = Validator::make($request->all(), [
-            'nik'      => 'required|string|max:30|exists:t_karyawan,N_NIK|unique:t_sekar_pengurus,N_NIK',
+            'nik'      => 'required|string|max:30|exists:v_karyawan,N_NIK|unique:t_sekar_pengurus,N_NIK',
             'id_roles' => 'required|exists:t_sekar_roles,ID',
         ], [
             'nik.unique' => 'Karyawan yang dipilih sudah terdaftar sebagai pengurus.',
@@ -172,9 +169,6 @@ class DataAnggotaController extends Controller
         }
 
         try {
-            // =================================================================
-            // PERBAIKAN: Menggunakan where() untuk mencari berdasarkan N_NIK
-            // =================================================================
             $karyawan = Karyawan::where('N_NIK', $request->nik)->firstOrFail();
 
             SekarPengurus::create([
@@ -191,11 +185,10 @@ class DataAnggotaController extends Controller
             return redirect()->route('data-anggota.index', ['tab' => 'pengurus'])->with('success', 'Pengurus baru berhasil ditambahkan.');
 
         } catch (\Exception $e) {
-            // Jika terjadi error lain, tampilkan pesannya untuk debugging
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
-    
+
     /**
      * Get employee info via AJAX.
      */
@@ -318,7 +311,7 @@ class DataAnggotaController extends Controller
             // Clean up original records
             if ($user->pengurus) $user->pengurus->delete();
             if ($user->iuran) $user->iuran->delete();
-            $user->delete(); // This will also delete Karyawan if using cascading deletes
+            $user->delete();
 
             DB::commit();
             return redirect()->route('data-anggota.index')->with('success', 'Anggota berhasil dinonaktifkan.');
@@ -336,9 +329,8 @@ class DataAnggotaController extends Controller
     {
         $type = $request->get('type', 'anggota');
         $filename = 'data_' . $type . '_' . now()->format('Ymd');
-        
         $data = collect();
-        
+
         switch ($type) {
             case 'anggota':
                 $data = $this->getAnggotaData($request, false)->get();
@@ -358,7 +350,7 @@ class DataAnggotaController extends Controller
 
         return $this->exportToCsv($data, $filename, $type);
     }
-    
+
     // ===================================================================
     // PRIVATE HELPER METHODS
     // ===================================================================
@@ -366,56 +358,55 @@ class DataAnggotaController extends Controller
     private function getAnggotaData(Request $request)
     {
         $query = Karyawan::query()
-            ->join('users', 't_karyawan.N_NIK', '=', 'users.nik')
-            ->leftJoin('t_iuran', 't_karyawan.N_NIK', '=', 't_iuran.N_NIK')
+            ->join('users', 'v_karyawan.N_NIK', '=', 'users.nik')
+            ->leftJoin('t_iuran', 'v_karyawan.N_NIK', '=', 't_iuran.N_NIK')
             ->select([
                 'users.nik as NIK',
-                't_karyawan.V_NAMA_KARYAWAN as NAMA',
-                't_karyawan.V_KOTA_GEDUNG as LOKASI',
+                'v_karyawan.V_NAMA_KARYAWAN as NAMA',
+                'v_karyawan.V_KOTA_GEDUNG as LOKASI',
                 'users.created_at as TANGGAL_TERDAFTAR',
                 DB::raw('COALESCE(t_iuran.IURAN_WAJIB, 0) as IURAN_WAJIB'),
                 DB::raw('COALESCE(t_iuran.IURAN_SUKARELA, 0) as IURAN_SUKARELA'),
-                't_karyawan.DPW',
-                't_karyawan.DPD'
+                'v_karyawan.DPW',
+                'v_karyawan.DPD'
             ])
-            ->where('t_karyawan.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
-        
-        $this->applyCommonFilters($query, $request, 't_karyawan', 'users');
+            ->where('v_karyawan.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
 
-        // PERFORMANCE: Removed slow ORDER BY RAND(). Sorting by name is more predictable and fast.
-        return $query->orderBy('t_karyawan.V_NAMA_KARYAWAN', 'asc');
+        $this->applyCommonFilters($query, $request, 'v_karyawan', 'users');
+
+        return $query->orderBy('v_karyawan.V_NAMA_KARYAWAN', 'asc');
     }
 
     private function getGptpData(Request $request)
     {
         $query = Karyawan::query()
-            ->leftJoin('users', 't_karyawan.N_NIK', '=', 'users.nik')
+            ->leftJoin('users', 'v_karyawan.N_NIK', '=', 'users.nik')
             ->select([
-                't_karyawan.N_NIK as NIK',
-                't_karyawan.V_NAMA_KARYAWAN as NAMA',
-                't_karyawan.V_KOTA_GEDUNG as LOKASI',
+                'v_karyawan.N_NIK as NIK',
+                'v_karyawan.V_NAMA_KARYAWAN as NAMA',
+                'v_karyawan.V_KOTA_GEDUNG as LOKASI',
                 'users.created_at as TANGGAL_TERDAFTAR',
                 DB::raw('CASE WHEN users.nik IS NOT NULL THEN "Terdaftar" ELSE "Belum Terdaftar" END as STATUS'),
-                't_karyawan.V_SHORT_POSISI as POSISI',
-                't_karyawan.DPW',
-                't_karyawan.DPD'
+                'v_karyawan.V_SHORT_POSISI as POSISI',
+                'v_karyawan.DPW',
+                'v_karyawan.DPD'
             ])
-            ->where('t_karyawan.V_SHORT_POSISI', 'LIKE', '%GPTP%');
+            ->where('v_karyawan.V_SHORT_POSISI', 'LIKE', '%GPTP%');
 
-        $this->applyCommonFilters($query, $request, 't_karyawan');
-        
-        return $query->orderBy('t_karyawan.V_NAMA_KARYAWAN', 'asc');
+        $this->applyCommonFilters($query, $request, 'v_karyawan');
+
+        return $query->orderBy('v_karyawan.V_NAMA_KARYAWAN', 'asc');
     }
 
     private function getPengurusData(Request $request)
     {
         $query = SekarPengurus::query()
-            ->join('t_karyawan', 't_sekar_pengurus.N_NIK', '=', 't_karyawan.N_NIK')
+            ->join('v_karyawan', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan.N_NIK')
             ->join('t_sekar_roles', 't_sekar_pengurus.ID_ROLES', '=', 't_sekar_roles.ID')
             ->select([
                 't_sekar_pengurus.N_NIK as NIK',
-                't_karyawan.V_NAMA_KARYAWAN as NAMA',
-                't_karyawan.V_KOTA_GEDUNG as LOKASI',
+                'v_karyawan.V_NAMA_KARYAWAN as NAMA',
+                'v_karyawan.V_KOTA_GEDUNG as LOKASI',
                 't_sekar_pengurus.CREATED_AT as TANGGAL_TERDAFTAR',
                 't_sekar_pengurus.DPW',
                 't_sekar_pengurus.DPD',
@@ -423,11 +414,11 @@ class DataAnggotaController extends Controller
                 't_sekar_pengurus.V_SHORT_POSISI as POSISI_SEKAR'
             ]);
 
-        $this->applyCommonFilters($query, $request, 't_sekar_pengurus', 't_karyawan');
+        $this->applyCommonFilters($query, $request, 't_sekar_pengurus', 'v_karyawan');
 
-        return $query->orderBy('t_karyawan.V_NAMA_KARYAWAN', 'asc');
+        return $query->orderBy('v_karyawan.V_NAMA_KARYAWAN', 'asc');
     }
-    
+
     private function getExAnggotaData(Request $request)
     {
         $query = ExAnggota::query();
@@ -461,21 +452,24 @@ class DataAnggotaController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search, $mainTable, $secondaryTable) {
-                $q->where($mainTable . '.V_NAMA_KARYAWAN', 'LIKE', "%{$search}%")
+                // For pengurus, name comes from the joined v_karyawan table
+                $searchTableNameColumn = ($mainTable === 't_sekar_pengurus') ? 'v_karyawan' : $mainTable;
+
+                $q->where($searchTableNameColumn . '.V_NAMA_KARYAWAN', 'LIKE', "%{$search}%")
                   ->orWhere($mainTable . '.N_NIK', 'LIKE', "%{$search}%");
 
-                if ($secondaryTable) {
+                if ($secondaryTable === 'users') {
                      $q->orWhere($secondaryTable . '.name', 'LIKE', "%{$search}%")
                        ->orWhere($secondaryTable . '.nik', 'LIKE', "%{$search}%");
                 }
             });
         }
     }
-    
+
     private function getDpwOptions()
     {
         $query = Karyawan::select('DPW')->whereNotNull('DPW')->where('DPW', '!=', '')->distinct();
-        
+
         $user = Auth::user();
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             return $query->where('DPW', $adminDpw)->orderBy('DPW')->pluck('DPW');
@@ -487,7 +481,7 @@ class DataAnggotaController extends Controller
     private function getDpdOptions(Request $request)
     {
         $query = Karyawan::select('DPD')->whereNotNull('DPD')->where('DPD', '!=', '')->distinct();
-        
+
         $user = Auth::user();
         if ($user->hasRole('ADMIN_DPW') && ($adminDpw = $user->getDPW())) {
             $query->where('DPW', $adminDpw);
@@ -517,21 +511,20 @@ class DataAnggotaController extends Controller
                     $csvHeaders = ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Iuran Wajib', 'Iuran Sukarela', 'DPW', 'DPD'];
                     break;
                 case 'gptp':
-                    $csvHeaders = ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Status', 'Posisi'];
+                    $csvHeaders = ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Status', 'Posisi', 'DPW', 'DPD'];
                     break;
                 case 'pengurus':
                     $csvHeaders = ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'DPW', 'DPD', 'Role', 'Posisi SEKAR'];
                     break;
                 case 'ex-anggota':
-                    $csvHeaders = ['NIK', 'Nama', 'Posisi Terakhir', 'Tanggal Keluar', 'Alasan Keluar', 'DPW', 'DPD'];
+                    $csvHeaders = ['NIK', 'Nama', 'Posisi Terakhir', 'Tanggal Keluar', 'DPW', 'DPD'];
                     break;
             }
             fputcsv($file, $csvHeaders);
 
             // Set Rows
-            foreach ($data as $row) {
-                 $rowData = (array) $row;
-                 fputcsv($file, $rowData);
+            foreach ($data->toArray() as $row) {
+                 fputcsv($file, $row);
             }
 
             fclose($file);
@@ -539,11 +532,9 @@ class DataAnggotaController extends Controller
 
         return Response::stream($callback, 200, $headers);
     }
-    
+
     private function checkSuperAdminAccess()
     {
-        // For better performance, this logic should be on the User model
-        // e.g., if (Auth::user()->isSuperAdmin()) { ... }
         if (!Auth::user()->hasRole('ADM')) {
              abort(403, 'Akses ditolak. Hanya Super Admin yang dapat melakukan tindakan ini.');
         }
