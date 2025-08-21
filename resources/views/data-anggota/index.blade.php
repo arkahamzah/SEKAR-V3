@@ -58,7 +58,7 @@
                     <input type="hidden" name="tab" value="{{ $activeTab }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        @if(in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']))
+                        @if(in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota', 'gptp']))
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">DPW</label>
                             <select name="dpw" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
@@ -82,7 +82,7 @@
                         </div>
                         @endif
 
-                        <div class="{{ in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota']) ? 'md:col-span-1' : 'md:col-span-3' }}">
+                        <div class="{{ in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota', 'gptp']) ? 'md:col-span-1' : 'md:col-span-3' }}">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Cari berdasarkan nama</label>
                             <input type="text" name="search" value="{{ request('search') }}"
                                    placeholder="Masukkan nama atau NIK"
@@ -97,7 +97,7 @@
                     </div>
 
                     @if(request()->hasAny(['dpw', 'dpd', 'search']))
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between pt-4">
                         <div class="text-sm text-gray-600">
                             @if(request('search'))
                                 Hasil pencarian: "{{ request('search') }}"
@@ -117,7 +117,8 @@
                     @endif
                 </form>
             </div>
-
+            
+            {{-- Tabel akan di-include di sini --}}
             <div class="overflow-x-auto">
                 @if($activeTab === 'anggota')
                     @include('data-anggota.partials.anggota-table')
@@ -129,6 +130,7 @@
                     @include('data-anggota.partials.ex-anggota-table')
                 @endif
             </div>
+
         </div>
     </div>
 </div>

@@ -1,5 +1,4 @@
 <?php
-// app/Models/Karyawan.php
 
 namespace App\Models;
 
@@ -8,25 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Karyawan extends Model
 {
     /**
-     * Menentukan tabel database yang digunakan oleh model.
-     * Diubah dari 't_karyawan' menjadi 'v_karyawan' untuk menggunakan view.
+     * Arahkan model untuk menggunakan view 'v_karyawan_base' yang lebih ringan.
      */
-    protected $table = 'v_karyawan';
+    protected $table = 'v_karyawan_base';
 
-    /**
-     * Menentukan primary key tabel.
-     */
     protected $primaryKey = 'ID';
-
-    /**
-     * Menonaktifkan timestamps (created_at dan updated_at) karena view
-     * dan tabel aslinya tidak memilikinya.
-     */
     public $timestamps = false;
 
     /**
-     * Daftar atribut yang dapat diisi secara massal (mass assignable).
-     * Kolom DPD dan DPW ditambahkan sesuai dengan struktur v_karyawan.
+     * Atribut yang dapat diisi. Termasuk kolom-kolom dari view.
      */
     protected $fillable = [
         'N_NIK',
@@ -41,27 +30,17 @@ class Karyawan extends Model
         'C_PERSONNEL_AREA',
         'C_PERSONNEL_SUB_AREA',
         'V_KOTA_GEDUNG',
-        'DPD', // Ditambahkan dari view v_karyawan
-        'DPW'  // Ditambahkan dari view v_karyawan
+        'TGL_TERDAFTAR',
+        'IURAN_WAJIB',
+        'IURAN_SUKARELA',
+        'STATUS_ANGGOTA'
     ];
 
     /**
-     * Mendefinisikan relasi one-to-one ke model SekarPengurus.
-     */
-    public function pengurus()
-    {
-        return $this->hasOne(SekarPengurus::class, 'N_NIK', 'N_NIK');
-    }
-
-    /**
-     * Mendefinisikan relasi one-to-one ke model User.
-     * Satu Karyawan diasumsikan memiliki satu akun User.
+     * Relasi ke model User.
      */
     public function user()
     {
-        // Menghubungkan model Karyawan dengan User
-        // dimana kolom 'N_NIK' di tabel 'v_karyawan' (asalnya t_karyawan)
-        // sama dengan kolom 'nik' di tabel 'users'.
         return $this->hasOne(User::class, 'nik', 'N_NIK');
     }
 }
