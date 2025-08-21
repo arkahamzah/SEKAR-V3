@@ -28,32 +28,26 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
-        // 1. Validasi input NIK dan password dari form
         $credentials = $request->validate([
             'nik' => 'required|string',
             'password' => 'required|string',
         ]);
 
         try {
-            // 2. Cari pengguna berdasarkan NIK
+
             $user = User::where('nik', $credentials['nik'])->first();
 
-            // 3. Jika pengguna ditemukan DAN password cocok (menggunakan Hash::check untuk verifikasi Bcrypt)
+
             if ($user && Hash::check($credentials['password'], $user->password)) {
                 
-                // Cek apakah user adalah anggota GPTP Pre-order yang belum aktif
                 if ($user->is_gptp_preorder) {
-                    // Kembalikan dengan pesan error khusus untuk GPTP
                     return back()->withErrors([
-                        'nik' => 'Akun Anda terdaftar sebagai GPTP dan belum dapat mengakses sistem. Silakan hubungi administrator.',
+                        'nik' => 'Anda masih terdaftar sebagai GPTP anda akan menjadi anggota sekar otomatis ketika menjadi karyawan tetap, jika ada yang ingin ditanyakan hubungi administrator',
                     ])->onlyInput('nik');
                 }
 
-                // 4. Jika verifikasi berhasil dan bukan GPTP pending, loginkan pengguna
                 Auth::login($user);
                 $request->session()->regenerate();
-
-                // Mengambil data karyawan untuk disimpan di session
                 $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
                 if($karyawan) {
                     $this->setDetailedSession($karyawan);
@@ -61,11 +55,8 @@ class AuthController extends Controller
 
                 Log::info('Login successful', ['NIK' => $user->nik, 'method' => 'manual_bcrypt_check']);
                 
-                // 5. Arahkan ke halaman home/dashboard
                 return redirect()->intended('/home');
             }
-
-            // 6. Jika pengguna tidak ditemukan atau password salah
             return back()->withErrors([
                 'nik' => 'NIK atau Password yang Anda masukkan salah.',
             ])->onlyInput('nik');
@@ -263,7 +254,7 @@ class AuthController extends Controller
             // Remove the agreement validation since it will be handled as 'on' value
             'agreement' => 'nullable'
         ], [
-            // Remove the agreement required messages since we'll handle it differently
+
         ]);
     }
 
@@ -290,8 +281,6 @@ class AuthController extends Controller
     {
         $isGPTP = $this->isGPTPEmployee($karyawan);
 
-        // ## PERUBAHAN DIMULAI DI SINI ##
-        // Logika masa aktif 1 tahun dan status 'pending' dihilangkan
         return User::create([
             'nik' => $karyawan->N_NIK,
             'name' => $karyawan->V_NAMA_KARYAWAN,
