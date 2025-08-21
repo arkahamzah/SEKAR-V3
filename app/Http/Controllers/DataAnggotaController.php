@@ -77,7 +77,7 @@ class DataAnggotaController extends Controller
             User::create(['nik' => $request->nik, 'name' => $request->nama, 'password' => Hash::make('password123')]);
             DB::table('t_karyawan')->updateOrInsert(['N_NIK' => $request->nik], ['V_NAMA_KARYAWAN' => $request->nama, 'V_SHORT_POSISI' => 'ANGGOTA SEKAR', 'V_SHORT_UNIT' => 'SEKAR']);
             Iuran::updateOrCreate(['N_NIK' => $request->nik], ['IURAN_WAJIB' => $request->iuran_wajib ?? 25000, 'IURAN_SUKARELA' => $request->iuran_sukarela ?? 0, 'TAHUN' => now()->year, 'STATUS_BAYAR' => 'AKTIF', 'CREATED_BY' => Auth::user()->nik]);
-            
+
             DB::commit();
             return redirect()->route('data-anggota.index')->with('success', 'Anggota baru berhasil ditambahkan.');
         } catch (\Exception $e) {
@@ -112,7 +112,7 @@ class DataAnggotaController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
-    
+
     public function getKaryawanInfo($nik)
     {
         $karyawan = Karyawan::where('N_NIK', $nik)->where('STATUS_ANGGOTA', 'Terdaftar')->first();
@@ -129,7 +129,7 @@ class DataAnggotaController extends Controller
     {
         $this->checkSuperAdminAccess();
         $member = Karyawan::where('N_NIK', $nik)->firstOrFail();
-        
+
         $dpw_dpd = $this->getSingleDpwDpd($member);
         $member->DPW = $dpw_dpd['dpw'];
         $member->DPD = $dpw_dpd['dpd'];
@@ -197,7 +197,7 @@ class DataAnggotaController extends Controller
             $dpw_dpd = $this->getSingleDpwDpd($karyawan);
 
             ExAnggota::create(['N_NIK' => $user->nik, 'V_NAMA_KARYAWAN' => $user->name, 'V_SHORT_POSISI' => $karyawan->V_SHORT_POSISI ?? null, 'V_SHORT_DIVISI' => $karyawan->V_SHORT_DIVISI ?? null, 'TGL_KELUAR' => now(), 'DPW' => $dpw_dpd['dpw'] ?? null, 'DPD' => $dpw_dpd['dpd'] ?? null, 'V_KOTA_GEDUNG' => $karyawan->V_KOTA_GEDUNG ?? null, 'CREATED_BY' => Auth::user()->nik, 'IURAN_WAJIB_TERAKHIR' => $karyawan->IURAN_WAJIB ?? 0, 'IURAN_SUKARELA_TERAKHIR' => $karyawan->IURAN_SUKARELA ?? 0]);
-            
+
             if ($pengurus = SekarPengurus::where('N_NIK', $nik)->first()) $pengurus->delete();
             if ($iuran = Iuran::where('N_NIK', $nik)->first()) $iuran->delete();
             $user->delete();
@@ -226,27 +226,27 @@ class DataAnggotaController extends Controller
 
         return $this->exportToCsv($data, $filename, $type);
     }
-    private function getAnggotaData(Request $request)
-    {
-        $query = Karyawan::query()
-            ->where('STATUS_ANGGOTA', 'Terdaftar')
-            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%');
-        
-        $this->applyBaseKaryawanFilters($query, $request);
-        
-        $paginatedAnggota = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
+private function getAnggotaData(Request $request)
+{
+    $query = Karyawan::query()
+        ->where(DB::raw("STATUS_ANGGOTA COLLATE utf8mb4_unicode_ci"), '=', 'Terdaftar')
+        ->where(DB::raw("V_SHORT_POSISI COLLATE utf8mb4_unicode_ci"), 'NOT LIKE', '%GPTP%');
 
-        return $this->attachDpwAndDpd($paginatedAnggota, $request);
-    }
+    $this->applyBaseKaryawanFilters($query, $request);
 
-    private function getGptpData(Request $request)
-    {
-        $query = Karyawan::query()->where('V_SHORT_POSISI', 'LIKE', '%GPTP%');
-        $this->applyBaseKaryawanFilters($query, $request);
-        $paginatedGptp = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
-        return $this->attachDpwAndDpd($paginatedGptp, $request);
-    }
-    
+    $paginatedAnggota = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
+
+    return $this->attachDpwAndDpd($paginatedAnggota, $request);
+}
+
+private function getGptpData(Request $request)
+{
+    $query = Karyawan::query()->where(DB::raw("V_SHORT_POSISI COLLATE utf8mb4_unicode_ci"), 'LIKE', '%GPTP%');
+    $this->applyBaseKaryawanFilters($query, $request);
+    $paginatedGptp = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
+    return $this->attachDpwAndDpd($paginatedGptp, $request);
+}
+
     private function attachDpwAndDpd($paginator, Request $request)
     {
         if ($paginator->isEmpty()) {
@@ -286,7 +286,7 @@ class DataAnggotaController extends Controller
         $paginator->setCollection($items->values());
         return $paginator;
     }
-    
+
     private function applyBaseKaryawanFilters(Builder $query, Request $request)
     {
         if ($request->filled('search')) {
@@ -308,7 +308,7 @@ private function getPengurusData(Request $request)
             'v_karyawan_base.V_KOTA_GEDUNG',
             't_sekar_roles.NAME as ROLE',
             // Gunakan V_SHORT_POSISI dari tabel pengurus, sesuai data SQL
-            't_sekar_pengurus.V_SHORT_POSISI' 
+            't_sekar_pengurus.V_SHORT_POSISI'
         );
 
     return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
@@ -343,7 +343,7 @@ private function getPengurusData(Request $request)
         $callback = function() use ($data, $type) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             $csvHeaders = [];
             switch ($type) {
                 case 'anggota': $csvHeaders = ['NIK', 'Nama', 'Lokasi', 'Tanggal Terdaftar', 'Iuran Wajib', 'Iuran Sukarela', 'DPW', 'DPD']; break;
@@ -360,7 +360,7 @@ private function getPengurusData(Request $request)
         };
         return Response::stream($callback, 200, $headers);
     }
-    
+
     private function checkSuperAdminAccess()
     {
         if (!Auth::user()->hasRole('ADM')) {
