@@ -206,13 +206,6 @@
         {{ $mappingWithStats->appends(request()->query())->links('vendor.pagination.custom-dashboard') }}
     </div>
 @endif
-                {{-- ### AKHIR PERUBAHAN ### --}}
-                @if($mappingWithStats->hasPages())
-                    <div class="px-6 py-4 border-t border-gray-200">
-                        {{-- Paginator akan otomatis membawa parameter filter --}}
-                        {{ $mappingWithStats->links() }}
-                    </div>
-                @endif
 
             </div>
         </div>
