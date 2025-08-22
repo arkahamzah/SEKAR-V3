@@ -15,13 +15,13 @@ use App\Models\Karyawan;
 
 class BanpersController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $banpersData = $this->getBanpersData();
         $isSuperAdmin = $this->isSuperAdmin();
 
         // Ambil data banpersByWilayah yang sudah di-paginate
-        $banpersByWilayah = $this->getBanpersByWilayahSimple($banpersData['nominalBanpers']);
+        $banpersByWilayah = $this->getBanpersByWilayahSimple($banpersData['nominalBanpers'], $request);
 
         return view('banpers.index', array_merge($banpersData, [
             'isSuperAdmin' => $isSuperAdmin,
@@ -194,9 +194,19 @@ class BanpersController extends Controller
         ];
     }
 
-    // MODIFIKASI: Menggunakan v_karyawan_base
-    private function getBanpersByWilayahSimple(int $nominalBanpers)
+    /**
+     * Get paginated Banpers data by region.
+     * MODIFIED to accept Request for dynamic pagination.
+     */
+    private function getBanpersByWilayahSimple(int $nominalBanpers, Request $request)
     {
+        // Logic to determine the number of items per page from the request
+        $perPage = $request->input('size', 10);
+        $allowedSizes = [10, 25, 50, 100];
+        if (!in_array($perPage, $allowedSizes)) {
+            $perPage = 10;
+        }
+
         return DB::table('v_karyawan_base')
             ->select([
                 DB::raw("COALESCE(DPW, 'Belum Termapping') as dpw"),
@@ -209,7 +219,8 @@ class BanpersController extends Controller
             ->groupBy('dpw', 'dpd')
             ->orderBy('dpw', 'asc')
             ->orderBy('dpd', 'asc')
-            ->paginate(10);
+            ->paginate($perPage) // Use the dynamic $perPage variable
+            ->withQueryString(); // Append existing query parameters to pagination links
     }
 
     public function export(Request $request)
