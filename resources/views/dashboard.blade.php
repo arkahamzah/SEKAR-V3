@@ -8,6 +8,31 @@
 
         {{-- Bagian Greeting (Tidak ada perubahan) --}}
         <div class="mb-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg text-white">
+                        <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            <span class="text-xl mr-2">{{ $greeting['icon'] }}</span>
+                            <h1 class="text-xl font-semibold">{{ $greeting['time_greeting'] }}, {{ $greeting['user_name'] }}!</h1>
+                        </div>
+                        <p class="text-blue-100 text-sm">{{ $greeting['status_message'] }}</p>
+                    </div>
+                    <div class="hidden md:block text-right text-blue-100">
+                        <p class="text-xs">{{ now()->format('l') }}</p>
+                        <p class="text-sm font-medium text-white">{{ $greeting['current_date'] }}</p>
+                        <p class="text-xs">{{ $greeting['current_time'] }} WIB</p>
+                    </div>
+                </div>
+                @if(Auth::user()->is_gptp_preorder && !Auth::user()->isMembershipActive())
+                <div class="mt-4 pt-4 border-t border-blue-400 border-opacity-30">
+                    <p class="text-blue-100 text-xs mb-2">Progress Membership GPTP</p>
+                    <div class="w-full bg-blue-500 bg-opacity-30 rounded-full h-1.5">
+                        <div class="bg-white h-1.5 rounded-full" style="width: {{ Auth::user()->getGPTPProgress() }}%"></div>
+                    </div>
+                    <p class="text-blue-200 text-xs mt-1">{{ Auth::user()->getRemainingTimeFormatted() }} lagi</p>
+                </div>
+                @endif
+            </div>
             {{-- ... Konten Greeting ... --}}
         </div>
 
@@ -19,6 +44,69 @@
         {{-- Bagian Statistik Card (Tidak ada perubahan) --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {{-- ... Konten Card Statistik ... --}}
+            {{-- Card Anggota Aktif --}}
+            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Aktif</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaAktif) }}</p>
+                    @if($pertumbuhanAnggotaAktif > 0)
+                        <p class="flex items-center text-xs text-green-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanAnggotaAktif) }} bulan ini</span>
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-500 mt-1">Anggota terdaftar</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Card Pengurus --}}
+            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Pengurus</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($totalPengurus) }}</p>
+                    @if($pertumbuhanPengurus > 0)
+                        <p class="flex items-center text-xs text-green-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanPengurus) }} bulan ini</span>
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-500 mt-1">Total pengurus aktif</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Card Anggota Keluar --}}
+            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Anggota Keluar</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($anggotaKeluar) }}</p>
+                    @if($pertumbuhanAnggotaKeluar > 0 && $anggotaKeluar >= $pertumbuhanAnggotaKeluar)
+                        <p class="flex items-center text-xs text-red-600 font-semibold mt-1">
+                            <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.96 9.27a.75.75 0 01-1.06-1.06l4.25-4.25a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                            </svg>
+                            <span>+{{ number_format($pertumbuhanAnggotaKeluar) }} bulan ini</span>
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-500 mt-1">Total keluar</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- ## Card Non Anggota (DIUBAH) ## --}}
+            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                <div>
+                    <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Non Anggota</p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ number_format($nonAnggota) }}</p>
+                    {{-- Indikator pertumbuhan dihapus sesuai permintaan --}}
+                    <p class="text-xs text-gray-500 mt-1">Karyawan non-anggota</p>
+                </div>
+            </div>
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-gray-100">
