@@ -1,4 +1,4 @@
-@if ($paginator->total() > 0)
+@if ($paginator->hasPages())
     <div class="flex items-center justify-between">
         {{-- Kiri: Dropdown jumlah data --}}
         <div class="flex items-center text-sm text-gray-700">
