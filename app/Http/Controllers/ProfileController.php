@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\ViewKaryawan; // Diubah dari Karyawan
+use App\Models\Karyawan; // Diubah untuk menggunakan model Karyawan yang baru
 use App\Models\Iuran;
 use App\Models\IuranHistory;
 use App\Models\IuranBulanan;
@@ -23,7 +23,7 @@ use Carbon\Carbon;
 class ProfileController extends Controller
 {
     /**
-     * Display user profile with iuran information
+     * Menampilkan profil pengguna dengan informasi iuran
      */
     public function index()
     {
@@ -34,12 +34,12 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update user profile picture
+     * Memperbarui foto profil pengguna
      */
     public function updateProfilePicture(Request $request)
     {
         $validated = $request->validate([
-            'profile_picture' => 'required|image|mimes:jpeg,png,jpg|max:2048', // 2MB max
+            'profile_picture' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Maks 2MB
         ], [
             'profile_picture.required' => 'Foto profil wajib dipilih.',
             'profile_picture.image' => 'File harus berupa gambar.',
@@ -51,22 +51,22 @@ class ProfileController extends Controller
 
         try {
             DB::transaction(function () use ($user, $request) {
-                // Delete old profile picture if exists
+                // Hapus foto profil lama jika ada
                 if ($user->profile_picture && Storage::disk('public')->exists('profile-pictures/' . $user->profile_picture)) {
                     Storage::disk('public')->delete('profile-pictures/' . $user->profile_picture);
                 }
 
-                // Store new profile picture
+                // Simpan foto profil baru
                 $file = $request->file('profile_picture');
                 $fileName = time() . '_' . $user->nik . '.' . $file->getClientOriginalExtension();
                 $file->storeAs('profile-pictures', $fileName, 'public');
 
-                // Update user record
+                // Perbarui record pengguna
                 $user->update([
                     'profile_picture' => $fileName
                 ]);
 
-                Log::info('Profile picture updated', [
+                Log::info('Foto profil diperbarui', [
                     'nik' => $user->nik,
                     'name' => $user->name,
                     'filename' => $fileName,
@@ -78,7 +78,7 @@ class ProfileController extends Controller
                            ->with('success', 'Foto profil berhasil diperbarui.');
 
         } catch (\Exception $e) {
-            Log::error('Profile picture update failed', [
+            Log::error('Gagal memperbarui foto profil', [
                 'nik' => $user->nik,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -90,7 +90,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete user profile picture
+     * Menghapus foto profil pengguna
      */
     public function deleteProfilePicture()
     {
@@ -98,17 +98,17 @@ class ProfileController extends Controller
 
         try {
             DB::transaction(function () use ($user) {
-                // Delete file from storage
+                // Hapus file dari storage
                 if ($user->profile_picture && Storage::disk('public')->exists('profile-pictures/' . $user->profile_picture)) {
                     Storage::disk('public')->delete('profile-pictures/' . $user->profile_picture);
                 }
 
-                // Update user record
+                // Perbarui record pengguna
                 $user->update([
                     'profile_picture' => null
                 ]);
 
-                Log::info('Profile picture deleted', [
+                Log::info('Foto profil dihapus', [
                     'nik' => $user->nik,
                     'name' => $user->name,
                     'timestamp' => now()
@@ -119,7 +119,7 @@ class ProfileController extends Controller
                            ->with('success', 'Foto profil berhasil dihapus.');
 
         } catch (\Exception $e) {
-            Log::error('Profile picture deletion failed', [
+            Log::error('Gagal menghapus foto profil', [
                 'nik' => $user->nik,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -131,7 +131,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update iuran sukarela for authenticated user - UPDATED: Allow multiple edits
+     * Memperbarui iuran sukarela
      */
     public function updateIuranSukarela(Request $request)
     {
@@ -154,7 +154,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Cancel pending iuran change - UPDATED: Mark as cancelled instead of delete
+     * Membatalkan perubahan iuran yang pending
      */
     public function cancelIuranChange()
     {
@@ -169,13 +169,12 @@ class ProfileController extends Controller
             }
 
             DB::transaction(function () use ($pendingChange, $user) {
-                // Mark as cancelled instead of deleting to preserve history
                 $pendingChange->update([
                     'STATUS_PROSES' => 'DIBATALKAN',
                     'KETERANGAN' => 'Dibatalkan oleh anggota - ' . $pendingChange->KETERANGAN
                 ]);
 
-                Log::info('Iuran change cancelled by user', [
+                Log::info('Perubahan iuran dibatalkan oleh pengguna', [
                     'nik' => $user->nik,
                     'name' => $user->name,
                     'cancelled_amount' => $pendingChange->NOMINAL_BARU,
@@ -187,7 +186,7 @@ class ProfileController extends Controller
                            ->with('success', 'Perubahan iuran sukarela berhasil dibatalkan dan disimpan ke riwayat.');
 
         } catch (\Exception $e) {
-            Log::error('Cancel iuran change failed', [
+            Log::error('Gagal membatalkan perubahan iuran', [
                 'nik' => $user->nik,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -199,7 +198,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update user email
+     * Memperbarui email pengguna
      */
     public function updateEmail(Request $request)
     {
@@ -215,7 +214,6 @@ class ProfileController extends Controller
 
         $user = Auth::user();
 
-        // Verify current password
         if (!Hash::check($validated['current_password'], $user->password)) {
             return redirect()->route('profile.index')
                            ->withErrors(['current_password' => 'Password saat ini tidak benar.'])
@@ -226,13 +224,11 @@ class ProfileController extends Controller
             DB::transaction(function () use ($user, $validated) {
                 $oldEmail = $user->email;
 
-                // Update email
                 $user->update([
                     'email' => $validated['email']
                 ]);
 
-                // Log email change
-                Log::info('User email updated', [
+                Log::info('Email pengguna diperbarui', [
                     'nik' => $user->nik,
                     'name' => $user->name,
                     'old_email' => $oldEmail,
@@ -240,7 +236,6 @@ class ProfileController extends Controller
                     'timestamp' => now()
                 ]);
 
-                // Send confirmation email to new email
                 $this->sendEmailChangeConfirmation($user, $oldEmail);
             });
 
@@ -248,7 +243,7 @@ class ProfileController extends Controller
                            ->with('success', 'Email berhasil diperbarui. Email konfirmasi telah dikirim ke alamat baru Anda.');
 
         } catch (\Exception $e) {
-            Log::error('Email update failed', [
+            Log::error('Gagal memperbarui email', [
                 'nik' => $user->nik,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -260,7 +255,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Get all profile data for user
+     * Mengambil semua data profil untuk pengguna
      */
     private function getProfileData(User $user)
     {
@@ -270,13 +265,10 @@ class ProfileController extends Controller
         $iuranSukarela = $iuran ? (int)$iuran->IURAN_SUKARELA : 0;
 
         $pendingChange = $this->getPendingIuranChange($user->nik);
-        // FIXED: effectiveIuranSukarela should show current active amount, not pending
-        $effectiveIuranSukarela = $iuranSukarela; // Always show current active amount
+        $effectiveIuranSukarela = $iuranSukarela;
 
-        // Calculate total per month
         $totalIuranPerBulan = $iuranWajib + $effectiveIuranSukarela;
 
-        // NEW: Calculate total paid iuran
         $totalIuranTerbayar = $this->getTotalIuranTerbayar($user->nik);
         $bulanTerbayar = $this->getBulanTerbayar($user->nik);
         $bulanTunggakan = $this->getBulanTunggakan($user->nik);
@@ -294,24 +286,22 @@ class ProfileController extends Controller
             'bulanTunggakan' => $bulanTunggakan,
             'joinDate' => $user->created_at,
             'pendingChange' => $pendingChange,
-            'isDummyEmail' => $this->isDummyEmail($user->email),
         ];
     }
 
     /**
-     * Get karyawan data
+     * Mengambil data karyawan
      */
     private function getKaryawanData(string $nik)
     {
-        return ViewKaryawan::where('N_NIK', $nik)->first(); // Diubah menggunakan ViewKaryawan
+        return Karyawan::where('N_NIK', $nik)->first();
     }
 
     /**
-     * Get iuran data - HANDLE DUPLICATES by getting the latest with highest value
+     * Mengambil data iuran
      */
     private function getIuranData(string $nik)
     {
-        // Get the record with highest IURAN_SUKARELA value, then latest created
         return Iuran::where('N_NIK', $nik)
                    ->orderByRaw('CAST(IURAN_SUKARELA AS UNSIGNED) DESC')
                    ->orderBy('CREATED_AT', 'DESC')
@@ -319,7 +309,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Get current iuran wajib amount
+     * Mengambil nominal iuran wajib saat ini
      */
     private function getIuranWajib()
     {
@@ -327,11 +317,11 @@ class ProfileController extends Controller
                        ->where('TAHUN', date('Y'))
                        ->first();
 
-        return $params ? (int)$params->NOMINAL_IURAN_WAJIB : 25000; // Default fallback sesuai database
+        return $params ? (int)$params->NOMINAL_IURAN_WAJIB : 25000;
     }
 
     /**
-     * Get pending iuran change
+     * Mengambil perubahan iuran yang pending
      */
     private function getPendingIuranChange(string $nik)
     {
@@ -342,7 +332,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * NEW: Get total iuran yang sudah terbayar
+     * Mengambil total iuran yang sudah terbayar
      */
     private function getTotalIuranTerbayar(string $nik)
     {
@@ -352,7 +342,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * NEW: Get jumlah bulan yang sudah terbayar
+     * Mengambil jumlah bulan yang sudah terbayar
      */
     private function getBulanTerbayar(string $nik)
     {
@@ -362,7 +352,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * NEW: Get jumlah bulan yang belum terbayar/tunggakan
+     * Mengambil jumlah bulan yang belum terbayar/tunggakan
      */
     private function getBulanTunggakan(string $nik)
     {
@@ -372,30 +362,25 @@ class ProfileController extends Controller
     }
 
     /**
-     * Process iuran sukarela update - UPDATED: Allow multiple edits by updating existing pending record
+     * Memproses pembaruan iuran sukarela
      */
     private function processIuranSukarelaUpdate(User $user, int $newAmount)
     {
         $currentIuran = $this->getIuranData($user->nik);
         $currentAmount = $currentIuran ? (int)$currentIuran->IURAN_SUKARELA : 0;
 
-        // Check if there's already a pending change
         $pendingChange = $this->getPendingIuranChange($user->nik);
 
         if ($pendingChange) {
-            // If new amount is same as current pending amount, no change needed
             if ($newAmount == (int)$pendingChange->NOMINAL_BARU) {
                 return [
                     'status' => 'info',
                     'message' => 'Nominal iuran sukarela tidak berubah dari yang sedang pending.'
                 ];
             }
-
-            // Update existing pending record instead of creating new one
             return $this->updatePendingIuranChange($user, $pendingChange, $newAmount);
         }
 
-        // Check if amount is the same as current
         if ($newAmount == $currentAmount) {
             return [
                 'status' => 'info',
@@ -403,34 +388,30 @@ class ProfileController extends Controller
             ];
         }
 
-        // Create new pending change
         return $this->createNewIuranChange($user, $newAmount, $currentAmount);
     }
 
     /**
-     * Update existing pending iuran change - UPDATED: Save previous change to history
+     * Memperbarui perubahan iuran yang pending
      */
     private function updatePendingIuranChange(User $user, IuranHistory $pendingChange, int $newAmount)
     {
         return DB::transaction(function () use ($user, $pendingChange, $newAmount) {
             $oldPendingAmount = (int)$pendingChange->NOMINAL_BARU;
 
-            // First, mark the current pending record as "DIBATALKAN" to preserve history
             $pendingChange->update([
                 'STATUS_PROSES' => 'DIBATALKAN',
                 'KETERANGAN' => 'Dibatalkan karena ada perubahan baru - ' . $pendingChange->KETERANGAN
             ]);
 
-            // Calculate new dates based on current time
             $tglPerubahan = now();
             $tglProses = $tglPerubahan->copy()->addMonth()->day(20);
             $tglImplementasi = $tglPerubahan->copy()->addMonths(2)->day(1);
 
-            // Create new pending record
             IuranHistory::create([
                 'N_NIK' => $user->nik,
                 'JENIS' => 'SUKARELA',
-                'NOMINAL_LAMA' => $oldPendingAmount, // Previous pending amount becomes the "old" amount
+                'NOMINAL_LAMA' => $oldPendingAmount,
                 'NOMINAL_BARU' => $newAmount,
                 'STATUS_PROSES' => 'PENDING',
                 'TGL_PERUBAHAN' => $tglPerubahan,
@@ -441,7 +422,7 @@ class ProfileController extends Controller
                 'CREATED_AT' => now()
             ]);
 
-            Log::info('Pending iuran change updated with history preserved', [
+            Log::info('Perubahan iuran pending diperbarui', [
                 'nik' => $user->nik,
                 'name' => $user->name,
                 'old_pending_amount' => $oldPendingAmount,
@@ -457,17 +438,15 @@ class ProfileController extends Controller
     }
 
     /**
-     * Create new iuran change - NEW METHOD
+     * Membuat pengajuan perubahan iuran baru
      */
     private function createNewIuranChange(User $user, int $newAmount, int $currentAmount)
     {
         return DB::transaction(function () use ($user, $newAmount, $currentAmount) {
-            // Calculate dates
             $tglPerubahan = now();
             $tglProses = $tglPerubahan->copy()->addMonth()->day(20);
             $tglImplementasi = $tglPerubahan->copy()->addMonths(2)->day(1);
 
-            // Create history record
             IuranHistory::create([
                 'N_NIK' => $user->nik,
                 'JENIS' => 'SUKARELA',
@@ -482,7 +461,7 @@ class ProfileController extends Controller
                 'CREATED_AT' => now()
             ]);
 
-            Log::info('New iuran change requested', [
+            Log::info('Pengajuan perubahan iuran baru', [
                 'nik' => $user->nik,
                 'name' => $user->name,
                 'old_amount' => $currentAmount,
@@ -498,7 +477,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Get iuran history via AJAX for modal
+     * Mengambil riwayat iuran melalui AJAX
      */
     public function getIuranHistory(Request $request)
     {
@@ -509,7 +488,6 @@ class ProfileController extends Controller
                                   ->orderBy('CREATED_AT', 'DESC')
                                   ->paginate(5, ['*'], 'page', $page);
 
-        // Transform data for JSON response
         $historyData = $iuranHistory->map(function ($history) {
             return [
                 'id' => $history->ID,
@@ -543,7 +521,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * NEW: Get payment history via AJAX for modal
+     * Mengambil riwayat pembayaran melalui AJAX
      */
     public function getPaymentHistory(Request $request)
     {
@@ -555,7 +533,6 @@ class ProfileController extends Controller
                                     ->orderBy('BULAN', 'DESC')
                                     ->paginate(12, ['*'], 'page', $page);
 
-        // Transform data for JSON response
         $historyData = $paymentHistory->map(function ($payment) {
             return [
                 'id' => $payment->ID,
@@ -589,7 +566,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Helper method to get month name in Indonesian
+     * Helper untuk mendapatkan nama bulan
      */
     private function getBulanNama(string $bulan)
     {
@@ -599,76 +576,59 @@ class ProfileController extends Controller
             '07' => 'Juli', '08' => 'Agustus', '09' => 'September',
             '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
         ];
-
-        return isset($months[$bulan]) ? $months[$bulan] : 'Unknown';
+        return $months[$bulan] ?? 'Unknown';
     }
 
     /**
-     * Helper method to get status text
+     * Helper untuk mendapatkan teks status
      */
     private function getStatusText(string $status)
     {
         switch ($status) {
-            case 'LUNAS':
-                return 'Lunas';
-            case 'BELUM_BAYAR':
-                return 'Belum Bayar';
-            case 'TERLAMBAT':
-                return 'Terlambat';
-            default:
-                return 'Unknown';
+            case 'LUNAS': return 'Lunas';
+            case 'BELUM_BAYAR': return 'Belum Bayar';
+            case 'TERLAMBAT': return 'Terlambat';
+            default: return 'Unknown';
         }
     }
 
     /**
-     * Helper method to get status color
+     * Helper untuk mendapatkan warna status
      */
     private function getStatusColor(string $status)
     {
         switch ($status) {
-            case 'LUNAS':
-                return 'green';
-            case 'BELUM_BAYAR':
-                return 'yellow';
-            case 'TERLAMBAT':
-                return 'red';
-            default:
-                return 'gray';
+            case 'LUNAS': return 'green';
+            case 'BELUM_BAYAR': return 'yellow';
+            case 'TERLAMBAT': return 'red';
+            default: return 'gray';
         }
     }
 
     /**
-     * Check if email is dummy email
-     */
-    private function isDummyEmail(string $email)
-    {
-        return str_ends_with($email, '@sekar.local') || strpos($email, '@sekar.local') !== false;
-    }
-
-    /**
-     * Send email change confirmation
+     * Mengirim konfirmasi perubahan email
      */
     private function sendEmailChangeConfirmation(User $user, string $oldEmail)
     {
         try {
-            // Implementation would depend on your mail configuration
-            // This is a placeholder for actual email sending logic
-            Log::info('Email change confirmation should be sent', [
+            Log::info('Konfirmasi perubahan email akan dikirim', [
                 'nik' => $user->nik,
                 'old_email' => $oldEmail,
                 'new_email' => $user->email
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to send email change confirmation', [
+            Log::error('Gagal mengirim konfirmasi perubahan email', [
                 'nik' => $user->nik,
                 'error' => $e->getMessage()
             ]);
         }
     }
-
+    
+    /**
+     * Proses pengunduran diri anggota
+     */
     public function resign(Request $request)
     {
-        // 1. Dapatkan pengguna yang sedang login
         $user = Auth::user();
 
         if (!$user) {
@@ -678,7 +638,7 @@ class ProfileController extends Controller
         try {
             DB::transaction(function () use ($user) {
                 
-                $karyawan = ViewKaryawan::where('N_NIK', $user->nik)->first(); // Diubah menggunakan ViewKaryawan
+                $karyawan = Karyawan::where('N_NIK', $user->nik)->first();
                 $iuran = Iuran::where('N_NIK', $user->nik)->first();
                 $pengurus = SekarPengurus::where('N_NIK', $user->nik)->first();
 
@@ -691,8 +651,8 @@ class ProfileController extends Controller
                     'ALASAN_KELUAR'             => 'Pengunduran Diri Mandiri',
                     'IURAN_WAJIB_TERAKHIR'      => $iuran->IURAN_WAJIB ?? 0,
                     'IURAN_SUKARELA_TERAKHIR'   => $iuran->IURAN_SUKARELA ?? 0,
-                    'DPW'                       => $pengurus ? $pengurus->DPW : null,
-                    'DPD'                       => $pengurus ? $pengurus->DPD : null,
+                    'DPW'                       => $karyawan->DPW ?? null, // Diambil dari data karyawan
+                    'DPD'                       => $karyawan->DPD ?? null, // Diambil dari data karyawan
                     'V_KOTA_GEDUNG'             => $karyawan->V_KOTA_GEDUNG ?? null,
                     'CREATED_BY'                => $user->nik,
                     'CREATED_AT'                => now(),
@@ -708,12 +668,10 @@ class ProfileController extends Controller
             return redirect()->back()->with('error', 'Gagal memproses pengunduran diri. Silakan coba lagi. Error: ' . $e->getMessage());
         }
 
-        // 6. Logout pengguna setelah transaksi berhasil
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // 7. Arahkan ke halaman login dengan pesan sukses
         return redirect('/login')->with('success', 'Anda telah berhasil mengundurkan diri. Terima kasih atas kontribusi Anda selama ini.');
     }
 }
