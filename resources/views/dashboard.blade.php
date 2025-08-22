@@ -117,9 +117,9 @@
                         <label class="block text-xs font-medium text-gray-700 mb-1">Filter DPW:</label>
                         <select id="filterDPW" class="border border-gray-300 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none min-w-[120px]">
                             <option value="">Semua DPW</option>
-                            @foreach($mappingWithStats->pluck('dpw')->unique() as $dpw)
-                                <option value="{{ $dpw }}">{{ $dpw }}</option>
-                            @endforeach
+                                @foreach($allDpwOptions as $dpw)
+                                    <option value="{{ $dpw }}">{{ $dpw }}</option>
+                                @endforeach
                         </select>
                     </div>
                     <div>

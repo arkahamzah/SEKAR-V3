@@ -13,18 +13,31 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    public function index()
+   public function index()
     {
         $statistics = Cache::remember('dashboard_main_statistics', 10, function () {
             return $this->getStatistics();
         });
+
+        $karyawanDpw = DB::table('v_karyawan_base')
+            ->select('DPW')
+            ->whereNotNull('DPW')->where('DPW', '!=', '');
+
+        $allDpwOptions = DB::table('t_sekar_pengurus')
+            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'))
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->union($karyawanDpw)
+            ->distinct()
+            ->orderBy('DPW')
+            ->pluck('DPW');
 
         $mappingWithStats = $this->getDpwMappingWithStats();
         $greeting = $this->getGreetingData();
 
         return view('dashboard', array_merge($statistics, [
             'greeting' => $greeting,
-            'mappingWithStats' => $mappingWithStats
+            'mappingWithStats' => $mappingWithStats,
+            'allDpwOptions' => $allDpwOptions 
         ]));
     }
 
@@ -47,11 +60,7 @@ class DashboardController extends Controller
             $icon = '🌙';
         }
 
-        if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
-            $statusMessage = 'Membership GPTP Anda akan segera aktif. Terima kasih atas kesabaran Anda.';
-        } else {
-            $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
-        }
+        $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
 
         return [
             'time_greeting' => $greeting,
@@ -65,7 +74,6 @@ class DashboardController extends Controller
 
     private function getStatistics(): array
     {
-        // --- TOTAL DATA ---
         $anggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
@@ -77,7 +85,6 @@ class DashboardController extends Controller
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
 
-        // --- PERTUMBUHAN BULANAN ---
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
