@@ -13,18 +13,31 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $statistics = Cache::remember('dashboard_main_statistics', 10, function () {
             return $this->getStatistics();
         });
 
-        $mappingWithStats = $this->getDpwMappingWithStats();
+        $karyawanDpw = DB::table('v_karyawan_base')
+            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'))
+            ->whereNotNull('DPW')->where('DPW', '!=', '');
+
+        $allDpwOptions = DB::table('t_sekar_pengurus')
+            ->select(DB::raw('DPW'))
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->union($karyawanDpw)
+            ->distinct()
+            ->orderBy('DPW')
+            ->pluck('DPW');
+
+        $mappingWithStats = $this->getDpwMappingWithStats($request);
         $greeting = $this->getGreetingData();
 
         return view('dashboard', array_merge($statistics, [
             'greeting' => $greeting,
-            'mappingWithStats' => $mappingWithStats
+            'mappingWithStats' => $mappingWithStats,
+            'allDpwOptions' => $allDpwOptions,
         ]));
     }
 
@@ -47,11 +60,7 @@ class DashboardController extends Controller
             $icon = '🌙';
         }
 
-        if ($user->is_gptp_preorder && !$user->isMembershipActive()) {
-            $statusMessage = 'Membership GPTP Anda akan segera aktif. Terima kasih atas kesabaran Anda.';
-        } else {
-            $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
-        }
+        $statusMessage = 'Selamat datang di portal SEKAR Telkom!';
 
         return [
             'time_greeting' => $greeting,
@@ -65,33 +74,23 @@ class DashboardController extends Controller
 
     private function getStatistics(): array
     {
-        // --- TOTAL DATA ---
         $anggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
-
         $totalPengurus = SekarPengurus::count();
-
         $anggotaKeluar = ExAnggota::count();
-
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
-
-        // --- PERTUMBUHAN BULANAN ---
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
-
         $pertumbuhanAnggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->whereBetween('TGL_TERDAFTAR', [$startOfMonth, $endOfMonth])
             ->count();
-
         $pertumbuhanPengurus = SekarPengurus::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
-
         $pertumbuhanAnggotaKeluar = ExAnggota::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
-
         return [
             'anggotaAktif' => $anggotaAktif,
             'totalPengurus' => $totalPengurus,
@@ -103,32 +102,65 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getDpwMappingWithStats()
+    private function getDpwMappingWithStats(Request $request)
     {
+
+        $perPage = $request->input('size', 10);
+        $allowedSizes = [10, 25, 50, 100];
+
+        if (!in_array($perPage, $allowedSizes)) {
+            $perPage = 10;
+        }
+
         $karyawanMappings = DB::table('v_karyawan_base')
-            ->select('DPW', 'DPD')
+            ->select(
+                DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'),
+                DB::raw('DPD COLLATE utf8mb4_general_ci as DPD')
+            )
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '');
 
-        // ## PERBAIKAN COLLACTION ERROR DI SINI ##
-        // Memaksa collation pada query agar sesuai dengan v_karyawan_base untuk operasi UNION.
-        $paginatedMappings = DB::table('t_sekar_pengurus')
-            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'))
+        // Menggabungkan data DPW/DPD dari pengurus dan karyawan.
+        $baseQuery = DB::table('t_sekar_pengurus')
+            ->select('DPW', 'DPD')
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '')
-            ->union($karyawanMappings)
-            ->groupBy('DPW', 'DPD')
-            ->orderBy('DPW')
-            ->orderBy('DPD')
-            ->paginate(10);
+            ->union($karyawanMappings);
 
-        $paginatedMappings->getCollection()->transform(function ($mapping) {
-            return $this->enrichMappingWithStats($mapping);
-        });
+        $mappings = DB::query()->fromSub($baseQuery, 'mappings')->select('DPW', 'DPD')->distinct();
 
-        return $paginatedMappings;
+        // Membuat subquery untuk menghitung setiap statistik (menghindari N+1 query).
+        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_ANGGOTA', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $totalKaryawanCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $pengurusCounts = SekarPengurus::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+        $anggotaKeluarCounts = ExAnggota::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+
+        // Query utama yang menggabungkan semua data.
+        $query = $mappings
+            ->leftJoinSub($anggotaAktifCounts, 'aa', fn ($join) => $join->on('mappings.DPW', '=', 'aa.DPW')->on('mappings.DPD', '=', 'aa.DPD'))
+            ->leftJoinSub($pengurusCounts, 'p', fn ($join) => $join->on('mappings.DPW', '=', 'p.DPW')->on('mappings.DPD', '=', 'p.DPD'))
+            ->leftJoinSub($anggotaKeluarCounts, 'ak', fn ($join) => $join->on('mappings.DPW', '=', 'ak.DPW')->on('mappings.DPD', '=', 'ak.DPD'))
+            ->leftJoinSub($totalKaryawanCounts, 'tk', fn ($join) => $join->on('mappings.DPW', '=', 'tk.DPW')->on('mappings.DPD', '=', 'tk.DPD'))
+            ->select(
+                'mappings.DPW as dpw',
+                'mappings.DPD as dpd',
+                DB::raw('COALESCE(aa.count, 0) as anggota_aktif'),
+                DB::raw('COALESCE(p.count, 0) as pengurus'),
+                DB::raw('COALESCE(ak.count, 0) as anggota_keluar'),
+                DB::raw('GREATEST(0, COALESCE(tk.count, 0) - COALESCE(aa.count, 0)) as non_anggota')
+            );
+
+        // Menerapkan filter jika ada.
+        if ($request->filled('dpw')) {
+            $query->where('mappings.DPW', $request->dpw);
+        }
+        if ($request->filled('dpd')) {
+            $query->where('mappings.DPD', 'like', '%' . $request->dpd . '%');
+        }
+
+        return $query->orderBy('dpw')->orderBy('dpd')->paginate($perPage)->withQueryString();
     }
-    
+
     private function enrichMappingWithStats($mapping)
     {
         return (object)[
@@ -174,5 +206,41 @@ class DashboardController extends Controller
         $anggotaAktif = $this->getAnggotaAktifByArea($dpw, $dpd);
 
         return max(0, $totalKaryawan - $anggotaAktif);
+        $baseQuery = DB::table('t_sekar_pengurus')
+            ->select('DPW', 'DPD')
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->whereNotNull('DPD')->where('DPD', '!=', '')
+            ->union($karyawanMappings);
+
+        $mappings = DB::query()->fromSub($baseQuery, 'mappings')->select('DPW', 'DPD')->distinct();
+
+        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_ANGGOTA', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $totalKaryawanCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        
+        $pengurusCounts = SekarPengurus::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+        $anggotaKeluarCounts = ExAnggota::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+
+        $query = $mappings
+            ->leftJoinSub($anggotaAktifCounts, 'aa', fn ($join) => $join->on('mappings.DPW', '=', 'aa.DPW')->on('mappings.DPD', '=', 'aa.DPD'))
+            ->leftJoinSub($pengurusCounts, 'p', fn ($join) => $join->on('mappings.DPW', '=', 'p.DPW')->on('mappings.DPD', '=', 'p.DPD'))
+            ->leftJoinSub($anggotaKeluarCounts, 'ak', fn ($join) => $join->on('mappings.DPW', '=', 'ak.DPW')->on('mappings.DPD', '=', 'ak.DPD'))
+            ->leftJoinSub($totalKaryawanCounts, 'tk', fn ($join) => $join->on('mappings.DPW', '=', 'tk.DPW')->on('mappings.DPD', '=', 'tk.DPD'))
+            ->select(
+                'mappings.DPW as dpw',
+                'mappings.DPD as dpd',
+                DB::raw('COALESCE(aa.count, 0) as anggota_aktif'),
+                DB::raw('COALESCE(p.count, 0) as pengurus'),
+                DB::raw('COALESCE(ak.count, 0) as anggota_keluar'),
+                DB::raw('GREATEST(0, COALESCE(tk.count, 0) - COALESCE(aa.count, 0)) as non_anggota')
+            );
+
+        if ($request->filled('dpw')) {
+            $query->where('mappings.DPW', $request->dpw);
+        }
+        if ($request->filled('dpd')) {
+            $query->where('mappings.DPD', 'like', '%' . $request->dpd . '%');
+        }
+
+        return $query->orderBy('dpw')->orderBy('dpd')->paginate(10)->withQueryString();
     }
 }
