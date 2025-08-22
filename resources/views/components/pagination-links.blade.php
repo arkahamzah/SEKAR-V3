@@ -1,11 +1,6 @@
-@props(['paginator'])
+{{-- resources/views/pagination-links.blade.php --}}
 
-@if(isset($paginator) && $paginator->hasPages())
-    <div class="mt-6 border-t border-gray-200 px-6 py-4">
-        {{--
-            PERBAIKAN: Menggunakan view 'custom' yang telah dirancang ulang
-            untuk paginasi standar yang lebih informatif.
-        --}}
-        {{ $paginator->appends(request()->query())->links('vendor.pagination.custom') }}
-    </div>
-@endif
+<div class="mt-6 border-t border-gray-200 px-6 py-4">
+    {{-- Menggunakan view paginasi BARU yang sama dengan Dashboard --}}
+    {{ $paginator->appends(request()->query())->links('vendor.pagination.custom-dashboard') }}
+</div>

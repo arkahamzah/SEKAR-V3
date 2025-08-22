@@ -111,6 +111,14 @@
                     </table>
                 </div>
 
+                {{-- ### PERUBAHAN DI BLOK INI ### --}}
+@if($mappingWithStats->hasPages())
+    <div class="mt-6 border-t border-gray-200 px-6 py-4">
+        {{-- Menggunakan view paginasi BARU yang sesuai dengan desain dashboard --}}
+        {{ $mappingWithStats->appends(request()->query())->links('vendor.pagination.custom-dashboard') }}
+    </div>
+@endif
+                {{-- ### AKHIR PERUBAHAN ### --}}
                 @if($mappingWithStats->hasPages())
                     <div class="px-6 py-4 border-t border-gray-200">
                         {{-- Paginator akan otomatis membawa parameter filter --}}
@@ -123,4 +131,85 @@
     </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterDPW = document.getElementById('filterDPW');
+    const filterDPD = document.getElementById('filterDPD');
+    const resetFilter = document.getElementById('resetFilter');
+    const mappingRows = document.querySelectorAll('.mapping-row');
+
+    function filterTable() {
+        const dpwValue = filterDPW.value.toLowerCase();
+        const dpdValue = filterDPD.value.toLowerCase();
+
+        mappingRows.forEach(row => {
+            const rowDPW = row.dataset.dpw.toLowerCase();
+            const rowDPD = row.dataset.dpd.toLowerCase();
+
+            const dpwMatch = !dpwValue || rowDPW.includes(dpwValue);
+            const dpdMatch = !dpdValue || rowDPD.includes(dpdValue);
+
+            if (dpwMatch && dpdMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        let visibleIndex = 1;
+        let startNumber = {{ $mappingWithStats->firstItem() }};
+        mappingRows.forEach(row => {
+            if (row.style.display !== 'none') {
+                // Penomoran disesuaikan dengan item paginasi
+                row.querySelector('td:first-child').textContent = startNumber + (visibleIndex - 1);
+                visibleIndex++;
+            }
+        });
+    }
+
+    function resetFilters() {
+        filterDPW.value = '';
+        filterDPD.value = '';
+        filterTable();
+    }
+
+    filterDPW.addEventListener('change', filterTable);
+    filterDPD.addEventListener('input', filterTable);
+    resetFilter.addEventListener('click', resetFilters);
+
+    // Penyesuaian penomoran pada script filter
+    function reIndexTable() {
+        const dpwValue = filterDPW.value.toLowerCase();
+        const dpdValue = filterDPD.value.toLowerCase();
+        let visibleRows = 0;
+        const firstItem = {{ $mappingWithStats->firstItem() ?? 1 }};
+
+        mappingRows.forEach(row => {
+            const rowDPW = row.dataset.dpw.toLowerCase();
+            const rowDPD = row.dataset.dpd.toLowerCase();
+
+            const dpwMatch = !dpwValue || rowDPW.includes(dpwValue);
+            const dpdMatch = !dpdValue || rowDPD.includes(dpdValue);
+
+            if (dpwMatch && dpdMatch) {
+                row.style.display = '';
+                row.cells[0].textContent = firstItem + visibleRows;
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Ganti fungsi filterTable dengan reIndexTable
+    filterDPW.addEventListener('change', reIndexTable);
+    filterDPD.addEventListener('input', reIndexTable);
+    resetFilter.addEventListener('click', () => {
+        filterDPW.value = '';
+        filterDPD.value = '';
+        reIndexTable();
+    });
+
+});
+</script>
 @endsection
