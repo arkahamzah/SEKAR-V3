@@ -37,7 +37,7 @@ class DashboardController extends Controller
         return view('dashboard', array_merge($statistics, [
             'greeting' => $greeting,
             'mappingWithStats' => $mappingWithStats,
-            'allDpwOptions' => $allDpwOptions
+            'allDpwOptions' => $allDpwOptions,
         ]));
     }
 
@@ -104,6 +104,14 @@ class DashboardController extends Controller
 
     private function getDpwMappingWithStats(Request $request)
     {
+
+        $perPage = $request->input('size', 10);
+        $allowedSizes = [10, 25, 50, 100];
+
+        if (!in_array($perPage, $allowedSizes)) {
+            $perPage = 10;
+        }
+
         $karyawanMappings = DB::table('v_karyawan_base')
             ->select(
                 DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'),
@@ -112,6 +120,92 @@ class DashboardController extends Controller
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '');
 
+        // Menggabungkan data DPW/DPD dari pengurus dan karyawan.
+        $baseQuery = DB::table('t_sekar_pengurus')
+            ->select('DPW', 'DPD')
+            ->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->whereNotNull('DPD')->where('DPD', '!=', '')
+            ->union($karyawanMappings);
+
+        $mappings = DB::query()->fromSub($baseQuery, 'mappings')->select('DPW', 'DPD')->distinct();
+
+        // Membuat subquery untuk menghitung setiap statistik (menghindari N+1 query).
+        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_ANGGOTA', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $totalKaryawanCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $pengurusCounts = SekarPengurus::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+        $anggotaKeluarCounts = ExAnggota::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
+
+        // Query utama yang menggabungkan semua data.
+        $query = $mappings
+            ->leftJoinSub($anggotaAktifCounts, 'aa', fn ($join) => $join->on('mappings.DPW', '=', 'aa.DPW')->on('mappings.DPD', '=', 'aa.DPD'))
+            ->leftJoinSub($pengurusCounts, 'p', fn ($join) => $join->on('mappings.DPW', '=', 'p.DPW')->on('mappings.DPD', '=', 'p.DPD'))
+            ->leftJoinSub($anggotaKeluarCounts, 'ak', fn ($join) => $join->on('mappings.DPW', '=', 'ak.DPW')->on('mappings.DPD', '=', 'ak.DPD'))
+            ->leftJoinSub($totalKaryawanCounts, 'tk', fn ($join) => $join->on('mappings.DPW', '=', 'tk.DPW')->on('mappings.DPD', '=', 'tk.DPD'))
+            ->select(
+                'mappings.DPW as dpw',
+                'mappings.DPD as dpd',
+                DB::raw('COALESCE(aa.count, 0) as anggota_aktif'),
+                DB::raw('COALESCE(p.count, 0) as pengurus'),
+                DB::raw('COALESCE(ak.count, 0) as anggota_keluar'),
+                DB::raw('GREATEST(0, COALESCE(tk.count, 0) - COALESCE(aa.count, 0)) as non_anggota')
+            );
+
+        // Menerapkan filter jika ada.
+        if ($request->filled('dpw')) {
+            $query->where('mappings.DPW', $request->dpw);
+        }
+        if ($request->filled('dpd')) {
+            $query->where('mappings.DPD', 'like', '%' . $request->dpd . '%');
+        }
+
+        return $query->orderBy('dpw')->orderBy('dpd')->paginate($perPage)->withQueryString();
+    }
+
+    private function enrichMappingWithStats($mapping)
+    {
+        return (object)[
+            'dpw' => $mapping->DPW,
+            'dpd' => $mapping->DPD,
+            'anggota_aktif' => $this->getAnggotaAktifByArea($mapping->DPW, $mapping->DPD),
+            'pengurus' => $this->getPengurusByArea($mapping->DPW, $mapping->DPD),
+            'anggota_keluar' => $this->getAnggotaKeluarByArea($mapping->DPW, $mapping->DPD),
+            'non_anggota' => $this->getNonAnggotaByArea($mapping->DPW, $mapping->DPD)
+        ];
+    }
+
+    private function getAnggotaAktifByArea($dpw, $dpd)
+    {
+        return Karyawan::where('DPW', $dpw)
+            ->where('DPD', $dpd)
+            ->where('STATUS_ANGGOTA', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->count();
+    }
+
+    private function getPengurusByArea($dpw, $dpd)
+    {
+        return SekarPengurus::where('DPW', $dpw)
+            ->where('DPD', $dpd)
+            ->count();
+    }
+
+    private function getAnggotaKeluarByArea($dpw, $dpd)
+    {
+        return ExAnggota::where('DPW', $dpw)
+            ->where('DPD', $dpd)
+            ->count();
+    }
+
+    private function getNonAnggotaByArea($dpw, $dpd)
+    {
+        $totalKaryawan = Karyawan::where('DPW', $dpw)
+            ->where('DPD', $dpd)
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->count();
+
+        $anggotaAktif = $this->getAnggotaAktifByArea($dpw, $dpd);
+
+        return max(0, $totalKaryawan - $anggotaAktif);
         $baseQuery = DB::table('t_sekar_pengurus')
             ->select('DPW', 'DPD')
             ->whereNotNull('DPW')->where('DPW', '!=', '')
