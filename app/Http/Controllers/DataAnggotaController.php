@@ -277,7 +277,8 @@ class DataAnggotaController extends Controller
         $paginator->setCollection($items);
         return $paginator;
     }
-
+    
+    // ## PERUBAHAN 2: Menghapus Logika Filter dari Method Ini
     private function attachDpwAndDpdToCollection($collection, Request $request)
     {
         if ($collection->isEmpty()) {
@@ -305,26 +306,47 @@ class DataAnggotaController extends Controller
             return $item;
         });
 
-        // Terapkan filter DPW/DPD di sini (Application-Side Filter)
-        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
-            $collection = $collection->filter(fn($item) => $item->DPW == $request->dpw);
-        }
-        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
-            $collection = $collection->filter(fn($item) => $item->DPD == $request->dpd);
-        }
+        // Filter DPW/DPD yang salah telah dihapus dari sini
 
         return $collection->values();
     }
 
-
+    // ## PERUBAHAN 1: Menambahkan Filter DPW/DPD ke dalam Query Database
     private function applyBaseKaryawanFilters(Builder $query, Request $request)
     {
+        // Filter Pencarian Nama/NIK (sudah ada)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(fn($q) => $q->where('N_NIK', 'LIKE', "%{$search}%")->orWhere('V_NAMA_KARYAWAN', 'LIKE', "%{$search}%"));
         }
+
+        // Filter DPW/DPD (Logika Baru)
+        $hasDpwFilter = $request->filled('dpw') && $request->dpw !== 'Semua DPW';
+        $hasDpdFilter = $request->filled('dpd') && $request->dpd !== 'Semua DPD';
+
+        if ($hasDpwFilter || $hasDpdFilter) {
+            $mappingQuery = DB::table('mapping_dpd');
+            if ($hasDpwFilter) {
+                $mappingQuery->where('DPW', $request->dpw);
+            }
+            if ($hasDpdFilter) {
+                $mappingQuery->where('DPD', $request->dpd);
+            }
+            $matchingKeys = $mappingQuery->pluck('PSA_Kodlok');
+
+            if ($matchingKeys->isEmpty()) {
+                $query->whereRaw('1 = 0'); // Jika tidak ada key yang cocok, pastikan query tidak mengembalikan hasil
+                return;
+            }
+
+            // Membuat ekspresi `CASE` di SQL untuk mencocokkan logika pembuatan key di PHP
+            $keyExpression = DB::raw("CASE WHEN C_KODE_UNIT IS NOT NULL AND LOCATE('-', C_KODE_UNIT) > 0 THEN CONCAT(C_PERSONNEL_SUB_AREA, '_', SUBSTRING_INDEX(C_KODE_UNIT, '-', 1), '-', SUBSTRING(C_KODE_UNIT, -3)) ELSE CONCAT(C_PERSONNEL_SUB_AREA, '_') END");
+
+            $query->whereIn($keyExpression, $matchingKeys);
+        }
     }
 
+    // ## PERUBAHAN 3: Menambahkan Logika Filter untuk Data Pengurus
     private function getPengurusData(Request $request)
     {
         $query = SekarPengurus::query()
@@ -340,15 +362,38 @@ class DataAnggotaController extends Controller
                 't_sekar_pengurus.V_SHORT_POSISI'
             );
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn($q) => $q->where('t_sekar_pengurus.N_NIK', 'LIKE', "%{$search}%")->orWhere('v_karyawan_base.V_NAMA_KARYAWAN', 'LIKE', "%{$search}%"));
+        }
+        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
+            $query->where('t_sekar_pengurus.DPW', $request->dpw);
+        }
+        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
+            $query->where('t_sekar_pengurus.DPD', $request->dpd);
+        }
+
         return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
     }
 
+    // ## PERUBAHAN 4: Menambahkan Logika Filter untuk Data Ex-Anggota
     private function getExAnggotaData(Request $request)
     {
-        return ExAnggota::query()->orderBy('TGL_KELUAR', 'desc');
+        $query = ExAnggota::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn($q) => $q->where('N_NIK', 'LIKE', "%{$search}%")->orWhere('V_NAMA_KARYAWAN', 'LIKE', "%{$search}%"));
+        }
+        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
+            $query->where('DPW', $request->dpw);
+        }
+        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
+            $query->where('DPD', $request->dpd);
+        }
+
+        return $query->orderBy('TGL_KELUAR', 'desc');
     }
-
-
 
     private function getDpwOptionsFromCache()
     {
