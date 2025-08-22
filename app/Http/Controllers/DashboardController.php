@@ -66,17 +66,14 @@ class DashboardController extends Controller
     private function getStatistics(): array
     {
         // --- TOTAL DATA ---
-        // Diperbarui: Menggunakan model Karyawan dan view v_karyawan_base yang sudah memiliki status anggota
         $anggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
 
-        // Cukup hitung dari tabel pengurus
         $totalPengurus = SekarPengurus::count();
 
         $anggotaKeluar = ExAnggota::count();
 
-        // Menggunakan model Karyawan yang sudah mengarah ke view
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
 
@@ -84,7 +81,6 @@ class DashboardController extends Controller
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
-        // Diperbarui: Menggunakan model Karyawan dan view v_karyawan_base
         $pertumbuhanAnggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->whereBetween('TGL_TERDAFTAR', [$startOfMonth, $endOfMonth])
@@ -107,17 +103,15 @@ class DashboardController extends Controller
         ];
     }
 
-private function getDpwMappingWithStats()
+    private function getDpwMappingWithStats()
     {
-        // Diperbarui: Sumber data karyawan diubah dari t_karyawan ke v_karyawan_base
-        // karena t_karyawan tidak punya kolom DPD/DPW.
         $karyawanMappings = DB::table('v_karyawan_base')
             ->select('DPW', 'DPD')
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '');
 
-        // ## PERBAIKAN DI SINI ##
-        // Paksa collation agar sesuai dengan v_karyawan_base saat melakukan query
+        // ## PERBAIKAN COLLACTION ERROR DI SINI ##
+        // Memaksa collation pada query agar sesuai dengan v_karyawan_base untuk operasi UNION.
         $paginatedMappings = DB::table('t_sekar_pengurus')
             ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'))
             ->whereNotNull('DPW')->where('DPW', '!=', '')
@@ -149,7 +143,6 @@ private function getDpwMappingWithStats()
 
     private function getAnggotaAktifByArea($dpw, $dpd)
     {
-        // Diperbarui: Menggunakan model Karyawan untuk konsistensi dan kemudahan membaca
         return Karyawan::where('DPW', $dpw)
             ->where('DPD', $dpd)
             ->where('STATUS_ANGGOTA', 'Terdaftar')
@@ -173,7 +166,6 @@ private function getDpwMappingWithStats()
 
     private function getNonAnggotaByArea($dpw, $dpd)
     {
-        // Query ini sudah benar karena menggunakan model Karyawan
         $totalKaryawan = Karyawan::where('DPW', $dpw)
             ->where('DPD', $dpd)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
