@@ -6,11 +6,20 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
     {
-        // Remove all seeder calls - data will come from real input and sekar.sql
-        // $this->call([
-        //     SekarDataSeeder::class,
-        // ]);
+        $this->call([
+            UsersTableSeeder::class,
+            KaryawanTableSeeder::class,
+            IuranTableSeeder::class,
+            SekarPengurusTableSeeder::class,
+            SekarRolesTableSeeder::class,
+            SekarJajaranTableSeeder::class,
+            MappingDpdTableSeeder::class,
+            MasterPrefixUnitTableSeeder::class,
+        ]);
     }
 }

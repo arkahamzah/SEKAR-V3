@@ -11,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('documents', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('filename')->unique();
-            $table->string('original_name');
-            $table->string('size');
-            $table->timestamps(); // Baris ini akan membuat created_at dan updated_at
-            $table->softDeletes(); // Baris ini akan membuat deleted_at
+            $table->string('nik')->unique();
+            $table->string('password');
+            $table->boolean('is_gptp_preorder')->default(false)->comment('Flag to identify GPTP preorder members');
+            $table->timestamps();
         });
     }
 
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('documents');
+        Schema::dropIfExists('users');
     }
 };
