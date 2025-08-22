@@ -40,10 +40,12 @@
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'gptp' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Anggota GPTP
                     </a>
+                    @if(Auth::user()->hasRole('ADM'))
                     <a href="{{ route('data-anggota.index', ['tab' => 'pengurus']) }}"
                        class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'pengurus' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                         Data Pengurus
                     </a>
+                    @endif
                     @if(Auth::user()->hasRole('ADM'))
                      <a href="{{ route('data-anggota.index', ['tab' => 'ex-anggota']) }}"
                         class="border-b-2 py-4 px-1 text-sm font-medium {{ $activeTab === 'ex-anggota' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
@@ -57,11 +59,14 @@
                 <form id="filterForm" method="GET" action="{{ route('data-anggota.index') }}" class="space-y-4">
                     <input type="hidden" name="tab" value="{{ $activeTab }}">
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {{-- ### DIUBAH: Atur grid menjadi 5 kolom khusus untuk tab pengurus ### --}}
+                    <div class="grid grid-cols-1 {{ $activeTab === 'pengurus' ? 'md:grid-cols-5' : 'md:grid-cols-4' }} gap-4">
                         @if(in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota', 'gptp']))
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">DPW</label>
-                            <select name="dpw" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            {{-- ### DIUBAH: Tambahkan logika disabled dari commit sebelumnya ### --}}
+                            <select name="dpw" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    {{ (isset($userScope['dpw']) && count($dpwOptions) <= 2) ? 'disabled' : '' }}>
                                 @foreach($dpwOptions as $dpw)
                                     <option value="{{ $dpw }}" {{ request('dpw') === $dpw ? 'selected' : '' }}>
                                         {{ $dpw }}
@@ -72,7 +77,9 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">DPD</label>
-                            <select name="dpd" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            {{-- ### DIUBAH: Tambahkan logika disabled dari commit sebelumnya ### --}}
+                            <select name="dpd" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    {{ (isset($userScope['dpd']) && count($dpdOptions) <= 2) ? 'disabled' : '' }}>
                                 @foreach($dpdOptions as $dpd)
                                     <option value="{{ $dpd }}" {{ request('dpd') === $dpd ? 'selected' : '' }}>
                                         {{ $dpd }}
@@ -80,13 +87,29 @@
                                 @endforeach
                             </select>
                         </div>
+                        
+                        {{-- ### BARU: Dropdown untuk filter Role ### --}}
+                        @if($activeTab === 'pengurus')
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                            <select name="role" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">Semua Role</option>
+                                @foreach($roles as $role)
+                                    <option value="{{ $role->ID }}" {{ request('role') == $role->ID ? 'selected' : '' }}>
+                                        {{ $role->NAME }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
                         @endif
 
-                        <div class="{{ in_array($activeTab, ['anggota', 'pengurus', 'ex-anggota', 'gptp']) ? 'md:col-span-1' : 'md:col-span-3' }}">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cari berdasarkan nama</label>
+                        {{-- ### DIUBAH: Hapus class col-span agar layout konsisten ### --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Cari berdasarkan nama/NIK</label>
                             <input type="text" name="search" value="{{ request('search') }}"
-                                   placeholder="Masukkan nama atau NIK"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                placeholder="Masukkan nama atau NIK"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
                         </div>
 
                         <div class="flex items-end">
@@ -96,7 +119,8 @@
                         </div>
                     </div>
 
-                    @if(request()->hasAny(['dpw', 'dpd', 'search']))
+                    {{-- ### DIUBAH: Tambahkan 'role' pada kondisi pengecekan ### --}}
+                    @if(request()->hasAny(['dpw', 'dpd', 'search', 'role']))
                     <div class="flex items-center justify-between pt-4">
                         <div class="text-sm text-gray-600">
                             @if(request('search'))
@@ -108,9 +132,17 @@
                             @if(request('dpd') && request('dpd') !== 'Semua DPD')
                                 • DPD: {{ request('dpd') }}
                             @endif
+                            {{-- ### BARU: Tampilkan filter role yang aktif ### --}}
+                            @if(request('role') && $activeTab === 'pengurus')
+                                @php
+                                    // Cari nama role berdasarkan ID yang dipilih
+                                    $selectedRole = $roles->firstWhere('ID', request('role'));
+                                @endphp
+                                • Role: {{ $selectedRole ? $selectedRole->NAME : '' }}
+                            @endif
                         </div>
                         <a href="{{ route('data-anggota.index', ['tab' => $activeTab]) }}"
-                           class="text-blue-600 hover:text-blue-800 text-sm">
+                        class="text-blue-600 hover:text-blue-800 text-sm">
                             Reset Filter
                         </a>
                     </div>
