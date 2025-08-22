@@ -98,7 +98,6 @@
                 </div>
             </div>
 
-            {{-- ## Card Non Anggota (DIUBAH) ## --}}
             <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
                 <div>
                     <p class="text-gray-600 text-xs font-medium uppercase tracking-wide">Non Anggota</p>
@@ -199,7 +198,6 @@
                     </table>
                 </div>
 
-                {{-- ### PERUBAHAN DI BLOK INI ### --}}
 @if($mappingWithStats->hasPages())
     <div class="mt-6 border-t border-gray-200 px-6 py-4">
         {{-- Menggunakan view paginasi BARU yang sesuai dengan desain dashboard --}}

@@ -4,7 +4,7 @@
         <div class="flex items-center text-sm text-gray-700">
             <span>Tampilkan:</span>
             <select id="perPageSelect" class="mx-2 block w-full pl-3 pr-10 py-1.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                @foreach ([10, 25, 50, 100] as $size)
+                @foreach ([10, 25, 50] as $size)
                     <option value="{{ $size }}" {{ request('size', 10) == $size ? 'selected' : '' }}>
                         {{ $size }}
                     </option>
