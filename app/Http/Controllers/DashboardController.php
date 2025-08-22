@@ -74,7 +74,7 @@ class DashboardController extends Controller
 
     private function getStatistics(): array
     {
-        $anggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
+        $anggotaAktif = Karyawan::where('STATUS_PENDAFTARAN', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
         $totalPengurus = SekarPengurus::count();
@@ -83,7 +83,7 @@ class DashboardController extends Controller
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
-        $pertumbuhanAnggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
+        $pertumbuhanAnggotaAktif = Karyawan::where('STATUS_PENDAFTARAN', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->whereBetween('TGL_TERDAFTAR', [$startOfMonth, $endOfMonth])
             ->count();
@@ -130,7 +130,7 @@ class DashboardController extends Controller
         $mappings = DB::query()->fromSub($baseQuery, 'mappings')->select('DPW', 'DPD')->distinct();
 
         // Membuat subquery untuk menghitung setiap statistik (menghindari N+1 query).
-        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_ANGGOTA', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_PENDAFTARAN', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
         $totalKaryawanCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
         $pengurusCounts = SekarPengurus::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
         $anggotaKeluarCounts = ExAnggota::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
@@ -177,7 +177,7 @@ class DashboardController extends Controller
     {
         return Karyawan::where('DPW', $dpw)
             ->where('DPD', $dpd)
-            ->where('STATUS_ANGGOTA', 'Terdaftar')
+            ->where('STATUS_PENDAFTARAN', 'Terdaftar')
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
     }
@@ -214,7 +214,7 @@ class DashboardController extends Controller
 
         $mappings = DB::query()->fromSub($baseQuery, 'mappings')->select('DPW', 'DPD')->distinct();
 
-        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_ANGGOTA', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
+        $anggotaAktifCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('STATUS_PENDAFTARAN', 'Terdaftar')->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
         $totalKaryawanCounts = DB::table('v_karyawan_base')->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'), DB::raw('count(*) as count'))->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->groupBy('DPW', 'DPD');
         
         $pengurusCounts = SekarPengurus::query()->select('DPW', 'DPD', DB::raw('count(*) as count'))->groupBy('DPW', 'DPD');
