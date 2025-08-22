@@ -229,8 +229,8 @@ class DataAnggotaController extends Controller
 private function getAnggotaData(Request $request)
 {
     $query = Karyawan::query()
-        ->where(DB::raw("STATUS_ANGGOTA COLLATE utf8mb4_unicode_ci"), '=', 'Terdaftar')
-        ->where(DB::raw("V_SHORT_POSISI COLLATE utf8mb4_unicode_ci"), 'NOT LIKE', '%GPTP%');
+        ->where(DB::raw("STATUS_ANGGOTA"), '=', 'Terdaftar')
+        ->where(DB::raw("V_SHORT_POSISI"), 'NOT LIKE', '%GPTP%');
 
     $this->applyBaseKaryawanFilters($query, $request);
 
@@ -241,7 +241,7 @@ private function getAnggotaData(Request $request)
 
 private function getGptpData(Request $request)
 {
-    $query = Karyawan::query()->where(DB::raw("V_SHORT_POSISI COLLATE utf8mb4_unicode_ci"), 'LIKE', '%GPTP%');
+    $query = Karyawan::query()->where(DB::raw("V_SHORT_POSISI"), 'LIKE', '%GPTP%');
     $this->applyBaseKaryawanFilters($query, $request);
     $paginatedGptp = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
     return $this->attachDpwAndDpd($paginatedGptp, $request);

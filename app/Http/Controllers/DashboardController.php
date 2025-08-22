@@ -24,7 +24,7 @@ class DashboardController extends Controller
             ->whereNotNull('DPW')->where('DPW', '!=', '');
 
         $allDpwOptions = DB::table('t_sekar_pengurus')
-            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'))
+            ->select(DB::raw('DPW'))
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->union($karyawanDpw)
             ->distinct()
@@ -120,7 +120,7 @@ class DashboardController extends Controller
         // ## PERBAIKAN COLLACTION ERROR DI SINI ##
         // Memaksa collation pada query agar sesuai dengan v_karyawan_base untuk operasi UNION.
         $paginatedMappings = DB::table('t_sekar_pengurus')
-            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'))
+            ->select(DB::raw('DPW'), DB::raw('DPD'))
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '')
             ->union($karyawanMappings)
