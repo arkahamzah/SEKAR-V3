@@ -51,7 +51,6 @@
                         </div>
 
                         <div class="flex justify-end">
-                            {{-- Blok tanda tangan dengan konten rata TENGAH (text-center) --}}
                             <div class="mt-8 text-center">
                                 @if($ketuaUmumSignature)
                                 <div class="flex justify-center items-center h-20">
