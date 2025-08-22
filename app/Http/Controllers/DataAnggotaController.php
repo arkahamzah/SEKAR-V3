@@ -35,10 +35,12 @@ class DataAnggotaController extends Controller
                 $data['gptp'] = $this->getGptpData($request);
                 break;
             case 'pengurus':
-                $data['pengurus'] = $this->getPengurusData($request)->simplePaginate(15)->withQueryString();
+                // Diubah ke paginate
+                $data['pengurus'] = $this->getPengurusData($request)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
             case 'ex-anggota':
-                $data['ex_anggota'] = $this->getExAnggotaData($request)->simplePaginate(15)->withQueryString();
+                // Diubah ke paginate
+                $data['ex_anggota'] = $this->getExAnggotaData($request)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
         }
         return view('data-anggota.index', $data);
@@ -210,6 +212,14 @@ class DataAnggotaController extends Controller
         }
     }
 
+    private function resolvePerPage(Request $request): int
+    {
+        $allowed = [10, 15, 25, 50];
+        $fallback = 15; // default sebelumnya
+        $size = (int) $request->get('size', $fallback);
+        return in_array($size, $allowed, true) ? $size : $fallback;
+    }
+
     public function export(Request $request)
     {
         $type = $request->get('type', 'anggota');
@@ -217,8 +227,8 @@ class DataAnggotaController extends Controller
         $data = collect();
 
         switch ($type) {
-            case 'anggota': $data = $this->getAnggotaData($request)->get(); break;
-            case 'gptp': $data = $this->getGptpData($request)->get(); break;
+            case 'anggota': $data = $this->getAnggotaData($request, false)->get(); break; // Pass false to get all data
+            case 'gptp': $data = $this->getGptpData($request, false)->get(); break; // Pass false to get all data
             case 'pengurus': $data = $this->getPengurusData($request)->get(); break;
             case 'ex-anggota': $data = $this->getExAnggotaData($request)->get(); break;
             default: return redirect()->back()->with('error', 'Tipe data tidak valid.');
@@ -226,26 +236,35 @@ class DataAnggotaController extends Controller
 
         return $this->exportToCsv($data, $filename, $type);
     }
-private function getAnggotaData(Request $request)
-{
-    $query = Karyawan::query()
-        ->where(DB::raw("STATUS_ANGGOTA"), '=', 'Terdaftar')
-        ->where(DB::raw("V_SHORT_POSISI"), 'NOT LIKE', '%GPTP%');
 
-    $this->applyBaseKaryawanFilters($query, $request);
+    private function getAnggotaData(Request $request, bool $shouldPaginate = true)
+    {
+        $query = Karyawan::query()
+            ->where(DB::raw("STATUS_ANGGOTA"), '=', 'Terdaftar')
+            ->where(DB::raw("V_SHORT_POSISI"), 'NOT LIKE', '%GPTP%');
 
-    $paginatedAnggota = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
+        $this->applyBaseKaryawanFilters($query, $request);
 
-    return $this->attachDpwAndDpd($paginatedAnggota, $request);
-}
+        if ($shouldPaginate) {
+            $paginatedAnggota = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->paginate($this->resolvePerPage($request))->withQueryString();
+            return $this->attachDpwAndDpd($paginatedAnggota, $request);
+        }
 
-private function getGptpData(Request $request)
-{
-    $query = Karyawan::query()->where(DB::raw("V_SHORT_POSISI"), 'LIKE', '%GPTP%');
-    $this->applyBaseKaryawanFilters($query, $request);
-    $paginatedGptp = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->simplePaginate(15)->withQueryString();
-    return $this->attachDpwAndDpd($paginatedGptp, $request);
-}
+        return $this->attachDpwAndDpdToCollection($query->orderBy('V_NAMA_KARYAWAN', 'asc')->get(), $request);
+    }
+
+    private function getGptpData(Request $request, bool $shouldPaginate = true)
+    {
+        $query = Karyawan::query()->where(DB::raw("V_SHORT_POSISI"), 'LIKE', '%GPTP%');
+        $this->applyBaseKaryawanFilters($query, $request);
+
+        if ($shouldPaginate) {
+            $paginatedGptp = $query->orderBy('V_NAMA_KARYAWAN', 'asc')->paginate($this->resolvePerPage($request))->withQueryString();
+            return $this->attachDpwAndDpd($paginatedGptp, $request);
+        }
+
+        return $this->attachDpwAndDpdToCollection($query->orderBy('V_NAMA_KARYAWAN', 'asc')->get(), $request);
+    }
 
     private function attachDpwAndDpd($paginator, Request $request)
     {
@@ -253,9 +272,20 @@ private function getGptpData(Request $request)
             return $paginator;
         }
 
-        $items = $paginator->getCollection();
+        $items = $this->attachDpwAndDpdToCollection($paginator->getCollection(), $request);
+
+        $paginator->setCollection($items);
+        return $paginator;
+    }
+
+    private function attachDpwAndDpdToCollection($collection, Request $request)
+    {
+        if ($collection->isEmpty()) {
+            return $collection;
+        }
+
         $keyMap = [];
-        $keysToSearch = $items->mapWithKeys(function ($item) use (&$keyMap) {
+        $keysToSearch = $collection->mapWithKeys(function ($item) use (&$keyMap) {
             $key = '';
             if (!empty($item->C_KODE_UNIT) && strpos($item->C_KODE_UNIT, '-') > 0) {
                 $key = $item->C_PERSONNEL_SUB_AREA . '_' . substr($item->C_KODE_UNIT, 0, strpos($item->C_KODE_UNIT, '-')) . '-' . substr($item->C_KODE_UNIT, -3);
@@ -268,7 +298,7 @@ private function getGptpData(Request $request)
 
         $mapping = DB::table('mapping_dpd')->whereIn('PSA_Kodlok', $keysToSearch)->get(['PSA_Kodlok', 'DPW', 'DPD'])->keyBy('PSA_Kodlok');
 
-        $items->transform(function ($item) use ($keyMap, $mapping) {
+        $collection->transform(function ($item) use ($keyMap, $mapping) {
             $key = $keyMap[$item->N_NIK] ?? null;
             $item->DPW = $mapping[$key]->DPW ?? null;
             $item->DPD = $mapping[$key]->DPD ?? null;
@@ -277,15 +307,15 @@ private function getGptpData(Request $request)
 
         // Terapkan filter DPW/DPD di sini (Application-Side Filter)
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
-            $items = $items->filter(fn($item) => $item->DPW == $request->dpw);
+            $collection = $collection->filter(fn($item) => $item->DPW == $request->dpw);
         }
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
-            $items = $items->filter(fn($item) => $item->DPD == $request->dpd);
+            $collection = $collection->filter(fn($item) => $item->DPD == $request->dpd);
         }
 
-        $paginator->setCollection($items->values());
-        return $paginator;
+        return $collection->values();
     }
+
 
     private function applyBaseKaryawanFilters(Builder $query, Request $request)
     {
@@ -295,28 +325,30 @@ private function getGptpData(Request $request)
         }
     }
 
-private function getPengurusData(Request $request)
-{
-    $query = SekarPengurus::query()
-        ->join('v_karyawan_base', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan_base.N_NIK')
-        ->join('t_sekar_roles', 't_sekar_pengurus.ID_ROLES', '=', 't_sekar_roles.ID')
-        ->select(
-            't_sekar_pengurus.N_NIK',
-            't_sekar_pengurus.DPW', // <-- TAMBAHKAN INI
-            't_sekar_pengurus.DPD', // <-- TAMBAHKAN INI
-            'v_karyawan_base.V_NAMA_KARYAWAN',
-            'v_karyawan_base.V_KOTA_GEDUNG',
-            't_sekar_roles.NAME as ROLE',
-            // Gunakan V_SHORT_POSISI dari tabel pengurus, sesuai data SQL
-            't_sekar_pengurus.V_SHORT_POSISI'
-        );
+    private function getPengurusData(Request $request)
+    {
+        $query = SekarPengurus::query()
+            ->join('v_karyawan_base', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan_base.N_NIK')
+            ->join('t_sekar_roles', 't_sekar_pengurus.ID_ROLES', '=', 't_sekar_roles.ID')
+            ->select(
+                't_sekar_pengurus.N_NIK',
+                't_sekar_pengurus.DPW',
+                't_sekar_pengurus.DPD',
+                'v_karyawan_base.V_NAMA_KARYAWAN',
+                'v_karyawan_base.V_KOTA_GEDUNG',
+                't_sekar_roles.NAME as ROLE',
+                't_sekar_pengurus.V_SHORT_POSISI'
+            );
 
-    return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
-}
+        return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
+    }
+
     private function getExAnggotaData(Request $request)
     {
         return ExAnggota::query()->orderBy('TGL_KELUAR', 'desc');
     }
+
+
 
     private function getDpwOptionsFromCache()
     {
