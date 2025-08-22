@@ -37,7 +37,7 @@
         </div>
 
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">YOUR WEBSITE IS HACKED BY INDIAN HACKER DONT PLAY WITH US PAY $69.696 TO UNLOCK 👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺👺 YOUR WEBSITE IS HACKED BY INDIAN HACKER DONT PLAY WITH US PAY $69.696 TO UNLOCK</h1>
+            <h1 class="text-2xl font-bold text-gray-900">Dashboard Sekar</h1>
             <p class="text-gray-600 text-sm mt-1">Ringkasan data keanggotaan dan pengurus SEKAR</p>
         </div>
 
