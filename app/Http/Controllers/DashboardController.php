@@ -15,14 +15,11 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Cache hanya statistik utama di bagian atas halaman
         $statistics = Cache::remember('dashboard_main_statistics', 10, function () {
             return $this->getStatistics();
         });
 
-        // Ambil data pemetaan yang sudah dipaginasi secara terpisah
         $mappingWithStats = $this->getDpwMappingWithStats();
-
         $greeting = $this->getGreetingData();
 
         return view('dashboard', array_merge($statistics, [
@@ -66,71 +63,55 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * ## FUNGSI INI TELAH DIPERBARUI ##
-     * Menambahkan logika untuk menghitung pertumbuhan bulanan untuk setiap metrik.
-     * Asumsi: tabel 'users', 't_sekar_pengurus', dan 't_ex_anggota'
-     * memiliki kolom timestamp 'created_at'.
-     */
     private function getStatistics(): array
     {
-        // --- TOTAL DATA (LOGIC ASLI) ---
-        $anggotaAktif = DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+        // --- TOTAL DATA ---
+        // Diperbarui: Menggunakan model Karyawan dan view v_karyawan_base yang sudah memiliki status anggota
+        $anggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
 
-        $totalPengurus = DB::table('t_sekar_pengurus as sp')
-            ->join('t_karyawan as k', 'sp.N_NIK', '=', 'k.N_NIK')
-            ->count();
+        // Cukup hitung dari tabel pengurus
+        $totalPengurus = SekarPengurus::count();
 
         $anggotaKeluar = ExAnggota::count();
 
+        // Menggunakan model Karyawan yang sudah mengarah ke view
         $totalKaryawanNonGPTP = Karyawan::where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')->count();
         $nonAnggota = max(0, $totalKaryawanNonGPTP - $anggotaAktif);
 
-        // --- PERTUMBUHAN BULANAN (LOGIC BARU) ---
+        // --- PERTUMBUHAN BULANAN ---
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
-        // Pertumbuhan Anggota Aktif (member baru bulan ini)
-        $pertumbuhanAnggotaAktif = DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
-            ->whereBetween('u.created_at', [$startOfMonth, $endOfMonth])
+        // Diperbarui: Menggunakan model Karyawan dan view v_karyawan_base
+        $pertumbuhanAnggotaAktif = Karyawan::where('STATUS_ANGGOTA', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->whereBetween('TGL_TERDAFTAR', [$startOfMonth, $endOfMonth])
             ->count();
 
-        // Pertumbuhan Pengurus (pengurus baru bulan ini)
-        $pertumbuhanPengurus = DB::table('t_sekar_pengurus as sp')
-            ->whereBetween('sp.created_at', [$startOfMonth, $endOfMonth])
+        $pertumbuhanPengurus = SekarPengurus::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
 
-        // Pertumbuhan Anggota Keluar (yang keluar bulan ini)
         $pertumbuhanAnggotaKeluar = ExAnggota::whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->count();
 
-        // ## DIHAPUS ##
-        // Logika untuk pertumbuhan non-anggota dihapus sesuai permintaan
-        // $pertumbuhanNonAnggota = $pertumbuhanAnggotaKeluar;
-
         return [
-            // Data total
             'anggotaAktif' => $anggotaAktif,
             'totalPengurus' => $totalPengurus,
             'anggotaKeluar' => $anggotaKeluar,
             'nonAnggota' => $nonAnggota,
-            // Data pertumbuhan bulanan
             'pertumbuhanAnggotaAktif' => $pertumbuhanAnggotaAktif,
             'pertumbuhanPengurus' => $pertumbuhanPengurus,
             'pertumbuhanAnggotaKeluar' => $pertumbuhanAnggotaKeluar,
-            // 'pertumbuhanNonAnggota' => $pertumbuhanNonAnggota, // DIHAPUS
         ];
     }
 
     private function getDpwMappingWithStats()
     {
-        // Query untuk mendapatkan kombinasi unik DPW dan DPD dari kedua tabel
-        $karyawanMappings = DB::table('t_karyawan')
+        // Diperbarui: Sumber data karyawan diubah dari t_karyawan ke v_karyawan_base
+        // karena t_karyawan tidak punya kolom DPD/DPW.
+        $karyawanMappings = DB::table('v_karyawan_base')
             ->select('DPW', 'DPD')
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '');
@@ -140,12 +121,11 @@ class DashboardController extends Controller
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '')
             ->union($karyawanMappings)
-            ->groupBy('DPW', 'DPD') // Menggunakan groupBy untuk mendapatkan hasil unik
+            ->groupBy('DPW', 'DPD')
             ->orderBy('DPW')
             ->orderBy('DPD')
-            ->paginate(10); // Menggunakan paginate di sini
+            ->paginate(10);
 
-        // Memperkaya (enrich) data HANYA untuk item di halaman saat ini
         $paginatedMappings->getCollection()->transform(function ($mapping) {
             return $this->enrichMappingWithStats($mapping);
         });
@@ -167,32 +147,31 @@ class DashboardController extends Controller
 
     private function getAnggotaAktifByArea($dpw, $dpd)
     {
-        return DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->where('k.DPW', $dpw)
-            ->where('k.DPD', $dpd)
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+        // Diperbarui: Menggunakan model Karyawan untuk konsistensi dan kemudahan membaca
+        return Karyawan::where('DPW', $dpw)
+            ->where('DPD', $dpd)
+            ->where('STATUS_ANGGOTA', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
     }
 
     private function getPengurusByArea($dpw, $dpd)
     {
-        return DB::table('t_sekar_pengurus as sp')
-            ->where('sp.DPW', $dpw)
-            ->where('sp.DPD', $dpd)
+        return SekarPengurus::where('DPW', $dpw)
+            ->where('DPD', $dpd)
             ->count();
     }
 
     private function getAnggotaKeluarByArea($dpw, $dpd)
     {
-        return DB::table('t_ex_anggota as ea')
-            ->where('ea.DPW', $dpw)
-            ->where('ea.DPD', $dpd)
+        return ExAnggota::where('DPW', $dpw)
+            ->where('DPD', $dpd)
             ->count();
     }
 
     private function getNonAnggotaByArea($dpw, $dpd)
     {
+        // Query ini sudah benar karena menggunakan model Karyawan
         $totalKaryawan = Karyawan::where('DPW', $dpw)
             ->where('DPD', $dpd)
             ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
