@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Karyawan;
 use App\Models\Params;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Auth;
+// Models User dan Karyawan tidak lagi digunakan secara langsung untuk query banpers,
+// namun tetap dipertahankan jika ada kegunaan lain di masa depan.
+use App\Models\User;
+use App\Models\Karyawan;
 
 class BanpersController extends Controller
 {
@@ -18,7 +20,7 @@ class BanpersController extends Controller
         $banpersData = $this->getBanpersData();
         $isSuperAdmin = $this->isSuperAdmin();
 
-        // MODIFIKASI: Ambil data banpersByWilayah yang sudah di-paginate
+        // Ambil data banpersByWilayah yang sudah di-paginate
         $banpersByWilayah = $this->getBanpersByWilayahSimple($banpersData['nominalBanpers']);
 
         return view('banpers.index', array_merge($banpersData, [
@@ -176,58 +178,54 @@ class BanpersController extends Controller
 
         $nominalBanpers = $params ? (int)$params->NOMINAL_BANPERS : 20000;
 
-        $totalAnggotaAktif = DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+        // MODIFIKASI: Menggunakan v_karyawan_base
+        $totalAnggotaAktif = DB::table('v_karyawan_base')
+            ->where('Status_Pendaftaran', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->count();
 
         $totalBanpers = $totalAnggotaAktif * $nominalBanpers;
-
-        // HAPUS BARIS INI: $banpersByWilayah = $this->getBanpersByWilayahSimple($nominalBanpers);
 
         return [
             'nominalBanpers' => $nominalBanpers,
             'totalAnggotaAktif' => $totalAnggotaAktif,
             'totalBanpers' => $totalBanpers,
-            // 'banpersByWilayah' => $banpersByWilayah, // HAPUS BARIS INI
             'tahun' => date('Y')
         ];
     }
 
-    // MODIFIKASI: Ubah fungsi ini untuk menggunakan query builder dan paginate
+    // MODIFIKASI: Menggunakan v_karyawan_base
     private function getBanpersByWilayahSimple(int $nominalBanpers)
     {
-        return DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->leftJoin('mapping_dpd as md', 'k.PSA_Kodlok', '=', 'md.PSA_Kodlok')
+        return DB::table('v_karyawan_base')
             ->select([
-                DB::raw("COALESCE(md.DPW, 'Belum Termapping') as dpw"),
-                DB::raw("COALESCE(md.DPD, 'Belum Termapping') as dpd"),
-                DB::raw('COUNT(u.id) as jumlah_anggota'),
-                DB::raw("(COUNT(u.id) * {$nominalBanpers}) as total_banpers")
+                DB::raw("COALESCE(DPW, 'Belum Termapping') as dpw"),
+                DB::raw("COALESCE(DPD, 'Belum Termapping') as dpd"),
+                DB::raw('COUNT(ID) as jumlah_anggota'),
+                DB::raw("(COUNT(ID) * {$nominalBanpers}) as total_banpers")
             ])
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->where('Status_Pendaftaran', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->groupBy('dpw', 'dpd')
             ->orderBy('dpw', 'asc')
             ->orderBy('dpd', 'asc')
-            ->paginate(10); // TAMBAHKAN PAGINATE DI SINI
+            ->paginate(10);
     }
 
     public function export(Request $request)
     {
         $banpersData = $this->getBanpersData();
 
-        // MODIFIKASI: Ambil semua data untuk export tanpa pagination
-        $banpersByWilayahForExport = DB::table('users as u')
-            ->join('t_karyawan as k', 'u.nik', '=', 'k.N_NIK')
-            ->leftJoin('mapping_dpd as md', 'k.PSA_Kodlok', '=', 'md.PSA_Kodlok')
+        // MODIFIKASI: Menggunakan v_karyawan_base untuk mengambil semua data (tanpa pagination)
+        $banpersByWilayahForExport = DB::table('v_karyawan_base')
             ->select([
-                DB::raw("COALESCE(md.DPW, 'Belum Termapping') as dpw"),
-                DB::raw("COALESCE(md.DPD, 'Belum Termapping') as dpd"),
-                DB::raw('COUNT(u.id) as jumlah_anggota'),
-                DB::raw("(COUNT(u.id) * {$banpersData['nominalBanpers']}) as total_banpers")
+                DB::raw("COALESCE(DPW, 'Belum Termapping') as dpw"),
+                DB::raw("COALESCE(DPD, 'Belum Termapping') as dpd"),
+                DB::raw("COUNT(ID) as jumlah_anggota"),
+                DB::raw("(COUNT(ID) * {$banpersData['nominalBanpers']}) as total_banpers")
             ])
-            ->where('k.V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
+            ->where('Status_Pendaftaran', 'Terdaftar')
+            ->where('V_SHORT_POSISI', 'NOT LIKE', '%GPTP%')
             ->groupBy('dpw', 'dpd')
             ->orderBy('dpw', 'asc')
             ->orderBy('dpd', 'asc')
@@ -242,13 +240,13 @@ class BanpersController extends Controller
         $callback = function() use ($banpersData, $banpersByWilayahForExport) {
             $file = fopen('php://output', 'w');
 
-            // Add BOM for UTF-8
+            // Add BOM for UTF-8 to ensure proper character encoding in Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
             // Write headers
             fputcsv($file, ['DPW', 'DPD', 'Jumlah Anggota', 'Nominal per Orang', 'Total Banpers']);
 
-            // Write data
+            // Write data rows
             foreach ($banpersByWilayahForExport as $row) {
                 fputcsv($file, [
                     $row->dpw,
@@ -259,6 +257,7 @@ class BanpersController extends Controller
                 ]);
             }
 
+            // Write total row
             fputcsv($file, [
                 'TOTAL',
                 '',
