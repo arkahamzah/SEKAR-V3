@@ -37,7 +37,7 @@ class DashboardController extends Controller
         return view('dashboard', array_merge($statistics, [
             'greeting' => $greeting,
             'mappingWithStats' => $mappingWithStats,
-            'allDpwOptions' => $allDpwOptions 
+            'allDpwOptions' => $allDpwOptions
         ]));
     }
 
@@ -110,32 +110,37 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getDpwMappingWithStats()
-    {
-        $karyawanMappings = DB::table('v_karyawan_base')
-            ->select('DPW', 'DPD')
-            ->whereNotNull('DPW')->where('DPW', '!=', '')
-            ->whereNotNull('DPD')->where('DPD', '!=', '');
-
-        // ## PERBAIKAN COLLACTION ERROR DI SINI ##
-        // Memaksa collation pada query agar sesuai dengan v_karyawan_base untuk operasi UNION.
-        $paginatedMappings = DB::table('t_sekar_pengurus')
-            ->select(DB::raw('DPW'), DB::raw('DPD'))
-            ->whereNotNull('DPW')->where('DPW', '!=', '')
-            ->whereNotNull('DPD')->where('DPD', '!=', '')
-            ->union($karyawanMappings)
-            ->groupBy('DPW', 'DPD')
-            ->orderBy('DPW')
-            ->orderBy('DPD')
-            ->paginate(10);
-
-        $paginatedMappings->getCollection()->transform(function ($mapping) {
-            return $this->enrichMappingWithStats($mapping);
-        });
-
-        return $paginatedMappings;
+private function getDpwMappingWithStats()
+{
+    // Ambil nilai 'size' dari request, default-nya 10
+    $perPage = request()->input('size', 10);
+    $allowedSizes = [10, 25, 50, 100];
+    if (!in_array($perPage, $allowedSizes)) {
+        $perPage = 10;
     }
-    
+
+    $karyawanMappings = DB::table('v_karyawan_base')
+        ->select('DPW', 'DPD')
+        ->whereNotNull('DPW')->where('DPW', '!=', '')
+        ->whereNotNull('DPD')->where('DPD', '!=', '');
+
+    $paginatedMappings = DB::table('t_sekar_pengurus')
+        ->select(DB::raw('DPW'), DB::raw('DPD'))
+        ->whereNotNull('DPW')->where('DPW', '!=', '')
+        ->whereNotNull('DPD')->where('DPD', '!=', '')
+        ->union($karyawanMappings)
+        ->groupBy('DPW', 'DPD')
+        ->orderBy('DPW')
+        ->orderBy('DPD')
+        ->paginate($perPage); // <--- DIUBAH MENJADI DINAMIS
+
+    $paginatedMappings->getCollection()->transform(function ($mapping) {
+        return $this->enrichMappingWithStats($mapping);
+    });
+
+    return $paginatedMappings;
+}
+
     private function enrichMappingWithStats($mapping)
     {
         return (object)[

@@ -35,11 +35,9 @@ class DataAnggotaController extends Controller
                 $data['gptp'] = $this->getGptpData($request);
                 break;
             case 'pengurus':
-                // Diubah ke paginate
                 $data['pengurus'] = $this->getPengurusData($request)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
             case 'ex-anggota':
-                // Diubah ke paginate
                 $data['ex_anggota'] = $this->getExAnggotaData($request)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
         }
@@ -214,8 +212,9 @@ class DataAnggotaController extends Controller
 
     private function resolvePerPage(Request $request): int
     {
-        $allowed = [10, 15, 25, 50];
-        $fallback = 15; // default sebelumnya
+        // ### PERUBAHAN DI SINI ###
+        $allowed = [10, 25, 50, 100];
+        $fallback = 10;
         $size = (int) $request->get('size', $fallback);
         return in_array($size, $allowed, true) ? $size : $fallback;
     }
@@ -227,8 +226,8 @@ class DataAnggotaController extends Controller
         $data = collect();
 
         switch ($type) {
-            case 'anggota': $data = $this->getAnggotaData($request, false)->get(); break; // Pass false to get all data
-            case 'gptp': $data = $this->getGptpData($request, false)->get(); break; // Pass false to get all data
+            case 'anggota': $data = $this->getAnggotaData($request, false)->get(); break;
+            case 'gptp': $data = $this->getGptpData($request, false)->get(); break;
             case 'pengurus': $data = $this->getPengurusData($request)->get(); break;
             case 'ex-anggota': $data = $this->getExAnggotaData($request)->get(); break;
             default: return redirect()->back()->with('error', 'Tipe data tidak valid.');
@@ -305,7 +304,6 @@ class DataAnggotaController extends Controller
             return $item;
         });
 
-        // Terapkan filter DPW/DPD di sini (Application-Side Filter)
         if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
             $collection = $collection->filter(fn($item) => $item->DPW == $request->dpw);
         }
@@ -347,8 +345,6 @@ class DataAnggotaController extends Controller
     {
         return ExAnggota::query()->orderBy('TGL_KELUAR', 'desc');
     }
-
-
 
     private function getDpwOptionsFromCache()
     {
