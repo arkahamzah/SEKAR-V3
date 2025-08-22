@@ -115,7 +115,7 @@ class DataAnggotaController extends Controller
 
     public function getKaryawanInfo($nik)
     {
-        $karyawan = Karyawan::where('N_NIK', $nik)->where('STATUS_ANGGOTA', 'Terdaftar')->first();
+        $karyawan = Karyawan::where('N_NIK', $nik)->where('STATUS_PENDAFTARAN', 'Terdaftar')->first();
         if (!$karyawan) {
             return response()->json(['status' => 'error', 'message' => 'Anggota tidak ditemukan atau belum terdaftar sebagai user.']);
         }
@@ -239,7 +239,7 @@ class DataAnggotaController extends Controller
     private function getAnggotaData(Request $request, bool $shouldPaginate = true)
     {
         $query = Karyawan::query()
-            ->where(DB::raw("STATUS_ANGGOTA"), '=', 'Terdaftar')
+            ->where(DB::raw("STATUS_PENDAFTARAN"), '=', 'Terdaftar')
             ->where(DB::raw("V_SHORT_POSISI"), 'NOT LIKE', '%GPTP%');
 
         $this->applyBaseKaryawanFilters($query, $request);
@@ -448,7 +448,7 @@ class DataAnggotaController extends Controller
                      case 'gptp':
                          $rowData = [
                              $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_KOTA_GEDUNG,
-                             $row->STATUS_ANGGOTA, $row->V_SHORT_POSISI, $row->DPW, $row->DPD,
+                             $row->STATUS_PENDAFTARAN, $row->V_SHORT_POSISI, $row->DPW, $row->DPD,
                          ];
                          break;
                      case 'pengurus':
