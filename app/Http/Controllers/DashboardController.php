@@ -107,7 +107,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getDpwMappingWithStats()
+private function getDpwMappingWithStats()
     {
         // Diperbarui: Sumber data karyawan diubah dari t_karyawan ke v_karyawan_base
         // karena t_karyawan tidak punya kolom DPD/DPW.
@@ -116,8 +116,10 @@ class DashboardController extends Controller
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '');
 
+        // ## PERBAIKAN DI SINI ##
+        // Paksa collation agar sesuai dengan v_karyawan_base saat melakukan query
         $paginatedMappings = DB::table('t_sekar_pengurus')
-            ->select('DPW', 'DPD')
+            ->select(DB::raw('DPW COLLATE utf8mb4_general_ci as DPW'), DB::raw('DPD COLLATE utf8mb4_general_ci as DPD'))
             ->whereNotNull('DPW')->where('DPW', '!=', '')
             ->whereNotNull('DPD')->where('DPD', '!=', '')
             ->union($karyawanMappings)
@@ -132,7 +134,7 @@ class DashboardController extends Controller
 
         return $paginatedMappings;
     }
-
+    
     private function enrichMappingWithStats($mapping)
     {
         return (object)[
