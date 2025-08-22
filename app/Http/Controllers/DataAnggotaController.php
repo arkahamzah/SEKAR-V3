@@ -354,7 +354,36 @@ private function getPengurusData(Request $request)
             fputcsv($file, $csvHeaders);
 
             foreach ($data as $row) {
-                 fputcsv($file, (array) $row->toArray());
+                 $rowData = [];
+                 switch ($type) {
+                     case 'anggota':
+                         $rowData = [
+                             $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_KOTA_GEDUNG,
+                             $row->TGL_TERDAFTAR ? \Carbon\Carbon::parse($row->TGL_TERDAFTAR)->format('d-m-Y') : '-',
+                             $row->IURAN_WAJIB, $row->IURAN_SUKARELA, $row->DPW, $row->DPD,
+                         ];
+                         break;
+                     case 'gptp':
+                         $rowData = [
+                             $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_KOTA_GEDUNG,
+                             $row->STATUS_ANGGOTA, $row->V_SHORT_POSISI, $row->DPW, $row->DPD,
+                         ];
+                         break;
+                     case 'pengurus':
+                         $rowData = [
+                             $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_KOTA_GEDUNG,
+                             $row->ROLE, $row->V_SHORT_POSISI, $row->DPW, $row->DPD,
+                         ];
+                         break;
+                     case 'ex-anggota':
+                         $rowData = [
+                             $row->N_NIK, $row->V_NAMA_KARYAWAN, $row->V_SHORT_POSISI,
+                             $row->TGL_KELUAR ? \Carbon\Carbon::parse($row->TGL_KELUAR)->format('d-m-Y') : '-',
+                             $row->DPW, $row->DPD,
+                         ];
+                         break;
+                 }
+                 fputcsv($file, $rowData);
             }
             fclose($file);
         };
