@@ -130,7 +130,20 @@ class DataAnggotaController extends Controller
 
         try {
             $karyawan = Karyawan::where('N_NIK', $request->nik)->firstOrFail();
-            SekarPengurus::create(['N_NIK' => $karyawan->N_NIK, 'V_SHORT_POSISI' => $karyawan->V_SHORT_POSISI, 'V_SHORT_UNIT' => $karyawan->V_SHORT_UNIT, 'ID_ROLES' => $request->id_roles, 'CREATED_BY' => Auth::user()->nik]);
+            
+            // Mengambil data DPW dan DPD dari karyawan
+            $dpw_dpd = $this->getSingleDpwDpd($karyawan);
+
+            SekarPengurus::create([
+                'N_NIK' => $karyawan->N_NIK,
+                'V_SHORT_POSISI' => $karyawan->V_SHORT_POSISI,
+                'V_SHORT_UNIT' => $karyawan->V_SHORT_UNIT,
+                'ID_ROLES' => $request->id_roles,
+                'DPW' => $dpw_dpd['dpw'], // Menambahkan DPW
+                'DPD' => $dpw_dpd['dpd'], // Menambahkan DPD
+                'CREATED_BY' => Auth::user()->nik
+            ]);
+
             return redirect()->route('data-anggota.index', ['tab' => 'pengurus'])->with('success', 'Pengurus baru berhasil ditambahkan.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
@@ -549,9 +562,10 @@ $keyExpression = DB::raw("
     {
         $user = Auth::user();
 
-        if ($user->hasRole('ADM')) {
+        if ($user->hasRole('ADM') || $user->hasRole('ADMIN_DPP')) {
             return ['dpw' => null, 'dpd' => null];
         }
+        
         $pengurusInfo = SekarPengurus::where('N_NIK', $user->nik)->select('DPW', 'DPD')->first();
 
         if (!$pengurusInfo) {
