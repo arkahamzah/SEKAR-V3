@@ -18,27 +18,49 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DataAnggotaController extends Controller
 {
-    public function index(Request $request)
+   public function index(Request $request)
     {
         if ($request->get('tab') === 'ex-anggota' && !Auth::user()->hasRole('ADM')) {
             return redirect()->route('data-anggota.index')->with('error', 'Anda tidak memiliki hak akses untuk melihat halaman ini.');
         }
+        
+        $userScope = $this->getUserScope();
+
+        if ($userScope['dpd']) {
+            $request->merge(['dpd' => $userScope['dpd']]);
+        }
+        if ($userScope['dpw']) {
+            $request->merge(['dpw' => $userScope['dpw']]);
+        }
 
         $activeTab = $request->get('tab', 'anggota');
-        $data = ['activeTab'  => $activeTab, 'dpwOptions' => $this->getDpwOptionsFromCache(), 'dpdOptions' => $this->getDpdOptionsFromCache($request)];
+
+        $dpwOptions = $this->getDpwOptions($userScope);
+        $dpdOptions = $this->getDpdOptions($request, $userScope);
+
+        $data = [
+            'activeTab'  => $activeTab,
+            'dpwOptions' => $dpwOptions,
+            'dpdOptions' => $dpdOptions,
+            'userScope'  => $userScope
+        ];
+
+        if ($activeTab === 'pengurus') {
+        $data['roles'] = SekarRole::orderBy('NAME', 'asc')->get();
+    }
 
         switch ($activeTab) {
             case 'anggota':
-                $data['anggota'] = $this->getAnggotaData($request);
+                $data['anggota'] = $this->getAnggotaData($request, true, $userScope);
                 break;
             case 'gptp':
-                $data['gptp'] = $this->getGptpData($request);
+                $data['gptp'] = $this->getGptpData($request, true, $userScope);
                 break;
-            case 'pengurus':
-                $data['pengurus'] = $this->getPengurusData($request)->paginate($this->resolvePerPage($request))->withQueryString();
+           case 'pengurus':
+                $data['pengurus'] = $this->getPengurusData($request, $userScope)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
             case 'ex-anggota':
-                $data['ex_anggota'] = $this->getExAnggotaData($request)->paginate($this->resolvePerPage($request))->withQueryString();
+                $data['ex_anggota'] = $this->getExAnggotaData($request, $userScope)->paginate($this->resolvePerPage($request))->withQueryString();
                 break;
         }
         return view('data-anggota.index', $data);
@@ -311,21 +333,17 @@ class DataAnggotaController extends Controller
         if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
             $collection = $collection->filter(fn($item) => $item->DPD == $request->dpd);
         }
-        // Filter DPW/DPD yang salah telah dihapus dari sini
 
         return $collection->values();
     }
 
-    // ## PERUBAHAN 1: Menambahkan Filter DPW/DPD ke dalam Query Database
     private function applyBaseKaryawanFilters(Builder $query, Request $request)
     {
-        // Filter Pencarian Nama/NIK (sudah ada)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(fn($q) => $q->where('N_NIK', 'LIKE', "%{$search}%")->orWhere('V_NAMA_KARYAWAN', 'LIKE', "%{$search}%"));
         }
 
-        // Filter DPW/DPD (Logika Baru)
         $hasDpwFilter = $request->filled('dpw') && $request->dpw !== 'Semua DPW';
         $hasDpdFilter = $request->filled('dpd') && $request->dpd !== 'Semua DPD';
 
@@ -340,19 +358,17 @@ class DataAnggotaController extends Controller
             $matchingKeys = $mappingQuery->pluck('PSA_Kodlok');
 
             if ($matchingKeys->isEmpty()) {
-                $query->whereRaw('1 = 0'); // Jika tidak ada key yang cocok, pastikan query tidak mengembalikan hasil
+                $query->whereRaw('1 = 0');
                 return;
             }
 
-            // Membuat ekspresi `CASE` di SQL untuk mencocokkan logika pembuatan key di PHP
             $keyExpression = DB::raw("CASE WHEN C_KODE_UNIT IS NOT NULL AND LOCATE('-', C_KODE_UNIT) > 0 THEN CONCAT(C_PERSONNEL_SUB_AREA, '_', SUBSTRING_INDEX(C_KODE_UNIT, '-', 1), '-', SUBSTRING(C_KODE_UNIT, -3)) ELSE CONCAT(C_PERSONNEL_SUB_AREA, '_') END");
 
             $query->whereIn($keyExpression, $matchingKeys);
         }
     }
 
-    // ## PERUBAHAN 3: Menambahkan Logika Filter untuk Data Pengurus
-    private function getPengurusData(Request $request)
+    private function getPengurusData(Request $request, array $userScope)
     {
         $query = SekarPengurus::query()
             ->join('v_karyawan_base', 't_sekar_pengurus.N_NIK', '=', 'v_karyawan_base.N_NIK')
@@ -367,21 +383,35 @@ class DataAnggotaController extends Controller
                 't_sekar_pengurus.V_SHORT_POSISI'
             );
 
+        // Terapkan scope (dari perubahan sebelumnya)
+        if ($userScope['dpw'] === 'INVALID_SCOPE') {
+            return $query->whereRaw('1 = 0');
+        }
+        if ($userScope['dpd']) {
+            $query->where('t_sekar_pengurus.DPD', $userScope['dpd']);
+        } elseif ($userScope['dpw']) {
+            $query->where('t_sekar_pengurus.DPW', $userScope['dpw']);
+        }
+
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(fn($q) => $q->where('t_sekar_pengurus.N_NIK', 'LIKE', "%{$search}%")->orWhere('v_karyawan_base.V_NAMA_KARYAWAN', 'LIKE', "%{$search}%"));
         }
-        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
+        if ($request->filled('dpw') && $request->dpw !== 'Semua DPW' && !$userScope['dpw']) {
             $query->where('t_sekar_pengurus.DPW', $request->dpw);
         }
-        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD') {
+        if ($request->filled('dpd') && $request->dpd !== 'Semua DPD' && !$userScope['dpd']) {
             $query->where('t_sekar_pengurus.DPD', $request->dpd);
+        }
+
+        if ($request->filled('role')) {
+            $query->where('t_sekar_pengurus.ID_ROLES', $request->role);
         }
 
         return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
     }
 
-    // ## PERUBAHAN 4: Menambahkan Logika Filter untuk Data Ex-Anggota
     private function getExAnggotaData(Request $request)
     {
         $query = ExAnggota::query();
@@ -400,23 +430,32 @@ class DataAnggotaController extends Controller
         return $query->orderBy('TGL_KELUAR', 'desc');
     }
 
-    private function getDpwOptionsFromCache()
+    private function getDpwOptions(array $userScope)
     {
-        return cache()->remember('dpw_options_all', now()->addHour(), function () {
-            return DB::table('mapping_dpd')->whereNotNull('DPW')->where('DPW', '!=', '')->distinct()->orderBy('DPW')->pluck('DPW')->prepend('Semua DPW');
-        });
+        if (!empty($userScope['dpw']) && $userScope['dpw'] !== 'INVALID_SCOPE') {
+
+            return collect(['Semua DPW', $userScope['dpw']]);
+        }
+        
+        return DB::table('mapping_dpd')->whereNotNull('DPW')->where('DPW', '!=', '')
+            ->distinct()->orderBy('DPW')->pluck('DPW')->prepend('Semua DPW');
     }
 
-    private function getDpdOptionsFromCache(Request $request)
+    private function getDpdOptions(Request $request, array $userScope)
     {
-        $dpw = $request->get('dpw', 'all');
-        return cache()->remember("dpd_options_{$dpw}", now()->addHour(), function () use ($request) {
-            $query = DB::table('mapping_dpd')->whereNotNull('DPD')->where('DPD', '!=', '');
-            if ($request->filled('dpw') && $request->dpw !== 'Semua DPW') {
-                $query->where('DPW', $request->dpw);
-            }
-            return $query->distinct()->orderBy('DPD')->pluck('DPD')->prepend('Semua DPD');
-        });
+        if (!empty($userScope['dpd']) && $userScope['dpd'] !== 'INVALID_SCOPE') {
+            return collect(['Semua DPD', $userScope['dpd']]);
+        }
+
+        $query = DB::table('mapping_dpd')->whereNotNull('DPD')->where('DPD', '!=', '');
+        
+        $selectedDpw = $userScope['dpw'] ?? $request->get('dpw');
+        
+        if ($selectedDpw && $selectedDpw !== 'Semua DPW') {
+            $query->where('DPW', $selectedDpw);
+        }
+        
+        return $query->distinct()->orderBy('DPD')->pluck('DPD')->prepend('Semua DPD');
     }
 
     private function exportToCsv($data, $filename, $type)
@@ -477,5 +516,28 @@ class DataAnggotaController extends Controller
         if (!Auth::user()->hasRole('ADM')) {
              abort(403, 'Akses ditolak.');
         }
+    }
+
+    private function getUserScope(): array
+    {
+        $user = Auth::user();
+
+        if ($user->hasRole('ADM')) {
+            return ['dpw' => null, 'dpd' => null];
+        }
+        $pengurusInfo = SekarPengurus::where('N_NIK', $user->nik)->select('DPW', 'DPD')->first();
+
+        if (!$pengurusInfo) {
+            return ['dpw' => 'INVALID_SCOPE', 'dpd' => 'INVALID_SCOPE'];
+        }
+        if ($user->hasRole('ADMIN_DPW')) {
+            return ['dpw' => $pengurusInfo->DPW, 'dpd' => null];
+        }
+
+        if ($user->hasRole('ADMIN_DPD')) {
+            return ['dpw' => $pengurusInfo->DPW, 'dpd' => $pengurusInfo->DPD];
+        }
+
+        return ['dpw' => 'INVALID_SCOPE', 'dpd' => 'INVALID_SCOPE'];
     }
 }
