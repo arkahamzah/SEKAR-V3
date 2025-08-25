@@ -155,6 +155,8 @@
                                 <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Pengurus</th>
                                 <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Anggota Keluar</th>
                                 <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Non Anggota</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Total</th>
+
                             </tr>
     </thead>
                         <tbody class="divide-y divide-gray-200">
