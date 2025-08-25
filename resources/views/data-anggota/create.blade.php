@@ -54,12 +54,72 @@
                     <input type="number" id="iuran_sukarela" name="iuran_sukarela" value="{{ old('iuran_sukarela') }}" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500">
                 </div>
             </div>
-            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">...</div>
-            <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+            <div class="mt-8 flex justify-end items-center gap-3">
                 <a href="{{ route('data-anggota.index') }}" class="px-4 py-2 border rounded-lg text-sm font-medium">Batal</a>
                 <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Simpan Anggota</button>
             </div>
         </form>
     </div>
 </div>
+
+{{-- [TAMBAHAN] Skrip untuk auto-fill data berdasarkan NIK --}}
+<script>
+(function () {
+  const nik  = document.getElementById('nik');
+  const nama = document.getElementById('nama');
+  const dpw  = document.getElementById('dpw');
+  const dpd  = document.getElementById('dpd');
+
+  // util: set select value dengan aman
+  function setSelectValue(selectEl, value) {
+    if (!selectEl) return;
+    if (value == null) return;
+    // jika option belum ada (mis. list terbatas), tambahkan sementara
+    let opt = Array.from(selectEl.options).find(o => o.value == value);
+    if (!opt) {
+      opt = new Option(value, value, true, true);
+      selectEl.add(opt);
+    }
+    selectEl.value = value;
+    // trigger event agar binding lain (jika ada) ikut jalan
+    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  let timer;
+  const debounce = (fn, ms=400) => (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+
+  async function lookup(n) {
+    const min = 6; // hindari spam request
+    if (!n || n.trim().length < min) return;
+
+    try {
+      const url = `{{ route('data-anggota.cek-nik', ['nik' => '___NIK___']) }}`.replace('___NIK___', encodeURIComponent(n.trim()));
+      const res = await fetch(url, { headers: { 'Accept':'application/json' } });
+      if (!res.ok) {
+        // bisa tampilkan pesan kecil kalau mau
+        return;
+      }
+      const data = await res.json();
+      if (!data.found) return;
+
+      // isi otomatis (overwrite supaya konsisten dengan data sumber)
+      if (nama) nama.value = data.nama ?? '';
+      setSelectValue(dpw, data.dpw ?? '');
+      setSelectValue(dpd, data.dpd ?? '');
+    } catch (e) {
+      console.error('Gagal cek NIK:', e);
+    }
+  }
+
+  if (nik) {
+    nik.addEventListener('input', debounce(e => lookup(e.target.value)));
+    // pastikan juga saat blur/enter
+    nik.addEventListener('change', e => lookup(e.target.value));
+  }
+})();
+</script>
+
 @endsection

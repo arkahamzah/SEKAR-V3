@@ -8,7 +8,6 @@ use App\Http\Controllers\DataAnggotaController;
 use App\Http\Controllers\BanpersController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SertifikatController;
-use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Middleware\CheckAdmin;
@@ -27,13 +26,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
     Route::post('/api/karyawan-data', [AuthController::class, 'getKaryawanData'])->name('api.karyawan-data');
-    Route::prefix('password')->name('password.')->group(function () {
-        Route::get('/reset', [PasswordResetController::class, 'showRequestForm'])->name('request');
-        Route::post('/email', [PasswordResetController::class, 'sendResetLink'])->name('email');
-        Route::get('/reset/{token}', [PasswordResetController::class, 'showResetForm'])->name('reset');
-        Route::post('/reset', [PasswordResetController::class, 'resetPassword'])->name('update');
-        Route::get('/success', [PasswordResetController::class, 'showSuccessPage'])->name('success');
-    });
+
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -52,15 +45,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/payment-history', [ProfileController::class, 'getPaymentHistory'])->name('profile.payment-history');
     Route::post('/profile/resign', [ProfileController::class, 'resign'])->name('profile.resign');
 
-    // Profile Picture Routes
-    Route::post('/profile/update-picture', [ProfileController::class, 'updateProfilePicture'])->name('profile.update-picture');
-    Route::delete('/profile/delete-picture', [ProfileController::class, 'deleteProfilePicture'])->name('profile.delete-picture');
-
-    // Password Change Routes
-    Route::prefix('password')->name('password.')->group(function () {
-        Route::get('/change', [PasswordResetController::class, 'showChangeForm'])->name('change');
-        Route::post('/change', [PasswordResetController::class, 'changePassword'])->name('change.update');
-    });
 
     // Data Anggota Routes - Admin only
     Route::middleware([CheckAdmin::class])->group(function () {
@@ -73,7 +57,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/data-anggota/create-pengurus', [DataAnggotaController::class, 'createPengurus'])->name('data-anggota.createPengurus');
         Route::post('/data-anggota/store-pengurus', [DataAnggotaController::class, 'storePengurus'])->name('data-anggota.storePengurus');
         Route::get('/data-anggota/get-karyawan/{nik}', [DataAnggotaController::class, 'getKaryawanInfo'])->name('data-anggota.getKaryawanInfo');
-
+        
+    Route::get('/data-anggota/cek-nik/{nik}', [DataAnggotaController::class, 'cekNik'])
+        ->name('data-anggota.cek-nik');
     });
 
     // Advokasi & Aspirasi Routes

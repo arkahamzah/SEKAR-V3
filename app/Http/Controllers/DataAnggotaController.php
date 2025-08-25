@@ -76,6 +76,7 @@ class DataAnggotaController extends Controller
         ]);
     }
 
+
     public function store(Request $request)
     {
         $this->checkSuperAdminAccess();
@@ -148,6 +149,35 @@ class DataAnggotaController extends Controller
         return response()->json(['status' => 'success', 'data' => $karyawan]);
     }
 
+ // [TAMBAHAN] Metode untuk menangani pengecekan NIK via AJAX
+    public function cekNik(string $nik)
+    {
+        // Ambil karyawan yang sudah "Terdaftar" (menyesuaikan pola getKaryawanInfo)
+        $karyawan = \App\Models\Karyawan::where('N_NIK', $nik)
+            ->where('STATUS_PENDAFTARAN', 'Belum Terdaftar')
+            ->first();
+
+        if (!$karyawan) {
+            return response()->json([
+                'found' => false,
+                'message' => 'NIK tidak ditemukan atau belum terdaftar.'
+            ], 404);
+        }
+
+        // Ambil DPW/DPD via helper yang sudah ada
+        $dp = $this->getSingleDpwDpd($karyawan);
+
+        return response()->json([
+            'found'   => true,
+            'nik'     => $karyawan->N_NIK,
+            'nama'    => $karyawan->V_NAMA_KARYAWAN ?? null,
+            'dpw'     => $dp['dpw'] ?? null,
+            'dpd'     => $dp['dpd'] ?? null,
+        ]);
+    }
+
+
+
     public function edit($nik)
     {
         $this->checkSuperAdminAccess();
@@ -208,33 +238,7 @@ private function getSingleDpwDpd($karyawan)
         }
     }
 
-    public function destroy($nik)
-    {
-        $this->checkSuperAdminAccess();
-        DB::beginTransaction();
-        try {
-            $user = User::where('nik', $nik)->first();
-            $karyawan = Karyawan::where('N_NIK', $nik)->first();
 
-            if (!$user || !$karyawan) {
-                return redirect()->route('data-anggota.index')->with('error', 'Data anggota tidak ditemukan.');
-            }
-
-            $dpw_dpd = $this->getSingleDpwDpd($karyawan);
-
-            ExAnggota::create(['N_NIK' => $user->nik, 'V_NAMA_KARYAWAN' => $user->name, 'V_SHORT_POSISI' => $karyawan->V_SHORT_POSISI ?? null, 'V_SHORT_DIVISI' => $karyawan->V_SHORT_DIVISI ?? null, 'TGL_KELUAR' => now(), 'DPW' => $dpw_dpd['dpw'] ?? null, 'DPD' => $dpw_dpd['dpd'] ?? null, 'V_KOTA_GEDUNG' => $karyawan->V_KOTA_GEDUNG ?? null, 'CREATED_BY' => Auth::user()->nik, 'IURAN_WAJIB_TERAKHIR' => $karyawan->IURAN_WAJIB ?? 0, 'IURAN_SUKARELA_TERAKHIR' => $karyawan->IURAN_SUKARELA ?? 0]);
-
-            if ($pengurus = SekarPengurus::where('N_NIK', $nik)->first()) $pengurus->delete();
-            if ($iuran = Iuran::where('N_NIK', $nik)->first()) $iuran->delete();
-            $user->delete();
-
-            DB::commit();
-            return redirect()->route('data-anggota.index')->with('success', 'Anggota berhasil dinonaktifkan.');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->route('data-anggota.index')->with('error', 'Gagal menonaktifkan anggota: ' . $e->getMessage());
-        }
-    }
 
     private function resolvePerPage(Request $request): int
     {
