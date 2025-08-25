@@ -147,8 +147,18 @@
                 <div class="flex-1 overflow-auto rounded-lg border border-gray-200">
                     <table class="w-full" id="mappingTable">
                         <thead class="bg-gray-50 sticky top-0">
-                            {{-- ... Header Tabel (Tidak ada perubahan) ... --}}
-                        </thead>
+                            <tr>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">No</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">DPW</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">DPD</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Anggota Aktif</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Pengurus</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Anggota Keluar</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Non Anggota</th>
+                                <th class="py-3 px-4 text-xs font-semibold text-gray-600 text-left">Total</th>
+
+                            </tr>
+    </thead>
                         <tbody class="divide-y divide-gray-200">
                             @forelse($mappingWithStats as $index => $mapping)
                             {{-- Data attribute tidak lagi diperlukan untuk filter JS --}}

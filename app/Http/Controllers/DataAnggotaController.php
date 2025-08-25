@@ -164,17 +164,20 @@ class DataAnggotaController extends Controller
         ]);
     }
 
-    private function getSingleDpwDpd($karyawan)
-    {
-        $key = '';
-        if (!empty($karyawan->C_KODE_UNIT) && strpos($karyawan->C_KODE_UNIT, '-') > 0) {
-            $key = $karyawan->C_PERSONNEL_SUB_AREA . '_' . substr($karyawan->C_KODE_UNIT, 0, strpos($karyawan->C_KODE_UNIT, '-')) . '-' . substr($karyawan->C_KODE_UNIT, -3);
-        } else {
-            $key = $karyawan->C_PERSONNEL_SUB_AREA . '_';
-        }
-        $mapping = DB::table('mapping_dpd')->where('PSA_Kodlok', $key)->first(['DPW', 'DPD']);
-        return ['dpw' => $mapping->DPW ?? null, 'dpd' => $mapping->DPD ?? null];
-    }
+private function getSingleDpwDpd($karyawan)
+{
+    $key = $this->buildPsaKodlok($karyawan->C_PERSONNEL_SUB_AREA ?? '', $karyawan->C_KODE_UNIT ?? null);
+
+    $mapping = DB::table('mapping_dpd')
+        ->where('PSA_Kodlok', $key)
+        ->first(['DPW', 'DPD']);
+
+    return [
+        'dpw' => $mapping->DPW ?? null,
+        'dpd' => $mapping->DPD ?? null,
+    ];
+}
+
 
     public function update(Request $request, $nik)
     {
@@ -305,17 +308,13 @@ class DataAnggotaController extends Controller
             return $collection;
         }
 
-        $keyMap = [];
-        $keysToSearch = $collection->mapWithKeys(function ($item) use (&$keyMap) {
-            $key = '';
-            if (!empty($item->C_KODE_UNIT) && strpos($item->C_KODE_UNIT, '-') > 0) {
-                $key = $item->C_PERSONNEL_SUB_AREA . '_' . substr($item->C_KODE_UNIT, 0, strpos($item->C_KODE_UNIT, '-')) . '-' . substr($item->C_KODE_UNIT, -3);
-            } else {
-                $key = $item->C_PERSONNEL_SUB_AREA . '_';
-            }
-            $keyMap[$item->N_NIK] = $key;
-            return [$item->N_NIK => $key];
-        })->unique()->values()->all();
+$keyMap = [];
+$keysToSearch = $collection->mapWithKeys(function ($item) use (&$keyMap) {
+    $key = $this->buildPsaKodlok($item->C_PERSONNEL_SUB_AREA ?? '', $item->C_KODE_UNIT ?? null);
+    $keyMap[$item->N_NIK] = $key;
+    return [$item->N_NIK => $key];
+})->unique()->values()->all();
+
 
         $mapping = DB::table('mapping_dpd')->whereIn('PSA_Kodlok', $keysToSearch)->get(['PSA_Kodlok', 'DPW', 'DPD'])->keyBy('PSA_Kodlok');
 
@@ -361,7 +360,36 @@ class DataAnggotaController extends Controller
                 return;
             }
 
-            $keyExpression = DB::raw("CASE WHEN C_KODE_UNIT IS NOT NULL AND LOCATE('-', C_KODE_UNIT) > 0 THEN CONCAT(C_PERSONNEL_SUB_AREA, '_', SUBSTRING_INDEX(C_KODE_UNIT, '-', 1), '-', SUBSTRING(C_KODE_UNIT, -3)) ELSE CONCAT(C_PERSONNEL_SUB_AREA, '_') END");
+$keyExpression = DB::raw("
+    CASE
+        WHEN C_KODE_UNIT IS NOT NULL AND LOCATE('-', C_KODE_UNIT) > 0 THEN
+            CONCAT(
+                C_PERSONNEL_SUB_AREA, '_',
+                SUBSTRING_INDEX(C_KODE_UNIT, '-', 1), '-',
+                CASE
+                    -- 1) 7 char sesudah '-' ⇒ ambil 3 terakhir
+                    WHEN LENGTH(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1)) = 7
+                        THEN RIGHT(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), 3)
+
+                    -- 2) Prefix ITTP & 6 char & 2 char terakhir huruf ⇒ ambil 1 terakhir
+                    WHEN UPPER(SUBSTRING_INDEX(C_KODE_UNIT, '-', 1)) = 'ITTP'
+                         AND LENGTH(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1)) = 6
+                         AND SUBSTRING(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), -2, 1) REGEXP '[A-Za-z]'
+                         AND SUBSTRING(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), -1, 1) REGEXP '[A-Za-z]'
+                        THEN RIGHT(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), 1)
+
+                    -- 3) Umum: 6 char sesudah '-' ⇒ ambil 2 terakhir
+                    WHEN LENGTH(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1)) = 6
+                        THEN RIGHT(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), 2)
+
+                    -- 4) Fallback ⇒ ambil 3 terakhir
+                    ELSE RIGHT(SUBSTRING_INDEX(C_KODE_UNIT, '-', -1), 3)
+                END
+            )
+        ELSE
+            CONCAT(C_PERSONNEL_SUB_AREA, '_')
+    END
+");
 
             $query->whereIn($keyExpression, $matchingKeys);
         }
@@ -585,3 +613,30 @@ class DataAnggotaController extends Controller
         });
     }
 }
+
+    private function buildPsaKodlok($personnelSubArea, $kodeUnit)
+    {
+        if (!$personnelSubArea) {
+            return null;
+        }
+
+        $key = $personnelSubArea . '_';
+
+        if ($kodeUnit && strpos($kodeUnit, '-') !== false) {
+            $parts = explode('-', $kodeUnit);
+            $prefix = $parts[0];
+            $suffix = end($parts);
+
+            if (strlen($suffix) === 7) {
+                $key .= $prefix . '-' . substr($suffix, -3);
+            } elseif (strtoupper($prefix) === 'ITTP' && strlen($suffix) === 6 && ctype_alpha(substr($suffix, -2))) {
+                $key .= $prefix . '-' . substr($suffix, -1);
+            } elseif (strlen($suffix) === 6) {
+                $key .= $prefix . '-' . substr($suffix, -2);
+            } else {
+                $key .= $prefix . '-' . substr($suffix, -3);
+            }
+        }
+
+        return $key;
+    }
