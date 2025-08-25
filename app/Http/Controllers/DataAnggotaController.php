@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache; // PERLU DITAMBAHKAN
 
 class DataAnggotaController extends Controller
 {
@@ -234,7 +235,6 @@ class DataAnggotaController extends Controller
 
     private function resolvePerPage(Request $request): int
     {
-        // ### PERUBAHAN DI SINI ###
         $allowed = [10, 25, 50, 100];
         $fallback = 10;
         $size = (int) $request->get('size', $fallback);
@@ -250,8 +250,8 @@ class DataAnggotaController extends Controller
         switch ($type) {
             case 'anggota': $data = $this->getAnggotaData($request, false)->get(); break;
             case 'gptp': $data = $this->getGptpData($request, false)->get(); break;
-            case 'pengurus': $data = $this->getPengurusData($request)->get(); break;
-            case 'ex-anggota': $data = $this->getExAnggotaData($request)->get(); break;
+            case 'pengurus': $data = $this->getPengurusData($request, $this->getUserScope())->get(); break;
+            case 'ex-anggota': $data = $this->getExAnggotaData($request, $this->getUserScope())->get(); break;
             default: return redirect()->back()->with('error', 'Tipe data tidak valid.');
         }
 
@@ -299,7 +299,6 @@ class DataAnggotaController extends Controller
         return $paginator;
     }
     
-    // ## PERUBAHAN 2: Menghapus Logika Filter dari Method Ini
     private function attachDpwAndDpdToCollection($collection, Request $request)
     {
         if ($collection->isEmpty()) {
@@ -383,7 +382,6 @@ class DataAnggotaController extends Controller
                 't_sekar_pengurus.V_SHORT_POSISI'
             );
 
-        // Terapkan scope (dari perubahan sebelumnya)
         if ($userScope['dpw'] === 'INVALID_SCOPE') {
             return $query->whereRaw('1 = 0');
         }
@@ -412,7 +410,7 @@ class DataAnggotaController extends Controller
         return $query->orderBy('v_karyawan_base.V_NAMA_KARYAWAN', 'asc');
     }
 
-    private function getExAnggotaData(Request $request)
+    private function getExAnggotaData(Request $request, array $userScope)
     {
         $query = ExAnggota::query();
 
@@ -427,18 +425,23 @@ class DataAnggotaController extends Controller
             $query->where('DPD', $request->dpd);
         }
 
+        // Apply user scope
+        if ($userScope['dpd']) {
+            $query->where('DPD', $userScope['dpd']);
+        } elseif ($userScope['dpw']) {
+            $query->where('DPW', $userScope['dpw']);
+        }
+
         return $query->orderBy('TGL_KELUAR', 'desc');
     }
 
     private function getDpwOptions(array $userScope)
     {
         if (!empty($userScope['dpw']) && $userScope['dpw'] !== 'INVALID_SCOPE') {
-
             return collect(['Semua DPW', $userScope['dpw']]);
         }
         
-        return DB::table('mapping_dpd')->whereNotNull('DPW')->where('DPW', '!=', '')
-            ->distinct()->orderBy('DPW')->pluck('DPW')->prepend('Semua DPW');
+        return $this->getDpwOptionsFromCache();
     }
 
     private function getDpdOptions(Request $request, array $userScope)
@@ -446,16 +449,8 @@ class DataAnggotaController extends Controller
         if (!empty($userScope['dpd']) && $userScope['dpd'] !== 'INVALID_SCOPE') {
             return collect(['Semua DPD', $userScope['dpd']]);
         }
-
-        $query = DB::table('mapping_dpd')->whereNotNull('DPD')->where('DPD', '!=', '');
         
-        $selectedDpw = $userScope['dpw'] ?? $request->get('dpw');
-        
-        if ($selectedDpw && $selectedDpw !== 'Semua DPW') {
-            $query->where('DPW', $selectedDpw);
-        }
-        
-        return $query->distinct()->orderBy('DPD')->pluck('DPD')->prepend('Semua DPD');
+        return $this->getDpdOptionsFromCache($request, $userScope);
     }
 
     private function exportToCsv($data, $filename, $type)
@@ -539,5 +534,54 @@ class DataAnggotaController extends Controller
         }
 
         return ['dpw' => 'INVALID_SCOPE', 'dpd' => 'INVALID_SCOPE'];
+    }
+    /**
+     * Get DPW options from cache or database.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private function getDpwOptionsFromCache()
+    {
+        // Cache akan disimpan selama 60 menit
+        return Cache::remember('dpw_options_list', 60, function () {
+            return DB::table('mapping_dpd')
+                ->whereNotNull('DPW')
+                ->where('DPW', '!=', '')
+                ->distinct()
+                ->orderBy('DPW')
+                ->pluck('DPW')
+                ->prepend('Semua DPW');
+        });
+    }
+
+    /**
+     * Get DPD options from cache or database, filtered by DPW if provided.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Support\Collection
+     */
+    private function getDpdOptionsFromCache(Request $request)
+    {
+        $selectedDpw = $request->get('dpw');
+        
+        // Membuat kunci cache yang unik berdasarkan DPW yang dipilih
+        $cacheKey = 'dpd_options_list_' . ($selectedDpw ?: 'all');
+
+        // Cache akan disimpan selama 60 menit
+        return Cache::remember($cacheKey, 60, function () use ($selectedDpw) {
+            $query = DB::table('mapping_dpd')
+                ->whereNotNull('DPD')
+                ->where('DPD', '!=', '');
+            
+            // Terapkan filter jika DPW dipilih (dan bukan 'Semua DPW')
+            if ($selectedDpw && $selectedDpw !== 'Semua DPW') {
+                $query->where('DPW', $selectedDpw);
+            }
+            
+            return $query->distinct()
+                ->orderBy('DPD')
+                ->pluck('DPD')
+                ->prepend('Semua DPD');
+        });
     }
 }
