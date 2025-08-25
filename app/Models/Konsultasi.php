@@ -383,21 +383,6 @@ class Konsultasi extends Model
                 ];
         }
     }
-
-    /**
-     * Get human readable status
-     */
-    public function getStatusLabelAttribute(): string
-    {
-        return match($this->STATUS) {
-            'OPEN' => 'Terbuka',
-            'IN_PROGRESS' => 'Sedang Diproses',
-            'CLOSED' => 'Ditutup',
-            'RESOLVED' => 'Selesai',
-            default => 'Tidak Diketahui'
-        };
-    }
-
     /**
      * Get human readable jenis
      */
@@ -424,4 +409,31 @@ class Konsultasi extends Model
         
         return $labels[$this->TUJUAN] ?? $this->TUJUAN;
     }
+
+    public function getStatusTextAttribute(): string
+    {
+        $statusValue = $this->STATUS ?? $this->status; // Cek properti uppercase dan lowercase
+        return match($statusValue) {
+            'OPEN' => 'Terbuka',
+            'IN_PROGRESS' => 'Sedang Diproses',
+            'CLOSED' => 'Ditutup',
+            'RESOLVED' => 'Selesai',
+            default => 'Tidak Diketahui'
+        };
+    }
+    
+    /**
+     * PERBAIKAN KUNCI: Membuat accessor warna status yang robust.
+     */
+    public function getStatusColorAttribute(): string
+    {
+        $statusValue = $this->STATUS ?? $this->status; // Cek properti uppercase dan lowercase
+        return match($statusValue) {
+            'OPEN' => 'blue',
+            'IN_PROGRESS' => 'yellow',
+            'CLOSED' => 'green',
+            default => 'gray'
+        };
+    }
+
 }
