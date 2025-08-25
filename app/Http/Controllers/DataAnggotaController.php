@@ -612,7 +612,6 @@ $keyExpression = DB::raw("
                 ->prepend('Semua DPD');
         });
     }
-}
 
     private function buildPsaKodlok($personnelSubArea, $kodeUnit)
     {
@@ -640,3 +639,4 @@ $keyExpression = DB::raw("
 
         return $key;
     }
+}
