@@ -267,10 +267,65 @@
     </div>
 </div>
 
-{{-- PERBAIKAN: Menambahkan kembali Modal dan Script yang sebelumnya hilang --}}
+{{-- PERBAIKAN: Modal Eskalasi dengan Tampilan Baru --}}
 @if(!empty($escalationOptions))
-<div id="escalationModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    {{-- Kode Modal Eskalasi --}}
+<div id="escalationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 hidden">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 transform transition-all"
+         role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+        <form action="{{ route('konsultasi.escalate', $konsultasi->ID) }}" method="POST">
+            @csrf
+            <div class="p-6">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-blue-100">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2" id="modal-headline">
+                            Eskalasi Konsultasi
+                        </h3>
+                        <p class="text-sm text-gray-600">
+                            Pilih tujuan eskalasi dan berikan alasan yang jelas.
+                        </p>
+                    </div>
+                </div>
+                <div class="mt-6 space-y-4">
+                    <div>
+                        <label for="escalate_to" class="block text-sm font-medium text-gray-700 mb-1">Eskalasi Ke</label>
+                        <select id="escalate_to" name="escalate_to" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm" onchange="updateSpecificOptions()">
+                            <option value="">-- Pilih Tujuan --</option>
+                            @foreach($escalationOptions as $key => $details)
+                                <option value="{{ $key }}" data-options='{{ json_encode($details["specific_options"]) }}'>
+                                    {{ $details['label'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="specific_selection" class="hidden">
+                        <label for="escalate_to_specific" class="block text-sm font-medium text-gray-700 mb-1">Tujuan Spesifik</label>
+                        <select id="escalate_to_specific" name="escalate_to_specific" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm">
+                            <option value="">-- Pilih Tujuan Spesifik --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="escalation_comment" class="block text-sm font-medium text-gray-700 mb-1">Alasan Eskalasi</label>
+                        <textarea id="escalation_comment" name="komentar" rows="3" class="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm" placeholder="Jelaskan mengapa konsultasi ini perlu dieskalasi..." required minlength="10"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
+                <button type="button" onclick="closeEscalationModal()" class="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Kirim Eskalasi
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 @endif
 
@@ -335,6 +390,23 @@
         }
     }
 
+    function openEscalationModal() {
+        const modal = document.getElementById('escalationModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    function closeEscalationModal() {
+        const modal = document.getElementById('escalationModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+
     function updateSpecificOptions() {
         const escalateToSelect = document.getElementById('escalate_to');
         const specificDiv = document.getElementById('specific_selection');
@@ -356,19 +428,11 @@
         if (selectedOption && escalateToValue) {
             const options = JSON.parse(selectedOption.getAttribute('data-options') || '{}');
 
-            // Special handling for DPP: auto-fill and hide
             if (escalateToValue === 'DPP') {
-                // The controller provides {'DPP': 'DPP Pusat'}
-                // We just need to ensure a value is set for form submission.
-                // The div remains hidden.
                 const dppValue = Object.keys(options).length > 0 ? Object.keys(options)[0] : 'DPP';
                 const dppLabel = Object.values(options).length > 0 ? Object.values(options)[0] : 'Dewan Pengurus Pusat';
-
                 specificSelect.innerHTML = `<option value="${dppValue}" selected>${dppLabel}</option>`;
-                // `required` remains false because the field is not user-interactive.
-                // The value is set and will be submitted with the form.
             }
-            // For other options like DPD or DPW that have specific choices
             else if (Object.keys(options).length > 0) {
                 Object.entries(options).forEach(([value, label]) => {
                     const option = document.createElement('option');
@@ -376,57 +440,25 @@
                     option.textContent = label;
                     specificSelect.appendChild(option);
                 });
-
-                // Show the dropdown and make it required
                 specificDiv.classList.remove('hidden');
                 specificSelect.required = true;
             }
-            // If there are no specific options (edge case), the div remains hidden as per reset state.
-        }
-    }
-
-
-    // Close Confirmation Modal Functions
-    function showCloseConfirmModal(konsultasiId, judulKonsultasi) {
-        currentKonsultasiId = konsultasiId;
-
-        const modal = document.getElementById('closeConfirmModal');
-        const messageElement = document.getElementById('closeMessage');
-
-        if (modal && messageElement) {
-            messageElement.textContent = `Apakah Anda yakin ingin menutup konsultasi "${judulKonsultasi}"?`;
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    function closeCloseConfirmModal() {
-        const modal = document.getElementById('closeConfirmModal');
-        if (modal) {
-            modal.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-            currentKonsultasiId = null;
         }
     }
 
     function confirmClose() {
         console.log('Confirming close for konsultasi:', currentKonsultasiId);
         if (currentKonsultasiId) {
-            // Create and submit form
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/advokasi-aspirasi/' + currentKonsultasiId + '/close';
-
-            // Add CSRF token
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
             csrfInput.name = '_token';
             csrfInput.value = csrfToken;
             form.appendChild(csrfInput);
-
             document.body.appendChild(form);
-
             console.log('Submitting form to:', form.action);
             form.submit();
         } else {
@@ -434,25 +466,20 @@
         }
     }
 
-    // Modal click outside to close
     document.addEventListener('click', function(event) {
         const escalationModal = document.getElementById('escalationModal');
         const closeModal = document.getElementById('closeConfirmModal');
-
         if (event.target === escalationModal) {
             closeEscalationModal();
         }
-
         if (event.target === closeModal) {
             closeCloseConfirmModal();
         }
     });
 
-    // Keyboard navigation
     document.addEventListener('keydown', function(event) {
         const escalationModal = document.getElementById('escalationModal');
         const closeModal = document.getElementById('closeConfirmModal');
-
         if (event.key === 'Escape') {
             if (escalationModal && !escalationModal.classList.contains('hidden')) {
                 closeEscalationModal();
@@ -463,7 +490,6 @@
         }
     });
 
-    // Make functions globally available
     window.openEscalationModal = openEscalationModal;
     window.closeEscalationModal = closeEscalationModal;
     window.updateSpecificOptions = updateSpecificOptions;
@@ -473,28 +499,12 @@
     </script>
 
     <style>
-    /* Modal animation */
-    #escalationModal {
-        animation: fadeIn 0.3s ease-out;
-    }
-
     #escalationModal > div {
         animation: slideIn 0.3s ease-out;
     }
-
-    #closeConfirmModal {
-        animation: fadeIn 0.3s ease-out;
-    }
-
     #closeConfirmModal > div {
         animation: slideIn 0.3s ease-out;
     }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
     @keyframes slideIn {
         from {
             transform: translateY(-20px);
@@ -505,25 +515,5 @@
             opacity: 1;
         }
     }
-
-    /* Focus states for accessibility */
-    button:focus, select:focus, textarea:focus {
-        outline: 2px solid #3B82F6;
-        outline-offset: 2px;
-    }
-
-    /* Button alignment for responsive design */
-    .flex.flex-col.sm\\:flex-row.gap-3 > button {
-        flex: 1;
-        min-width: 0;
-    }
-
-    @media (min-width: 640px) {
-        .flex.flex-col.sm\\:flex-row.gap-3 > button {
-            flex: none;
-            min-width: auto;
-        }
-    }
-</style>
-
+    </style>
 @endsection
